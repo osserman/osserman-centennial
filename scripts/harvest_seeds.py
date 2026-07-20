@@ -36,12 +36,17 @@ def register_seed_set(conn, seed_set: dict) -> None:
 
 
 def record_membership(conn, seed_set_id: str, work_id: str, generation: int, via: str) -> None:
+    # Keep the generation closest to the seed (smallest |generation|). For
+    # backward-only sets (all >= 0) this is just the minimum; it also stays
+    # correct when forward (negative) generations are mixed in.
     conn.execute(
         """
         INSERT INTO seed_set_works (seed_set_id, work_id, generation, added_via, added_at)
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(seed_set_id, work_id) DO UPDATE SET
-            generation = MIN(seed_set_works.generation, excluded.generation)
+            generation = CASE
+                WHEN abs(excluded.generation) < abs(seed_set_works.generation)
+                THEN excluded.generation ELSE seed_set_works.generation END
         """,
         (seed_set_id, work_id, generation, via, db.now_utc()),
     )

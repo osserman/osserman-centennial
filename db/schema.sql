@@ -169,7 +169,11 @@ CREATE TABLE IF NOT EXISTS seed_sets (
 CREATE TABLE IF NOT EXISTS seed_set_works (
     seed_set_id TEXT NOT NULL REFERENCES seed_sets(id),
     work_id     TEXT NOT NULL REFERENCES works(openalex_id),
-    generation  INTEGER NOT NULL,     -- 0 = seed, 1 = first backward expansion, ...
+    -- generation: 0 = seed. POSITIVE = backward/ancestry generations (works the
+    -- seed cites, then works those cite, ...). NEGATIVE = forward/descendant
+    -- generations (-1 = works that cite the seed, ...). A work reachable at
+    -- several generations keeps the one closest to 0 (smallest |generation|).
+    generation  INTEGER NOT NULL,
     added_via   TEXT,                 -- script or decision that added it
     added_at    TEXT,
     PRIMARY KEY (seed_set_id, work_id)
@@ -205,10 +209,22 @@ CREATE TABLE IF NOT EXISTS edge_annotations (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     citing_work_id TEXT NOT NULL REFERENCES works(openalex_id),
     cited_work_id  TEXT NOT NULL REFERENCES works(openalex_id),
-    relation_type  TEXT,              -- mathematical_theorem / geometric_construction /
+    relation_type  TEXT,              -- nature of the intellectual link:
+                                      -- mathematical_theorem / geometric_construction /
                                       -- computational_method / historical_attribution /
                                       -- experimental_validation / review_citation /
                                       -- conceptual_inspiration
+    -- citation_function: WHY the citing work cites the cited work (a separate
+    -- axis from relation_type). Controlled vocabulary, see docs/citation_function_codes.md:
+    --   gateway_pedagogical  — "for an introduction, see ..."; entry point / teaching
+    --   classical_foundation — cites the established theory as background foundation
+    --   specific_theorem     — uses a specific result / definition in the research
+    --   historical_context   — historical or attributional reference
+    --   weak_misc            — incidental / weak / hard-to-classify
+    -- NULL = not yet classified. OpenAlex does not expose citation context, so
+    -- this field is filled by human review (Semantic Scholar intents could
+    -- later semi-automate it).
+    citation_function TEXT,
     rationale      TEXT,
     reviewer       TEXT,
     review_date    TEXT

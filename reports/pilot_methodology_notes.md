@@ -215,7 +215,35 @@ verify each candidate before curating.
 even for a foundational work whose *own* reference list would be thin, and it
 surfaces real cross-disciplinary descendants (string theory, computer vision,
 tissue engineering) that backward tracing from the current seeds does not reach.
-This strengthens recommendation 1 above: build the forward-citation harvester,
-and consider adding Osserman's *Survey* as a foundational node with a dedicated
-seed set (e.g. `osserman_forward_v1`) once that harvester exists. This probe was
-read-only and did not modify the database.
+
+**Now persisted in the database.** The forward path is harvested by
+`scripts/harvest_forward.py` into seed set **`osserman_forward_v1`**: Osserman's
+*Survey* at generation 0 and **all 1,032 direct citers at generation -1**
+(negative generations = forward/descendant direction). The citing edge
+(citer → Survey) is recorded explicitly, independent of each citer's own
+`referenced_works`, so every descendant edge is present regardless of publisher
+deposition. Each citer keeps its OpenAlex primary field, so analyses can slice
+the 715 mathematics vs. ~317 non-mathematics citers.
+
+**Citation-function classification (the crucial next question).** *Why* each
+descendant cites the Survey is now a first-class, curatable axis:
+`edge_annotations.citation_function`, controlled vocabulary in
+[docs/citation_function_codes.md](../docs/citation_function_codes.md)
+(gateway_pedagogical / classical_foundation / specific_theorem /
+historical_context / weak_misc). Workflow via `scripts/citation_function.py`:
+`worksheet` exports edges to classify (ordered by citer influence, with context
+columns), `import` loads the filled sheet, `report` computes the distribution
+split by all / non-math / math. The hypothesis worth testing — that a large
+fraction of *non-math* citers use the Survey as a **gateway** ("for an
+introduction, see Osserman…") — would be strong evidence of the Survey as a
+teaching conduit into other fields.
+
+Because OpenAlex exposes no citation context, classification is currently manual
+(the report starts at 0/1,032 classified). The highest-leverage automation here
+is **Semantic Scholar**, which provides per-citation `contexts` and `intents`;
+using it to pre-populate `citation_function` (humans verifying rather than
+reading every paper) is the recommended next capability.
+
+**Caveat reminder for the field split:** the 715/317 math/non-math split relies
+on OpenAlex's noisy `primary_topic` labels — the citation-function report notes
+this, and the math/non-math slices should be read as approximate.

@@ -56,6 +56,17 @@ uv run scripts/rank_candidates.py --seed-set pilot_v1
 # report + CSV to reports/. Useful for foundational works with thin reference lists.
 uv run scripts/explore_forward_citations.py --work W2139502098 --label osserman_survey
 
+# Harvest a forward-looking path INTO the database: a seed work + its citers
+# (generation -1). Negative generations denote the forward/descendant direction.
+uv run scripts/harvest_forward.py --work W2139502098 --seed-set osserman_forward_v1 \
+    --include-all --description "Forward path from Osserman's Survey; all citers"
+
+# Classify WHY descendants cite the seed (citation function) and report the
+# distribution. See docs/citation_function_codes.md for the workflow and codes.
+uv run scripts/citation_function.py worksheet --seed-set osserman_forward_v1
+uv run scripts/citation_function.py import --file reports/citation_function_worksheet_osserman_forward_v1.csv
+uv run scripts/citation_function.py report --seed-set osserman_forward_v1
+
 # Check API budget usage at any time.
 uv run scripts/api_usage.py
 ```
