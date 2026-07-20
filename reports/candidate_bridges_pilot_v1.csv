@@ -1,0 +1,302 @@
+section,openalex_id,title,year,cited_by_count,n_seeds_citing,math_score,in_degree,harvested
+generation1,W1963952373,The topology of complete minimal surfaces of finite total Gaussian curvature,1983,221,1,1.0,,
+generation1,W1981666484,The triply periodic minimal surfaces of Alan Schoen and their constant mean curvature companions,1989,211,1,1.0,,
+generation1,W2064124833,Embedded minimal surfaces derived from Scherk's examples,1988,154,1,1.0,,
+generation1,W1488778760,New minimal surfaces in $S^3$,1988,93,1,1.0,,
+generation1,W2028759434,Stationary minimal surfaces with boundary on a simplex,1984,45,1,1.0,,
+generation1,W2027889726,On discrete Dirichlet and plateau problems,1961,31,1,1.0,,
+generation1,W2027821735,New periodic minimal surfaces in H^3,1991,6,1,1.0,,
+generation1,W2058981386,An algorithm for evolutionary surfaces,1990,353,1,0.961,,
+generation1,W2135957449,A Crystalline Approximation Theorem for Hypersurfaces,1990,51,1,0.901,,
+generation1,W1606550863,"Dirichlet’s Principle, Conformal Mapping, and Minimal Surfaces",1977,446,1,0.822,,
+generation1,W2142557280,The problem of the least area and the problem of Plateau,1930,124,1,0.727,,
+generation1,W2272740539,Computing conformal maps and minimal surfaces,1991,15,1,0.7,,
+generation1,W2085106812,Discrete solution of the Plateau problem and its convergence,1987,31,1,0.497,,
+generation1,W2019892225,Solution of the problem of Plateau,1931,427,1,0.478,,
+generation1,W3098182124,CONFORMAL ANOMALY OF SUBMANIFOLD OBSERVABLES IN ADS/CFT CORRESPONDENCE,1999,211,1,0.474,,
+generation1,W2073030628,Conformal anomaly of submanifold observables in AdS/CFT correspondence,1999,269,1,0.472,,
+generation1,W1969706687,The Surface Evolver,1992,2343,1,0.387,,
+generation1,W2330098160,Complete Minimal Surfaces in S 3,1970,679,1,0.34,,
+generation1,W3036193711,Entanglement and alpha entropies for a massive scalar field in two dimensions,2005,141,1,0.333,,
+generation1,W2090069870,Central charges in the canonical realization of asymptotic symmetries: An example from three dimensional gravity,1986,2776,1,0.314,,
+generation1,W2345240022,Topological entanglement entropy,2012,23,1,0.244,,
+generation1,W1983873947,Numerical solution of the minimal surface equation,1967,72,1,0.242,,
+generation1,W2019024022,Detecting Topological Order in a Ground State Wave Function,2006,2129,1,0.208,,
+generation1,W2046439097,Topological Entanglement Entropy,2006,2495,1,0.17,,
+generation1,W2039609754,Gauge theory correlators from non-critical string theory,1998,9345,1,0.141,,
+generation1,W2000858341,Operator product expansion for Wilson loops and surfaces in the large<i>N</i>limit,1999,369,1,0.131,,
+generation1,W2163851871,A covariant entropy conjecture,1999,857,1,0.111,,
+generation1,W3000019265,The Large N Limit of Superconformal Field Theories and Supergravity,1998,10766,1,0.087,,
+generation1,W2069840277,Entanglement entropy and quantum field theory,2004,3326,1,0.076,,
+generation1,W4249956767,The large $N$ limit of superconformal field theories and supergravity,1998,14582,1,0.073,,
+generation1,W2087092625,<i>AdS</i><sub>3</sub> black holes and a stringy exclusion principle,1998,826,1,0.066,,
+generation1,W2060083150,Eternal black holes in anti-de Sitter,2003,1594,1,0.061,,
+generation1,W2120998799,Geometric and renormalized entropy in conformal field theory,1994,1806,1,0.06,,
+generation1,W2013888684,"DeSitter entropy, quantum entanglement and ADS/CFT",2001,213,1,0.059,,
+generation1,W1612506229,Dimensional reduction in quantum gravity,1984,497,1,0.052,,
+generation1,W4297693385,"Wilson loops in the large N limit at finite temperature1Work supported in part by the US-Israel Binational Science Foundation, by GIF - the German-Israeli Foundation for Scientific Research, and by the Israel Science Foundation.1",1998,281,1,0.035,,
+generation1,W2130491267,Microscopic origin of the Bekenstein-Hawking entropy,1996,3060,1,0.012,,
+generation1,W1889142700,Anti de Sitter space and holography,1998,13375,1,0.0,,
+generation1,W3103690389,Gauge Theory Correlators from Non-Critical String Theory,1998,6927,1,0.0,,
+generation1,W2141586044,The world as a hologram,1995,4027,1,0.0,,
+generation1,W2129925474,"Anti-de Sitter space, thermal phase transition, and confinement in gauge theories",1998,3983,1,0.0,,
+generation1,W1763748250,Black hole in three-dimensional spacetime,1992,3894,1,0.0,,
+generation1,W1990516747,Entanglement in Quantum Critical Phenomena,2003,2838,1,0.0,,
+generation1,W3103311487,Microscopic origin of the Bekenstein-Hawking entropy,1996,2206,1,0.0,,
+generation1,W2023114458,"Wilson Loops in Large<mml:math xmlns:mml=""http://www.w3.org/1998/Math/MathML"" display=""inline""><mml:mi mathvariant=""italic"">N</mml:mi></mml:math>Field Theories",1998,1974,1,0.0,,
+generation1,W2053387157,Entropy and area,1993,1874,1,0.0,,
+generation1,W2159538982,Quantum source of entropy for black holes,1986,1464,1,0.0,,
+generation1,W2087991043,Macroscopic strings as heavy quarks: Large-N gauge theory and anti-de Sitter supergravity,2001,1437,1,0.0,,
+generation1,W2963584573,Dimensional reduction in quantum gravity,1993,982,1,0.0,,
+generation1,W2124105624,The Holographic Bound in Anti-de Sitter Space,1998,624,1,0.0,,
+generation1,W2070197840,Entropy and temperature of black 3-branes,1996,565,1,0.0,,
+generation1,W2039765042,Wilson-Polyakov loop at finite temperature in large-N gauge theory and anti-de Sitter supergravity,1998,457,1,0.0,,
+generation1,W1977928007,Entanglement and alpha entropies for a massive Dirac field in two dimensions,2005,297,1,0.0,,
+generation1,W1996725573,"Wilson loops, confinement, and phase transitions in large <i>N</i> gauge theories from supergravity",1998,197,1,0.0,,
+generation1,W2117420199,Entanglement entropy in critical phenomena and analog models of quantum gravity,2006,69,1,0.0,,
+generation1,W2117728682,Entanglement interpretation of black hole entropy in string theory,2006,57,1,0.0,,
+generation1,W3099283036,Entanglement Interpretation of Black Hole Entropy in String Theory,2005,57,1,0.0,,
+frontier,W3000019265,The Large N Limit of Superconformal Field Theories and Supergravity,,,,,12,yes
+frontier,W3103690389,Gauge Theory Correlators from Non-Critical String Theory,,,,,11,yes
+frontier,W1889142700,Anti de Sitter space and holography,,,,,10,yes
+frontier,W2053387157,Entropy and area,,,,,10,yes
+frontier,W2036490361,(stub — title not yet harvested),,,,,9,no (stub)
+frontier,W2120998799,Geometric and renormalized entropy in conformal field theory,,,,,9,yes
+frontier,W2070197840,Entropy and temperature of black 3-branes,,,,,8,yes
+frontier,W2090386790,(stub — title not yet harvested),,,,,8,no (stub)
+frontier,W2146478425,(stub — title not yet harvested),,,,,8,no (stub)
+frontier,W2174613881,(stub — title not yet harvested),,,,,8,no (stub)
+frontier,W4249956767,The large $N$ limit of superconformal field theories and supergravity,,,,,8,yes
+frontier,W2034183153,(stub — title not yet harvested),,,,,7,no (stub)
+frontier,W2141586044,The world as a hologram,,,,,7,yes
+frontier,W2159538982,Quantum source of entropy for black holes,,,,,7,yes
+frontier,W1980596762,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W2011578505,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W2013668637,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W2023114458,"Wilson Loops in Large<mml:math xmlns:mml=""http://www.w3.org/1998/Math/MathML"" display=""inline""><mml:mi mathvariant=""italic"">N</mml:mi></mml:math>Field Theories",,,,,6,yes
+frontier,W2087991043,Macroscopic strings as heavy quarks: Large-N gauge theory and anti-de Sitter supergravity,,,,,6,yes
+frontier,W2118082065,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W2124590498,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W2129925474,"Anti-de Sitter space, thermal phase transition, and confinement in gauge theories",,,,,6,yes
+frontier,W2144012213,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W3100409240,(stub — title not yet harvested),,,,,6,no (stub)
+frontier,W1612506229,Dimensional reduction in quantum gravity,,,,,5,yes
+frontier,W1964744959,(stub — title not yet harvested),,,,,5,no (stub)
+frontier,W1990516747,Entanglement in Quantum Critical Phenomena,,,,,5,yes
+frontier,W2088299329,(stub — title not yet harvested),,,,,5,no (stub)
+frontier,W2090069870,Central charges in the canonical realization of asymptotic symmetries: An example from three dimensional gravity,,,,,5,yes
+frontier,W2121607258,(stub — title not yet harvested),,,,,5,no (stub)
+frontier,W3101795286,(stub — title not yet harvested),,,,,5,no (stub)
+frontier,W1965571158,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2002598418,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2013888684,"DeSitter entropy, quantum entanglement and ADS/CFT",,,,,4,yes
+frontier,W2022574854,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2030654484,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2032536594,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2033498130,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2046439097,Topological Entanglement Entropy,,,,,4,yes
+frontier,W2046703947,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2060083150,Eternal black holes in anti-de Sitter,,,,,4,yes
+frontier,W2064448358,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2087092625,<i>AdS</i><sub>3</sub> black holes and a stringy exclusion principle,,,,,4,yes
+frontier,W2095329260,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2124105624,The Holographic Bound in Anti-de Sitter Space,,,,,4,yes
+frontier,W2223282020,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W2330098160,Complete Minimal Surfaces in S 3,,,,,4,yes
+frontier,W3099977794,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W3103280686,(stub — title not yet harvested),,,,,4,no (stub)
+frontier,W1501466444,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W1509346826,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W1606550863,"Dirichlet’s Principle, Conformal Mapping, and Minimal Surfaces",,,,,3,yes
+frontier,W1771066378,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W1816767040,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W1971350117,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W1972290465,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2010930038,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2011757658,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2016849204,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2017562297,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2022487148,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2023953089,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2024420461,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2024921727,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2027889726,On discrete Dirichlet and plateau problems,,,,,3,yes
+frontier,W2028759434,Stationary minimal surfaces with boundary on a simplex,,,,,3,yes
+frontier,W2033208814,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2033649663,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2039609754,Gauge theory correlators from non-critical string theory,,,,,3,yes
+frontier,W2042650304,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2043483422,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2048192939,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2060720876,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2065805883,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2069840277,Entanglement entropy and quantum field theory,,,,,3,yes
+frontier,W2071313683,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2071955904,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2081062696,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2084042440,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2084722249,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2086924461,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2089789270,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2093297646,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2107240173,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2117648611,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2128221022,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2130491267,Microscopic origin of the Bekenstein-Hawking entropy,,,,,3,yes
+frontier,W2133627134,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2150781355,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2152579451,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2166574392,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2168712029,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2756559474,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2950481832,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W2963584573,Dimensional reduction in quantum gravity,,,,,3,yes
+frontier,W3098226834,(stub — title not yet harvested),,,,,3,no (stub)
+frontier,W3103311487,Microscopic origin of the Bekenstein-Hawking entropy,,,,,3,yes
+frontier,W141448014,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1486912333,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1503503090,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1508284700,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1566834430,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1615683453,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1763748250,Black hole in three-dimensional spacetime,,,,,2,yes
+frontier,W1803034687,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1963826472,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1971014530,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1971364186,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1971606033,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1971728106,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1974678171,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1975139933,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1975455746,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1977372740,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1977512222,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1977534155,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1984264445,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1992204683,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1993673172,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1994796114,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W1996517373,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2000858341,Operator product expansion for Wilson loops and surfaces in the large<i>N</i>limit,,,,,2,yes
+frontier,W2001511269,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2001521411,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2003059230,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2005830754,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2006571742,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2007185418,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2008259798,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2008797769,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2010336806,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2010783407,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2011347314,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2014345595,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2016407890,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2016432273,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2017133042,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2018192827,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2018621138,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2019024022,Detecting Topological Order in a Ground State Wave Function,,,,,2,yes
+frontier,W2019892225,Solution of the problem of Plateau,,,,,2,yes
+frontier,W2020764541,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2021912075,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2022109344,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2024476301,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2026981346,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2027761034,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2029345718,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2029403139,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2031192616,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2031569358,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2031672422,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2033909248,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2037242760,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2039765042,Wilson-Polyakov loop at finite temperature in large-N gauge theory and anti-de Sitter supergravity,,,,,2,yes
+frontier,W2042902653,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2042923499,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2044031735,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2050368830,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2052001139,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2052524636,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2052684603,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2053488214,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2053606402,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2053892631,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2055084512,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2055112188,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2057305625,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2057529053,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2059327787,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2060174253,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2061809405,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2062009667,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2062750063,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2063613245,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2068106645,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2068367705,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2068704126,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2069111311,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2071939979,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2075503549,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2076576844,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2081516391,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2086394143,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2086731073,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2086867460,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2089616236,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2090564590,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2090948935,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2092840968,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2094219754,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2095263597,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2095711067,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2111145493,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2111197042,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2112819624,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2114071493,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2117728682,Entanglement interpretation of black hole entropy in string theory,,,,,2,yes
+frontier,W2131101882,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2133381065,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2135273380,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2136453856,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2139502098,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2145023644,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2145064892,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2146203925,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2148986778,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2150718437,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2151731714,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2154320483,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2162284105,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2171462644,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2172033635,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W2323980249,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3037535806,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3046250124,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3098004728,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3098399088,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3099253649,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3099283036,Entanglement Interpretation of Black Hole Entropy in String Theory,,,,,2,yes
+frontier,W3099325045,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3099498863,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3099515475,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3099789643,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3099990792,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3101653534,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3101781964,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3102136537,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3102320448,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3102778279,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3103130695,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3103637725,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3103741009,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3104282713,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3105153511,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3105702733,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3121306087,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3121966797,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3122760832,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3124607939,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W3216958049,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W4232775945,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W6642681490,(stub — title not yet harvested),,,,,2,no (stub)
+frontier,W6785573804,(stub — title not yet harvested),,,,,2,no (stub)
