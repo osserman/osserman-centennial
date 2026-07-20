@@ -27,6 +27,16 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPORTS = PROJECT_ROOT / "reports"
 
 
+def identifier_link(doi, openalex_id):
+    """Prefer a clickable DOI (best for searching); fall back to the OpenAlex ID.
+    Link text is the bare identifier so it is also easy to copy."""
+    if doi:
+        return f"[{doi}](https://doi.org/{doi})"
+    if openalex_id:
+        return f"[{openalex_id}](https://openalex.org/{openalex_id})"
+    return ""
+
+
 def citers_with_field(conn, seed_set_id):
     return conn.execute(
         """
@@ -79,15 +89,16 @@ def main():
         "Field labels are automated and noisy for older/borderline works (e.g. a math",
         "textbook may appear under Computer Science) — verify before curating.",
         "",
-        "| Field (citers) | Cited by | Year | Subfield | Authors | Title |",
-        "|----------------|---------:|------|----------|---------|-------|",
+        "| Field (citers) | Cited by | Year | Subfield | Authors | Title | Identifier |",
+        "|----------------|---------:|------|----------|---------|-------|------------|",
     ]
     for field, items in fields_sorted:
         head = f"**{field}** ({len(items)})"
         for i, r in enumerate(items[: args.per_field]):
             lines.append(
                 f"| {head if i == 0 else ''} | {r['cited_by_count']} | {r['publication_year']} "
-                f"| {(r['subfield'] or '')[:22]} | {(r['authors'] or '')[:34]} | {(r['title'] or '')[:58]} |"
+                f"| {(r['subfield'] or '')[:22]} | {(r['authors'] or '')[:34]} | {(r['title'] or '')[:58]} "
+                f"| {identifier_link(r['doi'], r['openalex_id'])} |"
             )
     md = REPORTS / f"top_by_field_{args.seed_set}.md"
     md.write_text("\n".join(lines) + "\n")
