@@ -147,6 +147,25 @@ radiating *outward*, we probed Osserman's *A Survey of Minimal Surfaces*
 [forward_citations_osserman_survey.md](forward_citations_osserman_survey.md) /
 `.csv`, regenerable via `scripts/explore_forward_citations.py`.
 
+**This is a slightly different kind of exploration from the backward-tracing
+pilot, and the distinction matters for interpretation.** The *Survey* is a
+textbook — an authoritative synthesis and pedagogical entry point — not the
+source of the original mathematical discoveries it describes. So its forward
+citations map **pedagogical provenance** (how practitioners in other fields
+*learned* and *entered* minimal-surface theory) rather than **mathematical
+provenance** (where a result was first proven). A materials scientist or
+computer-vision researcher citing Osserman is typically signaling "this is where
+I picked up the machinery," not attributing a theorem to him. Both lineages are
+in scope for the project — the brief explicitly values the teaching/synthesis
+channel alongside original discovery — but a node like the *Survey* should be
+read as a **conduit / gateway**, and eventually annotated as such (e.g.
+`work_roles.role = review` or a dedicated bridge/gateway tag), distinct from the
+`mathematical_root` papers where the ideas originated.
+
+Note also (provenance): OpenAlex holds a single edition-consolidated record for
+the *Survey* (1969, DOI-less, from MAG); citations to the 1986 Dover expanded
+edition are folded into this same node rather than counted separately.
+
 For a monograph, the reach is substantial: **1,032 citations, of which ~317 sit
 outside mathematics.** OpenAlex's field split of the citing works:
 
