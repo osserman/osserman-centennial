@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# NOTE: data/ and reports/ are deliberately committed.
+# The SQLite database is the project's raw-evidence record; OpenAlex data
+# drifts over time, so the committed harvest is what makes analyses reproducible.
+
+# SQLite scratch files (transient; the .db itself IS committed)
+*.db-journal
+*.db-wal
+*.db-shm

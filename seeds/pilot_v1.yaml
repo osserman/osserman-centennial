@@ -1,0 +1,77 @@
+# Pilot seed set (v1) for Minimal Surface Lineages.
+#
+# Each entry is a human-curated candidate "terminal paper" representing a distinct
+# route by which minimal-surface mathematics entered another discipline, plus
+# Alan Schoen's 1970 note (a near-certain bridge paper, included from the start
+# per projectDescription.md).
+#
+# resolve_seeds.py fills in `resolved_openalex_id` after a human confirms the
+# match reported in reports/seed_resolution.md. Until then it stays null and the
+# `query` (DOI or title) is what resolution uses.
+
+seed_set:
+  id: pilot_v1
+  description: >-
+    Five pilot terminal papers spanning genuinely different migration mechanisms
+    (structural chemistry/biology, block copolymers, computer graphics, quantum
+    gravity, soft matter) plus Alan Schoen (1970) as an anticipated bridge paper.
+
+seeds:
+  - key: hyde_1990
+    title: "Minimal Surfaces and Structures: From Inorganic and Metal Crystals to Cell Membranes and Biopolymers"
+    authors: "Hyde, Andersson, Larsson, et al."
+    year: 1990
+    doi: "10.1021/cr00083a011"
+    discipline: structural chemistry / biology
+    rationale: One of the earliest broad syntheses connecting minimal surfaces with real physical structures.
+    resolved_openalex_id: null
+
+  - key: hajduk_1994
+    title: "The Gyroid: A New Equilibrium Morphology in Weakly Segregated Diblock Copolymers"
+    authors: "Hajduk, Harper, Gruner, et al."
+    year: 1994
+    doi: null
+    discipline: block copolymers
+    rationale: Landmark experimental confirmation of TPMS (gyroid) morphology in polymers.
+    resolved_openalex_id: null
+
+  - key: pinkall_polthier_1993
+    title: "Computing Discrete Minimal Surfaces and Their Conjugates"
+    authors: "Pinkall, Polthier"
+    year: 1993
+    doi: null
+    discipline: computer graphics / discrete differential geometry
+    rationale: Tests whether computational geometry descends from the same lineage or a distinct one.
+    resolved_openalex_id: null
+
+  - key: ryu_takayanagi_2006
+    title: "Holographic Derivation of Entanglement Entropy from AdS/CFT"
+    authors: "Ryu, Takayanagi"
+    year: 2006
+    doi: "10.1103/PhysRevLett.96.181602"
+    discipline: quantum gravity / quantum information
+    rationale: Perhaps the most conceptually surprising migration of minimal-surface mathematics.
+    resolved_openalex_id: null
+
+  - key: gompper_schick_1996
+    title: "Self-assembling amphiphilic systems"
+    authors: "Gompper, Schick"
+    year: 1996
+    doi: null
+    discipline: soft condensed matter / lipid cubic phases
+    # NOTE: projectDescription.md titles this "From the Plateau Problem to Periodic
+    # Minimal Surfaces in Lipids, Surfactants and Diblock Copolymers", which is a
+    # chapter/section within Gompper & Schick's 1996 volume. resolve_seeds.py will
+    # surface candidates for both the volume and the chapter for human choice.
+    rationale: Likely to reveal bridge papers connecting classical geometry with physical chemistry.
+    resolved_openalex_id: null
+
+  - key: schoen_1970
+    title: "Infinite Periodic Minimal Surfaces Without Self-Intersections"
+    authors: "Schoen"
+    year: 1970
+    doi: null
+    discipline: historical geometry (anticipated bridge paper)
+    note: NASA Technical Note D-5541. Grey literature; may resolve poorly in OpenAlex — this doubles as a methodology test.
+    rationale: Almost certainly a central bridge paper; included from the start per the project plan.
+    resolved_openalex_id: null
