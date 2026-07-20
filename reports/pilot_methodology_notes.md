@@ -21,26 +21,44 @@ authoritative here.
 
 Outgoing references (`referenced_works`) present per seed:
 
-| Seed | Year | References in OpenAlex |
-|------|------|------------------------|
-| Ryu & Takayanagi | 2006 | 42 |
-| Pinkall & Polthier | 1993 | 17 |
-| Hyde et al. | 1988 | **0** |
-| Hajduk et al. | 1994 | **0** |
-| Gompper & Schick | 1995 | **0** |
-| Schoen (NASA TN) | 1970 | **0** |
+| Seed | Year | Publisher / venue | Refs in OpenAlex |
+|------|------|-------------------|-----------------:|
+| Ryu & Takayanagi | 2006 | APS — Phys. Rev. Lett. | 42 |
+| Pinkall & Polthier | 1993 | Taylor & Francis — Experimental Mathematics | 17 |
+| Hyde et al. | 1988 | ACS — Chemical Reviews | **0** |
+| Hajduk et al. | 1994 | ACS — Macromolecules | **0** |
+| Gompper & Schick | 1995 | Physics Today | **0** |
+| Schoen (NASA TN) | 1970 | NASA TRS (no DOI) | **0** |
 
 Four of six seeds have **no** outgoing references in OpenAlex. This is the single
 most important methodological result of the pilot: **backward citation tracing
-works only where OpenAlex has reference data, and coverage collapses for older
-papers, books/book-chapters, and grey literature.** The two seeds that do carry
-references are the born-digital / physics-preprint-era works.
+works only where the publisher deposited a reference list to Crossref**, which is
+where OpenAlex sources most citation edges.
+
+The cause is *publisher deposition, not age.* The distinguishing variable is who
+published the paper, verified by querying Crossref directly:
+
+- Both ACS papers (Hyde, Hajduk) return `reference-count = 0` from Crossref — ACS
+  historically did not deposit reference lists. APS (Ryu & Takayanagi) deposits
+  them (Crossref has 29; OpenAlex shows 42 because it supplements with arXiv and
+  the retired Microsoft Academic Graph).
+- Age is ruled out directly: Pinkall & Polthier (1993) is *older* than Hajduk
+  (1994) and Gompper & Schick (1995) yet carries 17 references, purely because its
+  publisher deposited them.
+- Schoen's NASA Technical Note is a separate mechanism: no DOI, `indexed_in = []`,
+  present in OpenAlex only via MAG. There is no machine-readable reference list
+  for it anywhere — its ancestry will always need manual reconstruction.
+- **Resolution caveat (Gompper & Schick):** the record we matched is a *Physics
+  Today* item (0 references), almost certainly a short book notice rather than the
+  actual review, which is a chapter in *Phase Transitions and Critical Phenomena*
+  vol. 16 (Academic Press). Re-resolve this seed before relying on it.
 
 Consequence for the project: a purely backward, citation-only strategy will
 silently miss the ancestry of exactly the historically important older works we
-most care about. Those lineages will require either (a) the *forward* direction —
-who cites the seed — which OpenAlex populates far better, or (b) manual
-historical reconstruction (see below).
+most care about, and the gap correlates with *publisher*, not year. Those
+lineages will require either (a) the *forward* direction — who cites the seed —
+which OpenAlex populates far better regardless of the seed's own publisher, or
+(b) manual historical reconstruction (see below).
 
 ## Does the citation graph preserve the mathematical lineage?
 
@@ -120,3 +138,65 @@ ranking exists precisely to pick those few.
    first curated papers rather than later.
 4. Keep the zero-reference seeds flagged (`paper_tags` = `needs_manual_review`)
    so their missing ancestry is never mistaken for genuine absence of influence.
+
+## Addendum: forward-citation probe — Osserman, *A Survey of Minimal Surfaces*
+
+To test the forward (`cited_by`) direction and the idea of a mathematical work
+radiating *outward*, we probed Osserman's *A Survey of Minimal Surfaces*
+(OpenAlex `W2139502098`, 1969). Full ranked data:
+[forward_citations_osserman_survey.md](forward_citations_osserman_survey.md) /
+`.csv`, regenerable via `scripts/explore_forward_citations.py`.
+
+For a monograph, the reach is substantial: **1,032 citations, of which ~317 sit
+outside mathematics.** OpenAlex's field split of the citing works:
+
+| Field | Citing works |
+|-------|-------------:|
+| Mathematics | 715 |
+| Engineering | 104 |
+| Physics & Astronomy | 82 |
+| Computer Science | 74 |
+| Materials Science | 16 |
+| (Social Sci, Earth, Bio, Chem, …) | ~40 |
+
+Genuinely cross-disciplinary, influential descendants (ranked by their own
+citation counts) — several open migration routes not in the current seed list:
+
+- **String theory / high-energy physics.** Gibbons, *Born–Infeld particles and
+  Dirichlet p-branes* (1998, ~530 cites) and Yang, *Classical solutions in the
+  Born–Infeld theory* (2000, ~89). A striking, unexpected route into brane
+  physics — distinct from the Ryu–Takayanagi holography branch.
+- **Computer vision.** The geodesic-active-contours lineage: Caselles–Kimmel–
+  Sapiro, *Minimal surfaces based object segmentation* (1997, ~198) and its
+  companions (Malladi–Kimmel ~87, Caselles ~83). Minimal-surface variational
+  methods became a foundation of image segmentation — a CS route separate from
+  the discrete-geometry/graphics branch (Pinkall–Polthier).
+- **Biomedical / tissue engineering.** Zadpoor, *Bone tissue regeneration: the
+  role of scaffold geometry* (2014, ~519) and *Additively manufactured porous
+  metallic biomaterials* (2019, ~202). Corroborates the tissue-engineering branch
+  in the brief.
+- **Biophysics / biology.** Zandi & Dragnea, *On virus growth and form* (2020,
+  ~157); Savadjiev et al., *Heart-wall myofibers arranged in minimal surfaces*
+  (2012, ~62).
+- **Soft matter / materials.** Rey, *Capillary models for liquid-crystal fibers
+  and membranes* (2007, ~105); Benedicto & Bates, *Bicontinuous cubic morphologies
+  in block copolymers* (1997, ~60); Terrones & Mackay, TPMS-decorated carbon
+  (1993, ~59); Goldstein et al., *Soap-film Möbius strip changes topology* (2010,
+  ~52, PNAS).
+
+**Caveat — automated field labels are noisy.** OpenAlex's `primary_topic` field
+misclassifies several pure-mathematics works as non-math: the single most-cited
+"non-math" hit is Gilbarg & Trudinger's *Elliptic PDEs of Second Order* (~1,376,
+labeled Computer Science), which is a mathematics textbook; likewise Costa's
+minimal-immersion paper, Colding–Minicozzi, and several Meeks papers are math
+despite non-math labels. Field counts are hints for triage, not ground truth —
+verify each candidate before curating.
+
+**What this establishes for the methodology.** The forward direction works well
+even for a foundational work whose *own* reference list would be thin, and it
+surfaces real cross-disciplinary descendants (string theory, computer vision,
+tissue engineering) that backward tracing from the current seeds does not reach.
+This strengthens recommendation 1 above: build the forward-citation harvester,
+and consider adding Osserman's *Survey* as a foundational node with a dedicated
+seed set (e.g. `osserman_forward_v1`) once that harvester exists. This probe was
+read-only and did not modify the database.

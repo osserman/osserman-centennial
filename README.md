@@ -51,6 +51,11 @@ uv run scripts/expand_backward.py --seed-set pilot_v1
 # 4. Rank candidate bridge / ancestor papers (derived analysis → reports/).
 uv run scripts/rank_candidates.py --seed-set pilot_v1
 
+# Explore the FORWARD (cited_by) direction for any work — who cites it, in which
+# fields, and which citing works are themselves influential. Read-only; writes a
+# report + CSV to reports/. Useful for foundational works with thin reference lists.
+uv run scripts/explore_forward_citations.py --work W2139502098 --label osserman_survey
+
 # Check API budget usage at any time.
 uv run scripts/api_usage.py
 ```
