@@ -1,0 +1,67 @@
+field,field_rank_in_field,openalex_id,title,year,type,cited_by_count,subfield,authors,doi
+Mathematics,1,W1698081298,Analytic and geometric background of recurrence and non-explosion of the Brownian motion on Riemannian manifolds,1999,article,871,Applied Mathematics,Alexander Grigorʼyan,10.1090/s0273-0979-99-00776-4
+Mathematics,2,W1996561347,The structure of complete stable minimal surfaces in 3‐manifolds of non‐negative scalar curvature,1980,article,707,Applied Mathematics,D. Fischer-Colbrie,10.1002/cpa.3160330206
+Mathematics,3,W1603911705,Harmonic Morphisms Between Riemannian Manifolds,2003,book,630,Applied Mathematics,"Paul Baird, Jonathan Wood",10.1093/acprof:oso/9780198503620.001.0001
+Mathematics,4,W1567841374,"Uniqueness, symmetry, and embeddedness of minimal surfaces",1983,article,412,Applied Mathematics,,10.4310/jdg/1214438183
+Mathematics,5,W2065282571,Curvature estimates for minimal hypersurfaces,1975,article,363,Applied Mathematics,"L. Simon, S.-T. Yau",10.1007/bf02392104
+Mathematics,6,W2057681881,On complete minimal surfaces with finite Morse index in three manifolds,1985,article,297,Applied Mathematics,D. Fischer-Colbrie,10.1007/bf01394782
+Engineering,1,W2120559167,Bone tissue regeneration: the role of scaffold geometry,2014,article,519,Biomedical Engineering,"Amir A. Zadpoor, Amir A. Zadpoor",10.1039/c4bm00291a
+Engineering,2,W2943941736,Additively manufactured porous metallic biomaterials,2019,article,202,Biomedical Engineering,"Amir A. Zadpoor, Amir A. Zadpoor",10.1039/c9tb00420c
+Engineering,3,W2042745111,Example of a complete minimal immersion in IR3 of genus one and three-embedded ends,1984,article,152,Computational Mechanics,Celso J. Costa,10.1007/bf02584707
+Engineering,4,W2561706738,Additively Manufactured and Surface Biofunctionalized Porous Nitinol,2016,article,98,Biomedical Engineering,"Zahra Gorgin Karaji, Mathew Speirs, Jean‐Pierre Kruth",10.1021/acsami.6b14026
+Engineering,5,W2054414694,Bézier surfaces of minimal area: The Dirichlet approach,2003,article,85,Computational Mechanics,J. Monterde,10.1016/j.cagd.2003.07.009
+Engineering,6,W2010180471,Bernstein theorems for harmonic morphisms from R3 andS 3,1988,article,83,Computational Mechanics,"Paul Baird, Jonathan Wood",10.1007/bf01450078
+Physics and Astronomy,1,W2034409564,Born-Infeld particles and Dirichlet p-branes,1998,article,530,Nuclear and High Energy Physics,G. W. Gibbons,10.1016/s0550-3213(97)00795-5
+Physics and Astronomy,2,W2079888158,Classical solutions in the Born—Infeld theory,2000,article,89,Nuclear and High Energy Physics,Yisong Yang,10.1098/rspa.2000.0533
+Physics and Astronomy,3,W2002168123,"Region with trapped surfaces in spherical symmetry, its core, and their boundaries",2011,article,83,Nuclear and High Energy Physics,"Ingemar Bengtsson, José M. M. Senovilla",10.1103/physrevd.83.044012
+Physics and Astronomy,4,W2088920577,Toward giga-pixel nanoscopy on a chip: a computational wide-field look at the nano-scale without the use of lenses,2013,article,55,"Atomic and Molecular Physics, and Optics","Euan McLeod, Alon Greenbaum, Onur Mudanyali",10.1039/c3lc50222h
+Physics and Astronomy,5,W3100447000,Topology and Signature Changes in Braneworlds,2004,other,37,Nuclear and High Energy Physics,,
+Physics and Astronomy,6,W2000412615,Symmetry properties and explicit solutions of the generalized Weierstrass system,2001,article,35,Statistical and Nonlinear Physics,"Paul Bracken, Paul Bracken, A. M. Grundland",10.1063/1.1337796
+Computer Science,1,W138643006,Elliptic Partial Differential Equations of Second Order,1997,book-chapter,1376,Computational Theory and Mathematics,"Piero Bassanini, Alan R. Elcrat",10.1007/978-1-4899-1875-8_5
+Computer Science,2,W2151783599,Minimal surfaces based object segmentation,1997,article,198,Computer Vision and Pattern Recognition,"Vicent Caselles, Guillermo Sapiro, Ron Kimmel",10.1109/34.588023
+Computer Science,3,W2050427737,A geometric approach to segmentation and analysis of 3D medical images,1996,conference-paper,87,Computer Vision and Pattern Recognition,"R. Malladi, R. Malladi, Guillermo Sapiro",10.1109/mmbia.1996.534076
+Computer Science,4,W2004710792,Minimal surfaces: a geometric three dimensional segmentation approach,1997,article,83,Computer Vision and Pattern Recognition,"Vicent Caselles, Guillermo Sapiro, Ron Kimmel",10.1007/s002110050294
+Computer Science,5,W2288825959,Le problème de Dirichlet pour l'équation des surfaces minimales sur des domaines non bornés,1991,article,65,Computational Theory and Mathematics,"Pascal Collin, Romain Krust",10.24033/bsmf.2174
+Computer Science,6,W2906809727,Liouville-Type Theorems for Elliptic Problems,2007,book-chapter,64,Computational Theory and Mathematics,"Alberto Farina, Alberto Farina",10.1016/s1874-5733(07)80005-2
+Materials Science,1,W2011393615,"Capillary models for liquid crystal fibers, membranes, films, and drops",2007,article,105,"Electronic, Optical and Magnetic Materials",Alejandro D. Rey,10.1039/b704248p
+Materials Science,2,W2169776346,Heart wall myofibers are arranged in minimal surfaces to optimize organ function,2012,article,62,Biomaterials,"Peter Savadjiev, Peter Savadjiev, Emmanuel Piuze",10.1073/pnas.1120785109
+Materials Science,3,W2044735577,Bicontinuous Cubic Morphologies in Block Copolymers and Amphiphile/Water Systems:  Mathematical Description through the Minimal Surfaces,1997,article,60,Materials Chemistry,"Alto D. Benedicto, David F. O’Brien",10.1021/ma9614353
+Materials Science,4,W2014531689,The structure of negatively curved spongy carbon,2003,article,56,Materials Chemistry,"G. Benedek, Caterina Ducati, E. Barborini",10.1016/s0925-9635(03)00082-7
+Materials Science,5,W1532474902,Adding Handles to Nadirashvili's Surfaces,2002,article,40,Materials Chemistry,"Francisco J. López, Francisco Martín, Santiago Morales",10.4310/jdg/1090351086
+Materials Science,6,W2954373213,Microstructural characteristics of bijel-templated porous materials,2019,article,28,Materials Chemistry,"Kyle M. McDevitt, Elliot L. Botvinick, Elliot L. Botvinick",10.1016/j.mtla.2019.100393
+Social Sciences,1,W36637537,C 10(3): The Ten Parameter Conformal Group as a Datum Transformation in Three-Dimensional Euclidean Space,2014,book-chapter,1,"Geography, Planning and Development","Erik W. Grafarend, Rey-Jer You, Rainer Syffus",10.1007/978-3-642-36494-5_24
+Social Sciences,2,W80732947,“Sphere to Cylinder”: Transverse Aspect,2014,book-chapter,1,"Geography, Planning and Development","Erik W. Grafarend, Rey-Jer You, Rainer Syffus",10.1007/978-3-642-36494-5_11
+Social Sciences,3,W2184041237,Tittel på avhandlingen Undertittel på avhandlingen,2012,article,0,Political Science and International Relations,Øystein Tråsdahl,
+Social Sciences,4,W2203603201,“Sphere to Cylinder”: Pseudo-Cylindrical Projections,2014,book-chapter,0,"Geography, Planning and Development","Erik W. Grafarend, Rey-Jer You, Rainer Syffus",10.1007/978-3-642-36494-5_13
+Social Sciences,5,W2215812709,“Sphere to Cylinder”: Oblique Aspect,2014,book-chapter,0,"Geography, Planning and Development","Erik W. Grafarend, Rey-Jer You, Rainer Syffus",10.1007/978-3-642-36494-5_12
+Social Sciences,6,W2219401023,“Sphere to Cylinder”: Polar Aspect,2014,book-chapter,0,"Geography, Planning and Development","Erik W. Grafarend, Rey-Jer You, Rainer Syffus",10.1007/978-3-642-36494-5_10
+Earth and Planetary Sciences,1,W2027915740,The contact angle in capillarity,2006,article,60,Atmospheric Science,Robert Finn,10.1063/1.2185655
+Earth and Planetary Sciences,2,W2065862916,The shapes of first-stage sinters,1989,article,28,Atmospheric Science,"François G. Amar, Julius Jellinek, J. Bernholc",10.1063/1.342674
+Earth and Planetary Sciences,3,W2963173568,On the Uniqueness of Vortex Equations and Its Geometric Applications,2018,article,17,Oceanography,"Qiongling Li, Qiongling Li",10.1007/s12220-018-9981-x
+Earth and Planetary Sciences,4,W2027467037,Bifurkation von Minimalfl�chen und elementare Katastrophen,1986,article,8,Earth-Surface Processes,Joachim B�ch,10.1007/bf01186648
+Earth and Planetary Sciences,5,W2094658998,Shapes of completely wetted two-dimensional powder compacts for applications to sintering,1992,article,3,Atmospheric Science,"J. Christian Schön, Richard Frost, Jamie Lawson",10.1063/1.350973
+Earth and Planetary Sciences,6,W28451638,Optimal Map Projections by Variational Calculus: Harmonic Maps,2014,book-chapter,2,Oceanography,"Erik W. Grafarend, Rey-Jer You, Rainer Syffus",10.1007/978-3-642-36494-5_22
+Arts and Humanities,1,W2097063601,"Falaco Solitons, Cosmological strings in swimming pool.",2005,article,2,Philosophy,R. M. Kiehn,
+Arts and Humanities,2,W2153388310,"Falaco Solitons, Cosmological strings in swimming pool. Update of arXiv/gr-qc/0101098",2006,article,1,Philosophy,R. M. Kiehn,
+Arts and Humanities,3,W2135956548,EMBEDDED MINIMAL SURFACES OF FINITE TOPOLOGY AND ONE END,2009,article,0,Philosophy,Christine Breiner,
+Arts and Humanities,4,W4386139101,Copyright Page,2023,paratext,0,History,,10.1093/oso/9780192872616.002.0003
+Arts and Humanities,5,W9467931,A Laboratory for Geometric Performance 1,1999,article,0,Visual Arts and Performing Arts,Sha Xin Wei,10.1016/s0040-8166(97)80046-8
+"Biochemistry, Genetics and Molecular Biology",1,W2112838653,Electrostatic colloid-membrane binding,2004,article,54,Molecular Biology,"Christian Fleck, Roland R. Netz, Roland R. Netz",10.1209/epl/i2004-10068-x
+"Biochemistry, Genetics and Molecular Biology",2,W2612605708,Gaussian curvature directs the distribution of spontaneous curvature on bilayer membrane necks,2018,article,39,Molecular Biology,"Morgan Chabanon, Padmini Rangamani",10.1039/c8sm00035b
+"Biochemistry, Genetics and Molecular Biology",3,W2032676329,Hedgehogs and area of order 2,1996,article,4,Molecular Biology,Yves Martinez‐Maure,10.1007/bf01268931
+"Biochemistry, Genetics and Molecular Biology",4,W2131425046,A new protein folding algorithm based on hydrophobic compactness: Rigid Unconnected Secondary Structure Iterative Assembly (RUSSIA). II: Applications,2003,article,3,Molecular Biology,"Denis Znamenskiy, Denis Znamenskiy, Denis Znamenskiy",10.1093/protein/gzg141
+(no field),1,W4233857576,,1994,paratext,0,,,10.1090/qam/1994-52-01
+(no field),2,W4236522220,Bibliography,2004,paratext,0,,,10.1016/s1874-7051(01)80014-1
+(no field),3,W4248074405,Bibliography,2016,paratext,0,,,10.1016/b978-0-12-804489-6.50025-2
+(no field),4,W4254351106,Bibliography,1994,paratext,0,,,10.1016/b978-0-12-464990-3.50017-7
+Environmental Science,1,W2999050204,On virus growth and form,2020,article,157,Ecology,"Roya Zandi, Bogdan Dragnea, Alex Travesset",10.1016/j.physrep.2019.12.005
+Environmental Science,2,W2976057645,A estruturação do saber relacionado a geometria complexa e a modelagem paramétrica de estruturas regenerativas na arquitetura,2019,article,1,"Management, Monitoring, Policy and Law","Janice de Freitas Pires, Alice Theresinha Cybis Pereira",10.11606/gtp.v14i1.148024
+Environmental Science,3,W4240373209,Libro de resúmenes del ECI 2015 de invierno,2020,article,0,Global and Planetary Change,,10.33017/recytperu2015.0002/
+Chemistry,1,W2002021482,Triply periodic minimal surfaces decorated with curved graphite,1993,article,59,Organic Chemistry,"Humberto Terrones, Alan L. Mackay",10.1016/0009-2614(93)85009-d
+Chemistry,2,W2006894956,Polymerization in the cubic phase and studies of phase behavior in two nonionic surfactant-water-acrylamide systems,1992,article,9,Organic Chemistry,Pelle Ström,10.1016/0021-9797(92)90091-y
+Chemistry,3,W2009242770,Differential geometric theory of capillarity,1996,article,7,Organic Chemistry,J. Gaydos,10.1016/0927-7757(96)03591-1
+Health Professions,1,W3026088860,XROMM and diceCT reveal a hydraulic mechanism of tongue base retraction in swallowing,2020,article,45,Speech and Hearing,"Courtney P. Orsbon, Nicholas J. Gidmark, Nicholas J. Gidmark",10.1038/s41598-020-64935-z
+Health Professions,2,W2493896240,Soap Films: The Amusement of Children and Mathematicians,1996,book-chapter,0,Health Information Management,"Stefan Hildebrandt, Anthony J. Tromba",10.1007/978-1-4612-2424-2_6
+Medicine,1,W1607196095,Towards a classification of CMC-1 Trinoids in hyperbolic space via conjugate surfaces,2003,preprint,0,"Radiology, Nuclear Medicine and Imaging",Andreas Balser,10.48550/arxiv.math/0310397
+Medicine,2,W4205537050,Faculty Opinions recommendation of Heart wall myofibers are arranged in minimal surfaces to optimize organ function.,2012,peer-review,0,Surgery,"Elisa Konofagou, Fabrice Marquet",10.3410/f.717953919.793459618
+"Economics, Econometrics and Finance",1,W1612200372,Brownian motion and the parabolicity of minimal graphs,2008,preprint,6,Finance,Robert W. Neel,10.48550/arxiv.0810.0669
