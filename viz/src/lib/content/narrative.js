@@ -89,6 +89,7 @@ export const steps = [
 	},
 	{
 		id: 'engineering-scaffold',
+		kind: 'paper',
 		kicker: 'Engineering & Bioengineering',
 		heading: 'Bone tissue regeneration: the role of scaffold geometry (2014)',
 		body: [
@@ -101,6 +102,7 @@ export const steps = [
 	},
 	{
 		id: 'engineering-am',
+		kind: 'paper',
 		kicker: 'Engineering & Bioengineering',
 		heading: 'Additively manufactured porous metallic biomaterials (2019)',
 		body: [
@@ -127,6 +129,7 @@ export const steps = [
 	},
 	{
 		id: 'materials-copolymers',
+		kind: 'paper',
 		kicker: 'Materials Science',
 		heading: 'Bicontinuous Cubic Morphologies in Block Copolymers and Amphiphile/Water Systems (1997)',
 		body: [
@@ -139,6 +142,7 @@ export const steps = [
 	},
 	{
 		id: 'materials-carbon',
+		kind: 'paper',
 		kicker: 'Materials Science',
 		heading: 'Triply Periodic Minimal Surfaces Decorated with Curved Graphite (1993)',
 		body: [
@@ -164,6 +168,7 @@ export const steps = [
 	},
 	{
 		id: 'biology-heart',
+		kind: 'paper',
 		kicker: 'Biology',
 		heading: 'Heart wall myofibers are arranged in minimal surfaces to optimize organ function (2012)',
 		body: [
@@ -175,6 +180,7 @@ export const steps = [
 	},
 	{
 		id: 'biology-membrane',
+		kind: 'paper',
 		kicker: 'Biology',
 		heading: 'Gaussian curvature directs the distribution of spontaneous curvature on bilayer membrane necks (2018)',
 		body: [
@@ -210,6 +216,7 @@ export const steps = [
 	},
 	{
 		id: 'cs-segmentation',
+		kind: 'paper',
 		kicker: 'Computer Science',
 		heading: 'Minimal surfaces based object segmentation (1997)',
 		body: [
@@ -223,6 +230,7 @@ export const steps = [
 	},
 	{
 		id: 'cs-xromm',
+		kind: 'paper',
 		kicker: 'Computer Science',
 		heading: 'XROMM and diceCT reveal a hydraulic mechanism of tongue base retraction (2020)',
 		body: [
@@ -248,6 +256,7 @@ export const steps = [
 	},
 	{
 		id: 'physics-borninfeld',
+		kind: 'paper',
 		kicker: 'Physics',
 		heading: 'Born–Infeld particles and Dirichlet p-branes (1998)',
 		body: ['A highly influential paper in string theory exploring the geometry of Dirichlet branes.'],
@@ -257,6 +266,7 @@ export const steps = [
 	},
 	{
 		id: 'physics-trapped',
+		kind: 'paper',
 		kicker: 'Physics',
 		heading: 'Region with trapped surfaces in spherical symmetry… (2011)',
 		body: [
@@ -279,7 +289,10 @@ export const steps = [
 			'The same mathematical ideas have repeatedly crossed disciplinary boundaries—not because they solved the same problem, but because they entered the world through a handful of recurring relationships.'
 		],
 		openQuestion: null,
-		view: { colorBy: 'pathway', highlightIds: Object.values(PATHWAY_IDS).flat(), dimBackground: true }
+		// All 12 highlighted (visible, ringed) but deliberately not yet colored
+		// by pathway — the categorization is revealed one pathway at a time,
+		// starting with pathway-1 below.
+		view: spotlight(Object.values(PATHWAY_IDS).flat())
 	},
 	{
 		id: 'pathway-1',

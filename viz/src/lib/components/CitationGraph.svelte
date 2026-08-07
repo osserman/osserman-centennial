@@ -16,7 +16,7 @@
 	// nodes, canvas avoids the DOM overhead an SVG node-per-mark approach
 	// would carry, especially on every viewSpec redraw/camera frame.
 	import { onMount } from 'svelte';
-	import { activePalette, roles, pathwayShape } from '$lib/palette.js';
+	import { activePalette, roles } from '$lib/palette.js';
 	import PaperDetail from './PaperDetail.svelte';
 
 	/**
@@ -247,24 +247,16 @@
 
 			ctx.globalAlpha = dimmed ? 0.15 : 0.9;
 
-			const c = curatedById.get(n.id);
-			const outlineOnly = c && pathwayShape[c.pathway] === 'ring' && viewSpec.colorBy === 'pathway';
 			ctx.beginPath();
 			ctx.roundRect(p.x - rw / 2, p.y - rh / 2, rw, rh, radius);
-			if (outlineOnly) {
-				ctx.lineWidth = 2;
-				ctx.strokeStyle = color;
-				ctx.stroke();
-			} else {
-				ctx.fillStyle = color;
-				ctx.fill();
-				// Surface-color separator ring (not a data-colored border) so
-				// touching/overlapping marks stay legible — the dataviz skill's
-				// "surface ring" mechanism, not an outline-as-emphasis.
-				ctx.lineWidth = 1;
-				ctx.strokeStyle = pal.surface;
-				ctx.stroke();
-			}
+			ctx.fillStyle = color;
+			ctx.fill();
+			// Surface-color separator ring (not a data-colored border) so
+			// touching/overlapping marks stay legible — the dataviz skill's
+			// "surface ring" mechanism, not an outline-as-emphasis.
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = pal.surface;
+			ctx.stroke();
 
 			if (isHighlighted) {
 				ctx.globalAlpha = 1;
@@ -340,7 +332,11 @@
 		style="width: 100%; height: 100%;"
 	></canvas>
 
-	<div class="graph-caption">Scholarly works that have cited <em>A Survey of Minimal Surfaces</em></div>
+	<div class="graph-caption">
+		Scholarly works that have cited <em>A Survey of Minimal Surfaces</em>, each tile scaled by
+		number of citations
+		<span class="graph-source">Source: OpenAlex</span>
+	</div>
 
 	{#if hovered}
 		<div class="tooltip" style="left: {pointer.x + 16}px; top: {pointer.y + 16}px;">
@@ -374,6 +370,13 @@
 		font-size: 0.85rem;
 		color: var(--text-secondary);
 		pointer-events: none;
+		line-height: 1.45;
+	}
+	.graph-source {
+		display: block;
+		margin-top: 0.3rem;
+		font-size: 0.72rem;
+		color: var(--text-muted);
 	}
 	.tooltip {
 		position: absolute;

@@ -1,13 +1,15 @@
 // Validated against the dataviz skill's default palette
 // (node scripts/validate_palette.js from the skill's own reference instance).
 //
-// This is a dense scatter-like graph (~1,033 simultaneously-visible nodes),
-// which the skill treats as an "all-pairs" case: only the first 3 categorical
-// slots (blue/orange/aqua) validate for CVD + normal-vision separation when
-// many colored points can appear adjacent at once. A 4th simultaneous hue
-// (yellow) fails the normal-vision floor under that regime, so the 4th
-// "pathway" category below is distinguished by marker shape (a ring) instead
-// of a competing hue, not by adding a 4th color.
+// The main graph is a dense scatter (~1,033 simultaneously-visible nodes) —
+// an "all-pairs" case where the skill only clears 3 categorical slots
+// (blue/orange/aqua) for CVD + normal-vision separation. But the 4 pathway
+// colors are never shown lit at the same time (each pathway step spotlights
+// only its own subset, greying the rest — see narrative.js's pathway views),
+// so the all-pairs constraint doesn't apply there: validated as a normal
+// 4-slot adjacent-pairs categorical set instead (still all-PASS; light mode
+// carries the standard sub-3:1 contrast WARN for aqua/yellow, mitigated by
+// always pairing color with a text label — kicker headers, curated tags).
 //
 // Both light and dark steps are the skill's own validated dark-mode steps,
 // not an automatic flip.
@@ -20,7 +22,8 @@ export const palette = {
 		muted: '#898781', // unhighlighted nodes — deliberately mode-invariant
 		blue: '#2a78d6', // slot 1
 		orange: '#eb6834', // slot 2
-		aqua: '#1baf7a' // slot 3
+		aqua: '#1baf7a', // slot 3
+		yellow: '#eda100' // slot 4
 	},
 	dark: {
 		surface: '#1a1a19',
@@ -29,7 +32,8 @@ export const palette = {
 		muted: '#898781',
 		blue: '#3987e5',
 		orange: '#d95926',
-		aqua: '#199e70'
+		aqua: '#199e70',
+		yellow: '#c98500'
 	}
 };
 
@@ -41,17 +45,8 @@ export const roles = {
 		hidden_structure: 'blue',
 		design_language: 'orange',
 		computational_tool: 'aqua',
-		// 4th pathway: shares a validated hue (blue) but is drawn as a ring
-		// (see CitationGraph's marker shape logic), not a 4th competing color.
-		physical_theory: 'blue'
+		physical_theory: 'yellow'
 	}
-};
-
-export const pathwayShape = {
-	hidden_structure: 'dot',
-	design_language: 'dot',
-	computational_tool: 'dot',
-	physical_theory: 'ring'
 };
 
 export function activePalette(themeOverride) {

@@ -9,7 +9,11 @@
 </script>
 
 <div class="step-text">
-	<h2>{step.heading}</h2>
+	{#if step.kind === 'paper'}
+		<h3 class="paper-title">{step.heading}</h3>
+	{:else}
+		<h2>{step.heading}</h2>
+	{/if}
 	{#if step.subheading}
 		<p class="subheading">{step.subheading}</p>
 	{/if}
@@ -43,6 +47,16 @@
 		line-height: 1.2;
 		letter-spacing: -0.01em;
 		color: var(--text-primary);
+		margin: 0 0 0.85rem;
+	}
+	.paper-title {
+		font-size: 1.2rem;
+		font-weight: 600;
+		font-style: italic;
+		line-height: 1.35;
+		color: var(--text-primary);
+		border-left: 3px solid var(--accent);
+		padding-left: 0.75rem;
 		margin: 0 0 0.85rem;
 	}
 	.subheading {
