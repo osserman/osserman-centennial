@@ -41,17 +41,45 @@ const ASPECT = 0.72; // paper-proportioned (~page aspect), a discrete "document"
 const MIN_H = 8;
 const MAX_H = 42;
 
-// Each metric maps a node to a height in [MIN_H, MAX_H]; width follows from
-// ASPECT. sqrt for citedByCount specifically because raw counts are
-// long-tailed (a handful of works with 500+ citations vs. most under 50);
-// the two percentile metrics are already bounded/roughly-uniform so a linear
-// map is enough. Missing data (citedByPctileYear has ~58% coverage) falls
-// back to the minimum size rather than being hidden.
+// Rank-normalize a metric within *this dataset* (empirical percentile rank,
+// 0-1) rather than trusting the metric's assumed theoretical range. This
+// mattered in practice: citedByPctileYear's documented range is 0-100, but
+// in this citer set it only ever actually falls between 91.5 and 99.5 — a
+// straight /100 linear map compressed nearly the whole population into ~3px
+// of a 34px range, which read as "everything's the same size" (it was, to
+// the eye). Rank-within-dataset always uses the full visual range regardless
+// of how narrow or skewed the raw values are. Missing values (~42% of
+// citedByPctileYear; OpenAlex doesn't compute it for every work) get null
+// rank and render at the floor size — a visible "no data" cue, not hidden.
+function rankNormalized(list, valueFn) {
+	const present = [];
+	list.forEach((n, i) => {
+		const v = valueFn(n);
+		if (v != null) present.push({ i, v });
+	});
+	present.sort((a, b) => a.v - b.v);
+	const rank = new Array(list.length).fill(null);
+	present.forEach(({ i }, order) => {
+		rank[i] = present.length > 1 ? order / (present.length - 1) : 1;
+	});
+	return rank;
+}
+
+// citers is defined below xValues but SIZE_METRICS is only invoked after
+// that point (see layoutForMetric loop), so forward-reference is fine.
+let percentileRank, yearPercentileRank;
+
+// sqrt (not linear) for all three, for the same reason: raw citedByCount is
+// long-tailed, so sqrt compresses it into an intuitively graduated visual
+// spread. Applying sqrt to the two rank-normalized metrics too — rather than
+// linear — gives all three the same graduated character instead of the
+// percentile metrics reading as flatter/more clumped than citations.
 const SIZE_METRICS = {
 	citations: (n) => MIN_H + Math.sqrt(Math.min(n.citedByCount || 0, 900)) * 1.13,
-	percentile: (n) => MIN_H + Math.max(0, Math.min(1, n.citationPctile ?? 0)) * (MAX_H - MIN_H),
-	yearPercentile: (n) =>
-		n.citedByPctileYear == null ? MIN_H : MIN_H + (n.citedByPctileYear / 100) * (MAX_H - MIN_H)
+	percentile: (n, i) =>
+		percentileRank[i] == null ? MIN_H : MIN_H + Math.sqrt(percentileRank[i]) * (MAX_H - MIN_H),
+	yearPercentile: (n, i) =>
+		yearPercentileRank[i] == null ? MIN_H : MIN_H + Math.sqrt(yearPercentileRank[i]) * (MAX_H - MIN_H)
 };
 
 function fractionalYear(dateStr, fallbackYear) {
@@ -64,6 +92,9 @@ function fractionalYear(dateStr, fallbackYear) {
 }
 
 const citers = raw.nodes.filter((n) => !n.isSeed);
+percentileRank = rankNormalized(citers, (n) => n.citationPctile);
+yearPercentileRank = rankNormalized(citers, (n) => n.citedByPctileYear);
+
 const yearValues = citers.map((n) => fractionalYear(n.publicationDate, n.year));
 const minYear = Math.min(...yearValues);
 const maxYear = Math.max(...yearValues);
@@ -78,7 +109,7 @@ const fixedX = citers.map((_, i) => timeToX(yearValues[i]));
 
 function layoutForMetric(metricFn) {
 	const nodes = citers.map((n, i) => {
-		const h = Math.max(MIN_H, Math.min(MAX_H, metricFn(n)));
+		const h = Math.max(MIN_H, Math.min(MAX_H, metricFn(n, i)));
 		return { width: h * ASPECT, height: h, fx: fixedX[i], y: 0 };
 	});
 

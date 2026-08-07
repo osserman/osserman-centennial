@@ -15,7 +15,7 @@
 	// Rendered to <canvas> rather than SVG — at ~1,032 simultaneously visible
 	// nodes, canvas avoids the DOM overhead an SVG node-per-mark approach
 	// would carry, especially on every viewSpec redraw/camera frame.
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { activePalette, roles } from '$lib/palette.js';
 
 	/**
@@ -325,10 +325,20 @@
 		return () => ro.disconnect();
 	});
 
+	// Each effect below must depend on *exactly* its own trigger. applyTarget
+	// (via currentTarget -> boundsFor -> geom) reads viewSpec, sizeMetric, and
+	// nodes internally — without untrack(), calling it from any one of these
+	// effects would make that effect *also* fire on the others' triggers.
+	// That was a real bug: the sizeMetric effect's snap (applyTarget(false))
+	// was implicitly re-running on every viewSpec change too (because it
+	// reads viewSpec via currentTarget), snapping the transform to the target
+	// *before* the viewSpec effect's animateTo ran — so the tween animated
+	// from the target to itself, i.e. looked like an instant snap instead of
+	// an 800ms zoom.
 	$effect(() => {
 		// Theme changes just recolor in place — no camera movement.
 		theme;
-		draw();
+		untrack(() => draw());
 	});
 
 	$effect(() => {
@@ -336,7 +346,7 @@
 		// snap directly to the new metric's layout rather than tweening 1,032
 		// marks' positions at once.
 		sizeMetric;
-		applyTarget(false);
+		untrack(() => applyTarget(false));
 	});
 
 	$effect(() => {
@@ -344,7 +354,7 @@
 		// position) changes, and animate to it — clearing a spotlight zooms
 		// out to fit-all, setting one zooms in, both via the same tween.
 		viewSpec;
-		applyTarget(true);
+		untrack(() => applyTarget(true));
 	});
 </script>
 

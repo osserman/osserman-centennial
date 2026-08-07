@@ -35,12 +35,10 @@ export const steps = [
 		heading: 'From Pure Mathematics to the World',
 		subheading: 'Tracing the unexpected journeys of minimal surface theory',
 		body: [
-			'In 1969, mathematician Robert Osserman published *A Survey of Minimal Surfaces*.',
-			"It was written for mathematicians—a graduate-level introduction to one of geometry's most beautiful subjects.",
+			'In 1969, Robert Osserman published *A Survey of Minimal Surfaces*.',
+			"It was the first broad graduate-level mathematics textbook spanning this sub-field of geometry.",
 			'More than fifty years later, the book has been cited by over **1,000** scholarly publications.',
-			'Most remained within mathematics.',
-			'But more than **300** citations came from researchers working in other disciplines.',
-			'Where did those ideas go?'
+			"Scroll down to learn more."
 		],
 		openQuestion: null,
 		view: NONE_VIEW
@@ -50,10 +48,7 @@ export const steps = [
 		kicker: null,
 		heading: 'Mathematics',
 		body: [
-			'The majority of citations remained exactly where you might expect: within geometry, differential geometry, analysis, and related mathematical fields.',
-			'Many built directly on the theory itself.',
-			'Others used the book as an introduction to an established mathematical subject.',
-			'But not all of them stayed there.'
+			'More than two thirds of citations come from works within geometry, differential geometry, analysis, and a variety of other mathematical fields.',
 		],
 		openQuestion: null,
 		view: MATH_VIEW
@@ -61,13 +56,11 @@ export const steps = [
 	{
 		id: 'beyond-intro',
 		kicker: null,
-		heading: 'Beyond Mathematics',
+		heading: 'Citations Beyond Mathematics',
 		body: [
-			'Ideas from minimal surface mathematics began appearing in a surprising range of disciplines.',
-			'Not all became major research directions.',
-			'Some represent only a handful of papers.',
-			'Others developed into active research communities.',
-			'The examples below are only a small sample.'
+			'But minimal surface mathematics has also been applied to a surprising range of other disciplines.',
+			"Many of these pathways are visible with the 300+ works from outside mathematics citing Osserman's textbook." ,
+			'Here are a few examples...'
 		],
 		openQuestion: null,
 		view: NON_MATH_VIEW
@@ -79,12 +72,11 @@ export const steps = [
 		kicker: 'Engineering & Bioengineering',
 		heading: 'Building scaffolds the body can grow through',
 		body: [
-			'One of the largest application branches leads into biomedical engineering.',
 			'Researchers designing artificial bone, medical implants and tissue scaffolds face a difficult balancing act.',
 			'The structures need to be strong enough to support the body while remaining porous enough for cells, blood vessels and nutrients to move through them.',
-			'Ideas from minimal surface mathematics offered one possible solution.'
+			'Ideas from minimal surface mathematics offered one possible solution.' 
 		],
-		openQuestion: null,
+		openQuestion: 'Needs more research: explain the later development of this work and whether these proposed structures were subsequently realized experimentally.',
 		view: DIM_VIEW
 	},
 	{
