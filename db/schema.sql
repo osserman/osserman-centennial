@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS works (
     language         TEXT,
     abstract         TEXT,             -- reconstructed from OpenAlex abstract_inverted_index
     cited_by_count   INTEGER,
+    fwci             REAL,             -- field-weighted citation impact; 1.0 = avg for same field/year/type
+    citation_pctile  REAL,             -- citation_normalized_percentile.value, 0-1
+    top_1_percent    INTEGER,          -- 0/1, citation_normalized_percentile.is_in_top_1_percent
+    top_10_percent   INTEGER,          -- 0/1, citation_normalized_percentile.is_in_top_10_percent
     is_open_access   INTEGER,          -- 0/1
     -- is_stub = 1: this work is known only as a referenced OpenAlex ID; full
     -- metadata has not been fetched. Stubs keep the citation graph closed under

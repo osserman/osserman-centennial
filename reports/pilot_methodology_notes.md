@@ -247,3 +247,39 @@ reading every paper) is the recommended next capability.
 **Caveat reminder for the field split:** the 715/317 math/non-math split relies
 on OpenAlex's noisy `primary_topic` labels — the citation-function report notes
 this, and the math/non-math slices should be read as approximate.
+
+## Addendum: systematic per-field ranking, and a better impact metric than raw citations
+
+The hand-picked examples above were superseded by
+[scripts/rank_forward_by_field.py](../scripts/rank_forward_by_field.py), which
+groups all 1,032 `osserman_forward_v1` citers by OpenAlex primary field and
+ranks the top N within each field — no eyeballing, systematic and
+regenerable. Output: [top_by_field_osserman_forward_v1.md](top_by_field_osserman_forward_v1.md)
+/ `.csv`. Each row also carries a clickable identifier (DOI, or OpenAlex ID
+where no DOI exists) for easier lookup.
+
+**Raw `cited_by_count` is a poor cross-field ranking metric**, because it's
+dominated by field size — Engineering will always out-cite Geodesy regardless
+of relative influence. OpenAlex's harvested JSON already carries a
+field-normalized alternative that we weren't extracting: `fwci` (field-weighted
+citation impact — 1.0 = average for the same field/year/work-type) and
+`citation_normalized_percentile` (with top-1%/top-10% flags). These required no
+new API calls; they were sitting in `source_json` from the original harvest and
+are now backfilled into `works.fwci` / `works.citation_pctile` /
+`works.top_1_percent` / `works.top_10_percent`, and populated automatically by
+`ingest.py` on future harvests. `rank_forward_by_field.py` now ranks by FWCI by
+default (`--rank-by cited_by_count` restores the old ordering).
+
+Re-ranking surfaced work the raw-count list missed. The clearest case: Jin-Tzu
+Chen's 1980 capillary-surfaces paper (*On the existence of capillary free
+surfaces in the absence of gravity*) has only 24 citations — it would never
+have appeared in a raw top-6 — but an FWCI of **183.7**, by far the highest of
+any citer in the dataset, because it's being compared against a very small
+same-field/year cohort. Whether that reflects genuine outsized influence or is
+an artifact of a thin comparison cohort (small field, old paper) needs a
+manual look; it's exactly the kind of candidate FWCI is meant to surface and
+raw citation count would hide.
+
+One coverage gap: 232 of 1,032 works (mostly stubs referenced but never
+fully harvested) have no `fwci`; those rows sort by citation count as a
+fallback rather than dropping out of the ranking.
