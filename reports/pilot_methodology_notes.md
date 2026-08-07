@@ -283,3 +283,67 @@ raw citation count would hide.
 One coverage gap: 232 of 1,032 works (mostly stubs referenced but never
 fully harvested) have no `fwci`; those rows sort by citation count as a
 fallback rather than dropping out of the ranking.
+
+## Addendum: end-product shape, and the role of Semantic Scholar
+
+Recording the intended shape of the final deliverable, since it should guide
+which gaps are worth closing and which aren't: a **visualization of the full
+corpus (1,000+ works)**, presented with explicit classification caveats
+(field-label noise, publisher-deposition gaps, stub coverage), **paired with**
+a **deep dive into a small number of specific branches** — their key papers
+and the pathway connecting them back to minimal-surface theory. The full-corpus
+view does not need every paper individually vetted; the deep-dive branches do.
+
+**Semantic Scholar's role, decided after the trial above:** keep it, scoped to
+where it's actually useful, not pursued for universal coverage. Its value is
+concentrated in the deep-dive use case — an open-access PDF link where
+available (23/50 matched in the trial), and a `tldr` where S2's model happens
+to cover the paper (14/50 — sparse outside CS/ML, so it will rarely fire for
+the older math/physics literature that dominates this corpus). We are **not**
+extending the Semantic Scholar pass beyond the FWCI shortlist (66 papers, not
+90 — some fields have fewer than 6 members) unless review of the full-corpus
+visualization turns up specific core papers missing from that shortlist that
+look worth an individual S2 lookup.
+
+**Second-generation forward harvest — done.** Ran
+[scripts/harvest_forward_gen2.py](../scripts/harvest_forward_gen2.py) on the
+full 66-paper FWCI shortlist (not a trimmed-down subset — the API cost was
+checked first: ~5,650 total citation edges, 82 requests, well inside budget).
+Result: 5,362 distinct generation -2 works, 51 of the 66 branches have at
+least one gen-2 citer. Analysis:
+[scripts/rank_spinoff_fields.py](../scripts/rank_spinoff_fields.py) /
+[reports/spinoff_fields_osserman_forward_v1.md](spinoff_fields_osserman_forward_v1.md).
+
+One bug caught and fixed while building the analysis: `work_references`
+already contained edges among the 1,032 gen-1 works themselves (from their
+own reference lists, ingested when they were first fully harvested) — a naive
+query counted those as "gen-2 citers" and inflated every branch's count
+(1,032 branches showing nonzero spillover instead of the true 66). Fixed by
+restricting to works whose nearest generation in the seed set is genuinely -2.
+
+**Notable branches** (ranked by generation-2 citers landing outside the
+branch paper's own field — i.e. evidence of that paper itself acting as a
+gateway into a new field, not just propagating within its own discipline):
+
+- Zadpoor's *Bone tissue regeneration: the role of scaffold geometry*: 523
+  gen-2 citers, 21% outside Engineering — into Materials Science and Medicine.
+- Zandi & Dragnea's *On virus growth and form*: 160 gen-2 citers, 56% outside
+  Environmental Science (itself a misclassification — this is biophysics) —
+  into Biochemistry/Molecular Biology and Materials Science.
+- Caselles et al.'s *Minimal surfaces based object segmentation*: 197 gen-2
+  citers, 39% outside Computer Science — into Engineering and Medicine.
+- Savadjiev et al.'s *Heart wall myofibers are arranged in minimal surfaces*:
+  100% of its 62 gen-2 citers are outside its own field (Materials Science) —
+  entirely into Medicine, Engineering, Computer Science.
+- Jin-Tzu Chen's 1980 capillary-surfaces paper (the FWCI outlier flagged
+  earlier, 183.7 vs. 24 raw citations): 23 gen-2 citers, 57% outside its own
+  field — into Mathematics, Computer Science, Materials Science. Small
+  absolute numbers, but consistent with the FWCI signal that this is a more
+  influential paper than its raw citation count suggests.
+
+**Caveat that dominates the raw ranking:** Gilbarg & Trudinger's *Elliptic
+PDEs* — already flagged as a mislabeled math textbook (OpenAlex tags it
+Computer Science) — tops the outside-field count with 1,119, nearly all of
+which are just Mathematics papers citing a math book. Any use of this ranking
+must check the branch paper's own field first; the report's caveat note says
+so explicitly.
