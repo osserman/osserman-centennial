@@ -1,0 +1,62 @@
+[
+ {
+  "id": "W2120559167",
+  "section": "engineering",
+  "pathway": "design_language"
+ },
+ {
+  "id": "W2943941736",
+  "section": "engineering",
+  "pathway": "design_language"
+ },
+ {
+  "id": "W2044735577",
+  "section": "materials_science",
+  "pathway": "hidden_structure"
+ },
+ {
+  "id": "W2002021482",
+  "section": "materials_science",
+  "pathway": "design_language"
+ },
+ {
+  "id": "W2169776346",
+  "section": "biology",
+  "pathway": "hidden_structure"
+ },
+ {
+  "id": "W2612605708",
+  "section": "biology",
+  "pathway": "hidden_structure"
+ },
+ {
+  "id": "W2999050204",
+  "section": "biology",
+  "pathway": "hidden_structure"
+ },
+ {
+  "id": "W2112838653",
+  "section": "biology",
+  "pathway": "hidden_structure"
+ },
+ {
+  "id": "W2151783599",
+  "section": "computer_science",
+  "pathway": "computational_tool"
+ },
+ {
+  "id": "W3026088860",
+  "section": "computer_science",
+  "pathway": "computational_tool"
+ },
+ {
+  "id": "W2034409564",
+  "section": "physics",
+  "pathway": "physical_theory"
+ },
+ {
+  "id": "W2002168123",
+  "section": "physics",
+  "pathway": "physical_theory"
+ }
+]
