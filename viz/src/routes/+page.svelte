@@ -23,7 +23,7 @@
 	<div class="text-layer">
 		<Scrolly bind:active={activeIndex}>
 			{#each steps as step, i}
-				<ScrollyStep index={i}>
+				<ScrollyStep index={i} active={i === activeIndex}>
 					<div class="step-card">
 						<StepText {step} />
 					</div>
@@ -48,15 +48,21 @@
 	:global(:root) {
 		color-scheme: light;
 		--surface-1: #fcfcfb;
+		--surface-2: #f0efec;
 		--text-primary: #0b0b0b;
 		--text-secondary: #52514e;
+		--text-muted: #898781;
+		--accent: #2a78d6;
 	}
 	@media (prefers-color-scheme: dark) {
 		:global(:root) {
 			color-scheme: dark;
 			--surface-1: #1a1a19;
+			--surface-2: #232322;
 			--text-primary: #ffffff;
 			--text-secondary: #c3c2b7;
+			--text-muted: #898781;
+			--accent: #3987e5;
 		}
 	}
 
@@ -80,12 +86,11 @@
 		pointer-events: auto;
 		max-width: 26rem;
 		margin-left: min(6vw, 4rem);
-		background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-		backdrop-filter: blur(6px);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+		background: var(--surface-1);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 20%, transparent);
 		border-radius: 10px;
 		padding: 1.5rem 1.75rem;
-		box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
 	}
 
 	@media (max-width: 720px) {

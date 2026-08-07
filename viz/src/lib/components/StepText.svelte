@@ -4,7 +4,7 @@
 	// Minimal **bold** support — the draft text uses it sparingly for the
 	// headline numbers ("1,000", "300"). Not a full markdown parser on purpose.
 	function renderInline(text) {
-		return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+		return text.replace(/\*\*(.+?)\*\*/g, '<strong class="stat">$1</strong>');
 	}
 </script>
 
@@ -41,49 +41,63 @@
 		line-height: 1.6;
 	}
 	.kicker {
-		font-size: 0.78rem;
-		font-weight: 600;
-		letter-spacing: 0.06em;
+		font-size: 0.76rem;
+		font-weight: 700;
+		letter-spacing: 0.07em;
 		text-transform: uppercase;
-		color: var(--text-secondary);
-		margin-bottom: 0.5rem;
+		color: var(--accent);
+		margin-bottom: 0.65rem;
 	}
 	h2 {
-		font-size: 1.5rem;
-		line-height: 1.25;
-		margin: 0 0 0.75rem;
+		font-size: 1.7rem;
+		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.01em;
+		color: var(--text-primary);
+		margin: 0 0 0.85rem;
 	}
 	.subheading {
 		color: var(--text-secondary);
 		font-size: 1.05rem;
-		margin-top: -0.4rem;
+		font-style: italic;
+		margin-top: -0.5rem;
 	}
 	p {
 		margin: 0 0 0.9rem;
 		color: var(--text-primary);
 	}
+	.stat {
+		color: var(--accent);
+		font-weight: 700;
+	}
 	ul {
 		margin: 0 0 0.9rem;
 		padding-left: 1.2rem;
+		color: var(--text-primary);
 	}
 	li {
 		margin-bottom: 0.35rem;
 	}
+	li::marker {
+		color: var(--accent);
+	}
 	.open-question {
 		margin-top: 1rem;
 		padding: 0.7rem 0.85rem;
-		border-left: 2px solid var(--text-secondary);
-		background: rgba(0, 0, 0, 0.03);
+		border-left: 3px solid var(--accent);
+		background: var(--surface-2);
+		border-radius: 0 6px 6px 0;
 		font-size: 0.88rem;
 		color: var(--text-secondary);
 		line-height: 1.5;
 	}
 	.open-question-label {
 		display: block;
-		font-weight: 600;
+		font-weight: 700;
 		font-size: 0.72rem;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		margin-bottom: 0.2rem;
+		color: var(--text-muted);
+		margin-bottom: 0.3rem;
 	}
 </style>
