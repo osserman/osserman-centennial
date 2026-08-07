@@ -1,16 +1,24 @@
 #!/usr/bin/env node
-// Precompute a fixed temporal-beeswarm layout for the citation graph, once,
+// Precompute fixed temporal-beeswarm layouts for the citation graph, once,
 // at build time — not in the browser on every page load. Shipping baked-in
 // x/y coordinates is what makes "object constancy" (nodes never jump between
 // narrative sections, only recolor/fade — see scrollytelling-project-context.md)
-// straightforward: every section reuses this identical layout.
+// straightforward: every section reuses the identical x position and layout
+// shape for a given size metric.
 //
 // x = publication date (linear, hand-rolled — no need for d3-scale for a
-// single linear mapping), pinned per-node via `fx` so it never moves. With
-// x fixed, forceCollide can only resolve overlaps in y, which is exactly
-// the standard d3-force technique for a beeswarm/dodge plot: a weak forceY
-// toward a center baseline keeps the swarm compact; collide pushes
-// same-date (or near-date) papers apart vertically.
+// single linear mapping), pinned per-node via `fx` so it never moves and is
+// shared across all three size metrics below. With x fixed, forceCollide can
+// only resolve overlaps in y, which is exactly the standard d3-force
+// technique for a beeswarm/dodge plot: a weak forceY toward a center
+// baseline keeps the swarm compact; collide pushes same-date (or near-date)
+// papers apart vertically.
+//
+// Three sizing metrics are precomputed (not just three display sizes on one
+// layout) because mark size feeds directly into the collision radius: a
+// metric with a very different distribution than raw citation count needs
+// its own y-dodge pass to stay overlap-free. Each metric's width/height/y is
+// stored per node under `sizes.<metric>`; only x is shared.
 //
 // The Osserman seed itself is excluded from this layout entirely (not just
 // hidden) — it isn't citing anything, so it has no natural position on a
@@ -29,16 +37,22 @@ const DATA_DIR = path.join(__dirname, '..', 'static', 'data');
 
 const raw = JSON.parse(readFileSync(path.join(DATA_DIR, 'graph_raw.json'), 'utf-8'));
 
-// Same sizing function used at render time (CitationGraph.svelte) so the
-// collision footprint used for layout matches what's actually drawn.
-// Paper-proportioned (~0.72 width:height, echoing a page), both dimensions
-// scaled by sqrt(citedByCount) — a discrete "document" shape, not a value bar.
-const ASPECT = 0.72;
-function nodeSize(node) {
-	const c = node.citedByCount || 0;
-	const h = Math.min(42, 8 + Math.sqrt(c) * 2.6);
-	return { width: h * ASPECT, height: h };
-}
+const ASPECT = 0.72; // paper-proportioned (~page aspect), a discrete "document" shape, not a value bar
+const MIN_H = 8;
+const MAX_H = 42;
+
+// Each metric maps a node to a height in [MIN_H, MAX_H]; width follows from
+// ASPECT. sqrt for citedByCount specifically because raw counts are
+// long-tailed (a handful of works with 500+ citations vs. most under 50);
+// the two percentile metrics are already bounded/roughly-uniform so a linear
+// map is enough. Missing data (citedByPctileYear has ~58% coverage) falls
+// back to the minimum size rather than being hidden.
+const SIZE_METRICS = {
+	citations: (n) => MIN_H + Math.sqrt(Math.min(n.citedByCount || 0, 900)) * 1.13,
+	percentile: (n) => MIN_H + Math.max(0, Math.min(1, n.citationPctile ?? 0)) * (MAX_H - MIN_H),
+	yearPercentile: (n) =>
+		n.citedByPctileYear == null ? MIN_H : MIN_H + (n.citedByPctileYear / 100) * (MAX_H - MIN_H)
+};
 
 function fractionalYear(dateStr, fallbackYear) {
 	if (!dateStr) return fallbackYear;
@@ -60,43 +74,52 @@ function timeToX(yearValue) {
 	return t * HALF_WIDTH * 2 - HALF_WIDTH;
 }
 
-const nodes = citers.map((n, i) => {
-	const { width, height } = nodeSize(n);
-	return {
-		...n,
-		width,
-		height,
-		fx: timeToX(yearValues[i]),
-		y: 0
-	};
-});
+const fixedX = citers.map((_, i) => timeToX(yearValues[i]));
 
-const simulation = forceSimulation(nodes)
-	.force('y', forceY(0).strength(0.06))
-	.force(
-		'collide',
-		forceCollide()
-			.radius((d) => Math.hypot(d.width, d.height) / 2 + 1)
-			.iterations(3)
-	)
-	.stop();
+function layoutForMetric(metricFn) {
+	const nodes = citers.map((n, i) => {
+		const h = Math.max(MIN_H, Math.min(MAX_H, metricFn(n)));
+		return { width: h * ASPECT, height: h, fx: fixedX[i], y: 0 };
+	});
 
-const TICKS = 600;
-for (let i = 0; i < TICKS; i++) simulation.tick();
+	const simulation = forceSimulation(nodes)
+		.force('y', forceY(0).strength(0.06))
+		.force(
+			'collide',
+			forceCollide()
+				.radius((d) => Math.hypot(d.width, d.height) / 2 + 1)
+				.iterations(3)
+		)
+		.stop();
 
-const ys = nodes.map((n) => n.y);
-console.log(
-	`Layout bounds: x [${-HALF_WIDTH}, ${HALF_WIDTH}] (time ${minYear.toFixed(1)}-${maxYear.toFixed(1)}), ` +
-		`y [${Math.min(...ys).toFixed(0)}, ${Math.max(...ys).toFixed(0)}]`
-);
-if (nodes.some((n) => !Number.isFinite(n.x ?? n.fx) || !Number.isFinite(n.y))) {
-	throw new Error('Layout produced non-finite coordinates for at least one node.');
+	const TICKS = 600;
+	for (let i = 0; i < TICKS; i++) simulation.tick();
+
+	if (nodes.some((n) => !Number.isFinite(n.y))) {
+		throw new Error('Layout produced non-finite y for at least one node.');
+	}
+	return nodes.map((n) => ({ width: n.width, height: n.height, y: n.y }));
 }
+
+const perMetric = {};
+for (const [key, fn] of Object.entries(SIZE_METRICS)) {
+	perMetric[key] = layoutForMetric(fn);
+	const ys = perMetric[key].map((n) => n.y);
+	console.log(`[${key}] y bounds [${Math.min(...ys).toFixed(0)}, ${Math.max(...ys).toFixed(0)}]`);
+}
+
+const metricKeys = Object.keys(SIZE_METRICS);
+const outNodes = citers.map((n, i) => {
+	const sizes = {};
+	for (const key of metricKeys) sizes[key] = perMetric[key][i];
+	return { ...n, x: fixedX[i], sizes };
+});
 
 const out = {
 	seedId: raw.seedId,
 	timeDomain: [minYear, maxYear],
-	nodes: nodes.map((n) => ({ ...n, x: n.fx, fx: undefined, vx: undefined, vy: undefined, index: undefined }))
+	sizeMetrics: metricKeys,
+	nodes: outNodes
 };
 writeFileSync(path.join(DATA_DIR, 'nodes.json'), JSON.stringify(out));
 // Still generated as a data artifact (citer -> seed edges) even though the
@@ -105,5 +128,5 @@ writeFileSync(path.join(DATA_DIR, 'nodes.json'), JSON.stringify(out));
 // stays available in raw form.
 writeFileSync(path.join(DATA_DIR, 'edges.json'), JSON.stringify(raw.edges));
 
-console.log(`Wrote ${path.join(DATA_DIR, 'nodes.json')}: ${out.nodes.length} nodes (seed excluded)`);
+console.log(`Wrote ${path.join(DATA_DIR, 'nodes.json')}: ${outNodes.length} nodes (seed excluded), metrics: ${metricKeys.join(', ')}`);
 console.log(`Wrote ${path.join(DATA_DIR, 'edges.json')}: ${raw.edges.length} edges`);

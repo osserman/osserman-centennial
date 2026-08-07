@@ -57,17 +57,25 @@ def fetch_nodes(conn, seed_set_id):
         """
         SELECT w.openalex_id, w.title, w.publication_year, w.publication_date, w.doi, w.cited_by_count,
                w.fwci, w.citation_pctile, w.top_10_percent, w.abstract,
+               w.cited_by_pctile_year_min, w.cited_by_pctile_year_max,
                s.generation,
                COALESCE(t.field_name, '(no field)') AS field,
                COALESCE(t.subfield_name, '') AS subfield,
                COALESCE(t.topic_name, '') AS topic,
+               src.display_name AS venue,
                (SELECT group_concat(dn, ', ') FROM (
                     SELECT a.display_name AS dn
                     FROM work_authorships wa JOIN authors a ON a.openalex_id = wa.author_id
                     WHERE wa.work_id = w.openalex_id
                     ORDER BY CASE wa.author_position WHEN 'first' THEN 0
                              WHEN 'middle' THEN 1 ELSE 2 END
-                    LIMIT 3)) AS authors
+                    LIMIT 3)) AS authors,
+               (SELECT group_concat(DISTINCT i.display_name)
+                    FROM work_authorships wa JOIN institutions i ON i.openalex_id = wa.institution_id
+                    WHERE wa.work_id = w.openalex_id) AS institutions,
+               (SELECT group_concat(DISTINCT i.country_code)
+                    FROM work_authorships wa JOIN institutions i ON i.openalex_id = wa.institution_id
+                    WHERE wa.work_id = w.openalex_id) AS countries
         FROM seed_set_works s
         JOIN works w ON w.openalex_id = s.work_id
         LEFT JOIN (
@@ -75,6 +83,7 @@ def fetch_nodes(conn, seed_set_id):
             FROM work_topics wt JOIN topics t ON t.openalex_id = wt.topic_id
             WHERE wt.is_primary = 1
         ) t ON t.work_id = w.openalex_id
+        LEFT JOIN sources src ON src.openalex_id = w.source_id
         WHERE s.seed_set_id = ? AND s.generation IN (0, -1)
         """,
         (seed_set_id,),
@@ -82,6 +91,8 @@ def fetch_nodes(conn, seed_set_id):
 
     nodes = []
     for r in rows:
+        ymin, ymax = r["cited_by_pctile_year_min"], r["cited_by_pctile_year_max"]
+        year_pctile = (ymin + ymax) / 2 if ymin is not None and ymax is not None else None
         nodes.append({
             "id": r["openalex_id"],
             "title": r["title"],
@@ -92,11 +103,15 @@ def fetch_nodes(conn, seed_set_id):
             "citedByCount": r["cited_by_count"],
             "fwci": r["fwci"],
             "citationPctile": r["citation_pctile"],
+            "citedByPctileYear": year_pctile,
             "top10Percent": bool(r["top_10_percent"]),
             "abstract": r["abstract"] or "",
             "field": r["field"],
             "subfield": r["subfield"],
             "topic": r["topic"],
+            "venue": r["venue"] or "",
+            "institutions": (r["institutions"] or "").split(",") if r["institutions"] else [],
+            "countries": (r["countries"] or "").split(",") if r["countries"] else [],
             "isSeed": r["generation"] == 0,
         })
     return nodes

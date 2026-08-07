@@ -5,12 +5,28 @@
 	import StepText from '$lib/components/StepText.svelte';
 	import CitationGraph from '$lib/components/CitationGraph.svelte';
 	import PaperDetail from '$lib/components/PaperDetail.svelte';
+	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import { steps } from '$lib/content/narrative.js';
 
 	let { data } = $props();
+	const citerNodes = data.nodes.filter((n) => !n.isSeed);
 
 	let activeIndex = $state(0);
-	let activeView = $derived(steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false });
+
+	// Filters (FilterPanel, rendered inside the free-exploration step) apply
+	// from that step onward — index comparison, not a single-step id check,
+	// so they stay active into the epilogue too rather than flickering off.
+	// null = no filters active. Overrides the step's own view with the same
+	// dim/highlight mechanism every narrative step already uses, rather than
+	// a new code path.
+	const freeExplorationIndex = steps.findIndex((s) => s.id === 'free-exploration');
+	let filteredIds = $state(null);
+	let activeView = $derived.by(() => {
+		if (activeIndex >= freeExplorationIndex && filteredIds !== null) {
+			return { colorBy: 'none', highlightIds: filteredIds, dimBackground: true };
+		}
+		return steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
+	});
 
 	// Paper-detail modal: state lives here (not inside CitationGraph) so both
 	// the graph (canvas click) and the left-panel paper titles can open the
@@ -63,6 +79,17 @@
 		const param = new URLSearchParams(window.location.search).get('theme');
 		if (param === 'light' || param === 'dark') applyTheme(param);
 	});
+
+	// Node-size metric: a comparison toggle, not a narrative control — raw
+	// citation count structurally favors older papers (more time to
+	// accumulate citations), so field/year-normalized alternatives are
+	// offered side by side rather than picking one.
+	const SIZE_METRICS = [
+		{ id: 'citations', label: 'Citations' },
+		{ id: 'percentile', label: 'Percentile' },
+		{ id: 'yearPercentile', label: 'Year %ile' }
+	];
+	let sizeMetric = $state('citations');
 </script>
 
 <svelte:head>
@@ -80,6 +107,9 @@
 					{#each group.items as { step, index }}
 						<ScrollyStep index={index} active={index === activeIndex}>
 							<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
+							{#if step.id === 'free-exploration'}
+								<FilterPanel nodes={citerNodes} onFilterChange={(ids) => (filteredIds = ids)} />
+							{/if}
 						</ScrollyStep>
 					{/each}
 				</div>
@@ -88,15 +118,25 @@
 	</div>
 
 	<div class="graph-panel">
-		<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
-			{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
-		</button>
+		<div class="controls">
+			<div class="size-toggle" role="group" aria-label="Node size metric">
+				{#each SIZE_METRICS as m}
+					<button class:active={sizeMetric === m.id} onclick={() => (sizeMetric = m.id)}>
+						{m.label}
+					</button>
+				{/each}
+			</div>
+			<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
+				{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
+			</button>
+		</div>
 		<CitationGraph
 			nodes={data.nodes}
 			curated={data.curated}
 			timeDomain={data.timeDomain}
 			viewSpec={activeView}
 			{theme}
+			{sizeMetric}
 			onSelectNode={(node) => (selectedId = node?.id ?? null)}
 		/>
 	</div>
@@ -192,11 +232,37 @@
 		flex: 1;
 		min-width: 0;
 	}
-	.theme-toggle {
+	.controls {
 		position: absolute;
 		top: 1.25rem;
 		right: 1.25rem;
 		z-index: 20;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.size-toggle {
+		display: flex;
+		background: var(--surface-2);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+		border-radius: 999px;
+		padding: 0.2rem;
+		gap: 0.15rem;
+	}
+	.size-toggle button {
+		background: none;
+		border: none;
+		color: var(--text-secondary);
+		border-radius: 999px;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+	.size-toggle button.active {
+		background: var(--accent);
+		color: var(--surface-1);
+	}
+	.theme-toggle {
 		background: var(--surface-2);
 		color: var(--text-secondary);
 		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);

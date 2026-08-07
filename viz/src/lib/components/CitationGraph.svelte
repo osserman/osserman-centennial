@@ -32,8 +32,17 @@
 		viewSpec = {},
 		timeDomain = [1970, 2025],
 		theme = 'auto',
+		sizeMetric = 'citations',
 		onSelectNode
 	} = $props();
+
+	// Each node carries a precomputed width/height/y *per size metric* (see
+	// compute-layout.mjs — a metric with a different distribution than raw
+	// citation count needs its own collision-resolved y-dodge, not just a
+	// different displayed size). x is shared across all metrics.
+	function geom(n) {
+		return n.sizes[sizeMetric] ?? n.sizes.citations;
+	}
 
 	let container;
 	let canvas;
@@ -77,10 +86,11 @@
 		if (!list.length) return null;
 		let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
 		for (const n of list) {
-			minX = Math.min(minX, n.x - n.width / 2);
-			maxX = Math.max(maxX, n.x + n.width / 2);
-			minY = Math.min(minY, n.y - n.height / 2);
-			maxY = Math.max(maxY, n.y + n.height / 2);
+			const g = geom(n);
+			minX = Math.min(minX, n.x - g.width / 2);
+			maxX = Math.max(maxX, n.x + g.width / 2);
+			minY = Math.min(minY, g.y - g.height / 2);
+			maxY = Math.max(maxY, g.y + g.height / 2);
 		}
 		return { minX, maxX, minY, maxY };
 	}
@@ -149,7 +159,8 @@
 	}
 
 	function toScreen(n) {
-		return { x: n.x * transform.scale + transform.tx, y: n.y * transform.scale + transform.ty };
+		const g = geom(n);
+		return { x: n.x * transform.scale + transform.tx, y: g.y * transform.scale + transform.ty };
 	}
 
 	// ------------------------------------------------------------- lookups
@@ -158,9 +169,10 @@
 		for (let i = nodes.length - 1; i >= 0; i--) {
 			const n = nodes[i];
 			if (isDimmed(n)) continue; // faded-out papers aren't interactive while a spotlight is active
+			const g = geom(n);
 			const p = toScreen(n);
-			const halfW = (n.width * transform.scale) / 2 + 3;
-			const halfH = (n.height * transform.scale) / 2 + 3;
+			const halfW = (g.width * transform.scale) / 2 + 3;
+			const halfH = (g.height * transform.scale) / 2 + 3;
 			if (mx >= p.x - halfW && mx <= p.x + halfW && my >= p.y - halfH && my <= p.y + halfH) return n;
 		}
 		return null;
@@ -237,9 +249,10 @@
 		const highlightSet = new Set(viewSpec.highlightIds || []);
 
 		for (const n of nodes) {
+			const g = geom(n);
 			const p = toScreen(n);
-			const w = n.width * transform.scale;
-			const h = n.height * transform.scale;
+			const w = g.width * transform.scale;
+			const h = g.height * transform.scale;
 			if (w < 0.3 && h < 0.3) continue;
 
 			const dimmed = isDimmed(n);
@@ -319,6 +332,14 @@
 	});
 
 	$effect(() => {
+		// Switching size metric is a comparison toggle, not a narrative beat —
+		// snap directly to the new metric's layout rather than tweening 1,032
+		// marks' positions at once.
+		sizeMetric;
+		applyTarget(false);
+	});
+
+	$effect(() => {
 		// Re-derive the camera target whenever the view spec (from scroll
 		// position) changes, and animate to it — clearing a spotlight zooms
 		// out to fit-all, setting one zooms in, both via the same tween.
@@ -338,7 +359,11 @@
 
 	<div class="graph-caption">
 		Scholarly works that have cited <em>A Survey of Minimal Surfaces</em>, each tile scaled by
-		number of citations
+		{sizeMetric === 'citations'
+			? 'number of citations'
+			: sizeMetric === 'percentile'
+				? 'field-normalized citation percentile'
+				: 'citation percentile within publication year'}
 		<span class="graph-source">Source: OpenAlex</span>
 	</div>
 

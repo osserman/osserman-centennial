@@ -38,20 +38,27 @@ def reconstruct_abstract(inverted_index: dict | None) -> str | None:
     return " ".join(word for _, word in positions)
 
 
-def extract_impact_fields(work: dict) -> tuple[float | None, float | None, int | None, int | None]:
-    """Pull field-normalized impact metrics out of a work JSON.
+def extract_impact_fields(
+    work: dict,
+) -> tuple[float | None, float | None, int | None, int | None, int | None, int | None]:
+    """Pull field/year-normalized impact metrics out of a work JSON.
 
     Raw cited_by_count is dominated by field size (Engineering vs. Geodesy);
     fwci and citation_normalized_percentile are OpenAlex's own field/year/type-
     normalized alternatives, already present in every work JSON we harvest.
+    cited_by_percentile_year is a coarser, year-only percentile bucket (no
+    field normalization) — a third option for comparison, not a replacement.
     """
     fwci = work.get("fwci")
     pctile = work.get("citation_normalized_percentile") or {}
+    year_pctile = work.get("cited_by_percentile_year") or {}
     return (
         fwci,
         pctile.get("value"),
         int(pctile["is_in_top_1_percent"]) if "is_in_top_1_percent" in pctile else None,
         int(pctile["is_in_top_10_percent"]) if "is_in_top_10_percent" in pctile else None,
+        year_pctile.get("min"),
+        year_pctile.get("max"),
     )
 
 
@@ -70,15 +77,18 @@ def ingest_work(conn: sqlite3.Connection, work: dict, harvested_at: str) -> str:
     if source_id:
         _upsert_source(conn, source, harvested_at)
 
-    fwci, citation_pctile, top_1_percent, top_10_percent = extract_impact_fields(work)
+    fwci, citation_pctile, top_1_percent, top_10_percent, year_pctile_min, year_pctile_max = (
+        extract_impact_fields(work)
+    )
 
     conn.execute(
         """
         INSERT INTO works (openalex_id, doi, title, publication_year, publication_date,
                            source_id, type, language, abstract, cited_by_count,
                            fwci, citation_pctile, top_1_percent, top_10_percent,
+                           cited_by_pctile_year_min, cited_by_pctile_year_max,
                            is_open_access, is_stub, source_json, harvested_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         ON CONFLICT(openalex_id) DO UPDATE SET
             doi = excluded.doi,
             title = excluded.title,
@@ -93,6 +103,8 @@ def ingest_work(conn: sqlite3.Connection, work: dict, harvested_at: str) -> str:
             citation_pctile = excluded.citation_pctile,
             top_1_percent = excluded.top_1_percent,
             top_10_percent = excluded.top_10_percent,
+            cited_by_pctile_year_min = excluded.cited_by_pctile_year_min,
+            cited_by_pctile_year_max = excluded.cited_by_pctile_year_max,
             is_open_access = excluded.is_open_access,
             is_stub = 0,
             source_json = excluded.source_json,
@@ -113,6 +125,8 @@ def ingest_work(conn: sqlite3.Connection, work: dict, harvested_at: str) -> str:
             citation_pctile,
             top_1_percent,
             top_10_percent,
+            year_pctile_min,
+            year_pctile_max,
             int(bool((work.get("open_access") or {}).get("is_oa"))),
             json.dumps(work, ensure_ascii=False),
             harvested_at,

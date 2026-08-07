@@ -1,4 +1,6 @@
 <script>
+	import InfoTooltip from './InfoTooltip.svelte';
+
 	let { step, onSelectPaper } = $props();
 
 	// Minimal **bold** support — the draft text uses it sparingly for the
@@ -9,13 +11,19 @@
 </script>
 
 <div class="step-text">
-	{#if step.kind === 'paper'}
-		<h3 class="paper-title">
-			<button type="button" onclick={() => onSelectPaper?.(step.paperId)}>{step.heading}</button>
-		</h3>
-	{:else}
-		<h2>{step.heading}</h2>
-	{/if}
+	<div class="heading-row">
+		{#if step.kind === 'paper'}
+			<h3 class="paper-title">
+				<button type="button" onclick={() => onSelectPaper?.(step.paperId)}>{step.heading}</button>
+			</h3>
+		{:else}
+			<h2>{step.heading}</h2>
+		{/if}
+		<InfoTooltip
+			label="About this text"
+			message="Abstract analysis and writing aided by AI — needs expert review, and text updates."
+		/>
+	</div>
 	{#if step.subheading}
 		<p class="subheading">{step.subheading}</p>
 	{/if}
@@ -43,13 +51,24 @@
 		font-size: 1.05rem;
 		line-height: 1.6;
 	}
+	.heading-row {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		margin: 0 0 0.85rem;
+	}
+	.heading-row :global(.info-icon) {
+		margin-top: 0.3rem;
+	}
 	h2 {
 		font-size: 1.7rem;
 		font-weight: 700;
 		line-height: 1.2;
 		letter-spacing: -0.01em;
 		color: var(--text-primary);
-		margin: 0 0 0.85rem;
+		margin: 0;
+		flex: 1;
+		min-width: 0;
 	}
 	.paper-title {
 		font-size: 1.2rem;
@@ -58,7 +77,9 @@
 		line-height: 1.35;
 		border-left: 3px solid var(--accent);
 		padding-left: 0.75rem;
-		margin: 0 0 0.85rem;
+		margin: 0;
+		flex: 1;
+		min-width: 0;
 	}
 	.paper-title button {
 		display: block;
