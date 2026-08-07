@@ -310,40 +310,53 @@ look worth an individual S2 lookup.
 full 66-paper FWCI shortlist (not a trimmed-down subset — the API cost was
 checked first: ~5,650 total citation edges, 82 requests, well inside budget).
 Result: 5,362 distinct generation -2 works, 51 of the 66 branches have at
-least one gen-2 citer. Analysis:
-[scripts/rank_spinoff_fields.py](../scripts/rank_spinoff_fields.py) /
-[reports/spinoff_fields_osserman_forward_v1.md](spinoff_fields_osserman_forward_v1.md).
+least one gen-2 citer.
 
-One bug caught and fixed while building the analysis: `work_references`
-already contained edges among the 1,032 gen-1 works themselves (from their
-own reference lists, ingested when they were first fully harvested) — a naive
-query counted those as "gen-2 citers" and inflated every branch's count
-(1,032 branches showing nonzero spillover instead of the true 66). Fixed by
-restricting to works whose nearest generation in the seed set is genuinely -2.
+One bug caught and fixed while building the first pass at analysis:
+`work_references` already contained edges among the 1,032 gen-1 works
+themselves (from their own reference lists, ingested when they were first
+fully harvested) — a naive query counted those as "gen-2 citers" and
+inflated every branch's count (1,032 branches showing nonzero spillover
+instead of the true 66). Fixed by restricting to works whose nearest
+generation in the seed set is genuinely -2.
 
-**Notable branches** (ranked by generation-2 citers landing outside the
-branch paper's own field — i.e. evidence of that paper itself acting as a
-gateway into a new field, not just propagating within its own discipline):
+**Reframed the question after an initial misread.** The first analysis
+(`rank_spinoff_fields.py`) ranked branches by how much their generation -2
+citers land *outside* the branch paper's own field — i.e. treating a branch
+as interesting if it kept spinning off into further new fields. That's not
+what was wanted: once a branch has already migrated out of math into field
+X, the actual question is whether X **solidified** around it — whether other
+researchers in that same field kept building on it, evidence of a real
+ongoing line of work rather than one crossover citation. That's the opposite
+metric. Replaced with
+[scripts/rank_field_solidification.py](../scripts/rank_field_solidification.py)
+/ [reports/field_solidification_osserman_forward_v1.md](field_solidification_osserman_forward_v1.md),
+ranked by **same-field** generation -2 citer count, with Mathematics-labeled
+branches excluded outright (they never left math, so there's nothing to
+solidify) and a `% back to Math` column to catch the field-mislabeling
+failure mode below.
 
+**Notable branches** (same-field generation -2 citers, i.e. real solidified
+migration into the destination field):
+
+- Gibbons, *Born-Infeld particles and Dirichlet p-branes*: 506 gen-2 citers,
+  **93% same-field** (Physics and Astronomy) — a solidly established line of
+  brane-physics work built on this paper, not a one-off.
 - Zadpoor's *Bone tissue regeneration: the role of scaffold geometry*: 523
-  gen-2 citers, 21% outside Engineering — into Materials Science and Medicine.
-- Zandi & Dragnea's *On virus growth and form*: 160 gen-2 citers, 56% outside
-  Environmental Science (itself a misclassification — this is biophysics) —
-  into Biochemistry/Molecular Biology and Materials Science.
+  gen-2 citers, 79% same-field (Engineering) — likewise solidified.
 - Caselles et al.'s *Minimal surfaces based object segmentation*: 197 gen-2
-  citers, 39% outside Computer Science — into Engineering and Medicine.
-- Savadjiev et al.'s *Heart wall myofibers are arranged in minimal surfaces*:
-  100% of its 62 gen-2 citers are outside its own field (Materials Science) —
-  entirely into Medicine, Engineering, Computer Science.
-- Jin-Tzu Chen's 1980 capillary-surfaces paper (the FWCI outlier flagged
-  earlier, 183.7 vs. 24 raw citations): 23 gen-2 citers, 57% outside its own
-  field — into Mathematics, Computer Science, Materials Science. Small
-  absolute numbers, but consistent with the FWCI signal that this is a more
-  influential paper than its raw citation count suggests.
+  citers, 61% same-field (Computer Science) — the computer-vision branch held.
+- A GR paper, *Region with trapped surfaces in spherical symmetry*: 85 gen-2
+  citers, 94% same-field (Physics and Astronomy) — another solid branch,
+  distinct from the Ryu–Takayanagi holography line.
+- Zandi & Dragnea's *On virus growth and form*: 160 gen-2 citers, only 44%
+  same-field (Environmental Science, itself a misclassification — this is
+  biophysics) — weaker same-field solidification, though the field label
+  noise makes this one harder to trust at face value.
 
 **Caveat that dominates the raw ranking:** Gilbarg & Trudinger's *Elliptic
 PDEs* — already flagged as a mislabeled math textbook (OpenAlex tags it
-Computer Science) — tops the outside-field count with 1,119, nearly all of
-which are just Mathematics papers citing a math book. Any use of this ranking
-must check the branch paper's own field first; the report's caveat note says
-so explicitly.
+Computer Science) — shows 0% same-field but 61% "back to Math," which is not
+failed solidification, it's a mislabeled math book being cited by other math
+papers as normal. The report's `% back to Math` column exists specifically
+to catch this case before it's misread.
