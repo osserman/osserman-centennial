@@ -1,5 +1,5 @@
 <script>
-	let { step } = $props();
+	let { step, onSelectPaper } = $props();
 
 	// Minimal **bold** support — the draft text uses it sparingly for the
 	// headline numbers ("1,000", "300"). Not a full markdown parser on purpose.
@@ -10,7 +10,9 @@
 
 <div class="step-text">
 	{#if step.kind === 'paper'}
-		<h3 class="paper-title">{step.heading}</h3>
+		<h3 class="paper-title">
+			<button type="button" onclick={() => onSelectPaper?.(step.paperId)}>{step.heading}</button>
+		</h3>
 	{:else}
 		<h2>{step.heading}</h2>
 	{/if}
@@ -54,10 +56,27 @@
 		font-weight: 600;
 		font-style: italic;
 		line-height: 1.35;
-		color: var(--text-primary);
 		border-left: 3px solid var(--accent);
 		padding-left: 0.75rem;
 		margin: 0 0 0.85rem;
+	}
+	.paper-title button {
+		display: block;
+		width: 100%;
+		text-align: left;
+		background: none;
+		border: none;
+		padding: 0;
+		font: inherit;
+		font-style: inherit;
+		color: var(--text-primary);
+		cursor: pointer;
+	}
+	.paper-title button:hover,
+	.paper-title button:focus-visible {
+		color: var(--accent);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.subheading {
 		color: var(--text-secondary);

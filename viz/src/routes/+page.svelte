@@ -4,12 +4,27 @@
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import StepText from '$lib/components/StepText.svelte';
 	import CitationGraph from '$lib/components/CitationGraph.svelte';
+	import PaperDetail from '$lib/components/PaperDetail.svelte';
 	import { steps } from '$lib/content/narrative.js';
 
 	let { data } = $props();
 
 	let activeIndex = $state(0);
 	let activeView = $derived(steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false });
+
+	// Paper-detail modal: state lives here (not inside CitationGraph) so both
+	// the graph (canvas click) and the left-panel paper titles can open the
+	// same modal. This also fixes a stacking-context bug: CitationGraph's
+	// panel is `position: sticky`, which always creates a new stacking
+	// context, so a modal nested inside it had its z-index evaluated only
+	// *within* that context — the sticky topic-header (z-index:5, at the
+	// page's root stacking context) could end up painting on top of it.
+	// Rendering the modal here, as a sibling at the root level, avoids that.
+	const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
+	const curatedById = new Map(data.curated.map((c) => [c.id, c]));
+	let selectedId = $state(null);
+	let selectedNode = $derived(selectedId ? nodeById.get(selectedId) : null);
+	let selectedCurated = $derived(selectedNode ? (curatedById.get(selectedNode.id) ?? null) : null);
 
 	// Group consecutive steps that share a kicker (e.g. the 3 Engineering
 	// steps) so the kicker can render once as a sticky header that stays
@@ -64,7 +79,7 @@
 					{/if}
 					{#each group.items as { step, index }}
 						<ScrollyStep index={index} active={index === activeIndex}>
-							<StepText {step} />
+							<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
 						</ScrollyStep>
 					{/each}
 				</div>
@@ -82,9 +97,14 @@
 			timeDomain={data.timeDomain}
 			viewSpec={activeView}
 			{theme}
+			onSelectNode={(node) => (selectedId = node?.id ?? null)}
 		/>
 	</div>
 </main>
+
+{#if selectedNode}
+	<PaperDetail node={selectedNode} curatedEntry={selectedCurated} onClose={() => (selectedId = null)} />
+{/if}
 
 <style>
 	:global(html, body) {

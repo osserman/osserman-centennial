@@ -17,7 +17,6 @@
 	// would carry, especially on every viewSpec redraw/camera frame.
 	import { onMount } from 'svelte';
 	import { activePalette, roles } from '$lib/palette.js';
-	import PaperDetail from './PaperDetail.svelte';
 
 	/**
 	 * @typedef {Object} ViewSpec
@@ -27,7 +26,14 @@
 	 * @property {boolean} dimBackground - mute all non-highlighted nodes heavily
 	 */
 
-	let { nodes = [], curated = [], viewSpec = {}, timeDomain = [1970, 2025], theme = 'auto' } = $props();
+	let {
+		nodes = [],
+		curated = [],
+		viewSpec = {},
+		timeDomain = [1970, 2025],
+		theme = 'auto',
+		onSelectNode
+	} = $props();
 
 	let container;
 	let canvas;
@@ -38,11 +44,9 @@
 
 	let hovered = $state(null);
 	let pointer = $state({ x: 0, y: 0 });
-	let selected = $state(null);
 
 	const curatedById = new Map(curated.map((c) => [c.id, c]));
 	const nodeById = new Map(nodes.map((n) => [n.id, n]));
-	const selectedCurated = $derived(selected ? (curatedById.get(selected.id) ?? null) : null);
 
 	// x-extent of the actual laid-out nodes (center points), used to map tick
 	// years onto the same coordinate space compute-layout.mjs used — avoids
@@ -290,7 +294,7 @@
 		const rect = canvas.getBoundingClientRect();
 		const mx = evt.clientX - rect.left;
 		const my = evt.clientY - rect.top;
-		selected = findNodeAt(mx, my);
+		onSelectNode?.(findNodeAt(mx, my));
 	}
 
 	onMount(() => {
@@ -345,10 +349,6 @@
 				{hovered.authors ? hovered.authors + ' · ' : ''}{hovered.year} · {hovered.field}
 			</div>
 		</div>
-	{/if}
-
-	{#if selected}
-		<PaperDetail node={selected} curatedEntry={selectedCurated} onClose={() => (selected = null)} />
 	{/if}
 </div>
 
