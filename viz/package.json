@@ -1,0 +1,24 @@
+{
+	"name": "viz",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"build:layout": "node scripts/compute-layout.mjs"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"svelte": "^5.56.1",
+		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"d3-force": "^3.0.0",
+		"d3-quadtree": "^3.0.1"
+	}
+}
