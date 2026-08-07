@@ -18,7 +18,10 @@ const PATHWAY_IDS = {
 };
 
 const NONE_VIEW = { colorBy: 'none', highlightIds: [], dimBackground: false };
-const MATH_VIEW = { colorBy: 'mathVsOther', highlightIds: [], dimBackground: false };
+// Single-hue highlight against a grey field, not a two-hue split — see
+// CitationGraph's colorFor/isDimmed for 'math' vs 'nonMath'.
+const MATH_VIEW = { colorBy: 'math', highlightIds: [], dimBackground: false };
+const NON_MATH_VIEW = { colorBy: 'nonMath', highlightIds: [], dimBackground: false };
 const DIM_VIEW = { colorBy: 'none', highlightIds: [], dimBackground: true };
 
 function spotlight(ids) {
@@ -67,7 +70,7 @@ export const steps = [
 			'The examples below are only a small sample.'
 		],
 		openQuestion: null,
-		view: DIM_VIEW
+		view: NON_MATH_VIEW
 	},
 
 	// --- Engineering & Bioengineering ---

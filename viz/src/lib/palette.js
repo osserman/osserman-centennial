@@ -35,7 +35,6 @@ export const palette = {
 
 // Semantic role assignments, mapped onto the validated slots above.
 export const roles = {
-	seed: 'textPrimary', // Osserman's Survey — the one unique node, ink not hue
 	math: 'blue',
 	nonMath: 'orange',
 	pathway: {
@@ -55,7 +54,15 @@ export const pathwayShape = {
 	physical_theory: 'ring'
 };
 
-export function activePalette() {
+export function activePalette(themeOverride) {
+	if (themeOverride === 'dark') return palette.dark;
+	if (themeOverride === 'light') return palette.light;
 	if (typeof window === 'undefined') return palette.light;
+	// Manual override (theme toggle / ?theme= URL param) wins over the OS
+	// preference — mirrors the CSS cascade (:root[data-theme] beats the
+	// prefers-color-scheme media query, see +page.svelte).
+	const stamped = document.documentElement.dataset.theme;
+	if (stamped === 'dark') return palette.dark;
+	if (stamped === 'light') return palette.light;
 	return window.matchMedia('(prefers-color-scheme: dark)').matches ? palette.dark : palette.light;
 }

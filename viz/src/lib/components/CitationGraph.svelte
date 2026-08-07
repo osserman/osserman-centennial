@@ -1,34 +1,33 @@
 <script>
-	// The persistent background graph. Layout (x/y) is precomputed and fixed
-	// (viz/scripts/compute-layout.mjs) — this component only ever changes
-	// color/opacity/filter state in response to `viewSpec`, never repositions
-	// nodes. That's the "object constancy" requirement from
+	// The persistent background graph: a temporal beeswarm (x = publication
+	// date, precomputed in viz/scripts/compute-layout.mjs) of small
+	// paper-shaped rects, one per citer of Osserman's Survey. Layout is fixed
+	// and precomputed — this component only ever changes color/opacity/filter
+	// state and the camera (pan/zoom) in response to `viewSpec`, never
+	// repositions nodes. That's the "object constancy" requirement from
 	// scrollytelling-project-context.md: readers should recognize the same
-	// dots reorganizing their meaning, not a graph that re-lays-out.
+	// marks reorganizing their meaning, not a graph that re-lays-out.
 	//
-	// Rendered to <canvas> rather than SVG — at ~1,033 simultaneously visible
-	// nodes, canvas avoids the DOM overhead an SVG node-per-circle approach
-	// would carry, especially on every viewSpec redraw.
+	// No seed node: Osserman's Survey itself has no natural position on a
+	// "when did this cite the Survey" axis (see compute-layout.mjs). Its old
+	// "hub" role is replaced by the persistent caption below the canvas.
+	//
+	// Rendered to <canvas> rather than SVG — at ~1,032 simultaneously visible
+	// nodes, canvas avoids the DOM overhead an SVG node-per-mark approach
+	// would carry, especially on every viewSpec redraw/camera frame.
 	import { onMount } from 'svelte';
-	import { quadtree } from 'd3-quadtree';
 	import { activePalette, roles, pathwayShape } from '$lib/palette.js';
+	import PaperDetail from './PaperDetail.svelte';
 
 	/**
 	 * @typedef {Object} ViewSpec
 	 * @property {'none'|'mathVsOther'|'pathway'} colorBy
-	 * @property {string[]} highlightIds - curated node ids to draw larger + labeled
+	 * @property {string[]} highlightIds - curated node ids to spotlight; also
+	 *   drives the camera (focus on these, or fit-all when empty)
 	 * @property {boolean} dimBackground - mute all non-highlighted nodes heavily
-	 *
-	 * Deliberately no per-field mass recoloring: OpenAlex's field labels are
-	 * independently known to be noisy (see reports/pilot_methodology_notes.md),
-	 * and several draft-text sections group curated papers that don't share a
-	 * single OpenAlex field anyway (the narrative "Biology" section spans
-	 * Biochemistry/Molecular Biology, Environmental Science and Materials
-	 * Science; recoloring "the field" would be both technically wrong and
-	 * overclaiming). Sections spotlight their 1-2 curated papers instead.
 	 */
 
-	let { nodes = [], edges = [], curated = [], viewSpec = {} } = $props();
+	let { nodes = [], curated = [], viewSpec = {}, timeDomain = [1970, 2025], theme = 'auto' } = $props();
 
 	let container;
 	let canvas;
@@ -39,49 +38,141 @@
 
 	let hovered = $state(null);
 	let pointer = $state({ x: 0, y: 0 });
+	let selected = $state(null);
 
 	const curatedById = new Map(curated.map((c) => [c.id, c]));
 	const nodeById = new Map(nodes.map((n) => [n.id, n]));
+	const selectedCurated = $derived(selected ? (curatedById.get(selected.id) ?? null) : null);
 
-	// Fit transform: compute once from the fixed layout's bounding box.
-	let transform = $state({ scale: 1, tx: 0, ty: 0 });
+	// x-extent of the actual laid-out nodes (center points), used to map tick
+	// years onto the same coordinate space compute-layout.mjs used — avoids
+	// hardcoding that script's HALF_WIDTH constant here too.
+	const xExtent = nodes.length
+		? [Math.min(...nodes.map((n) => n.x)), Math.max(...nodes.map((n) => n.x))]
+		: [-1, 1];
 
-	function computeTransform() {
-		if (!nodes.length || !width || !height) return;
-		const xs = nodes.map((n) => n.x);
-		const ys = nodes.map((n) => n.y);
-		const minX = Math.min(...xs), maxX = Math.max(...xs);
-		const minY = Math.min(...ys), maxY = Math.max(...ys);
-		const pad = 60;
-		const scale = Math.min(
-			(width - pad * 2) / (maxX - minX || 1),
-			(height - pad * 2) / (maxY - minY || 1)
-		);
-		const tx = width / 2 - ((minX + maxX) / 2) * scale;
-		const ty = height / 2 - ((minY + maxY) / 2) * scale;
-		transform = { scale, tx, ty };
+	function yearToVirtualX(year) {
+		const [minYear, maxYear] = timeDomain;
+		const t = (year - minYear) / (maxYear - minYear || 1);
+		return xExtent[0] + t * (xExtent[1] - xExtent[0]);
+	}
+
+	// --------------------------------------------------------------- camera
+
+	// Plain variable, not $state — it's only ever read by imperative JS
+	// (draw/toScreen/findNodeAt/animateTo), never a template binding. Making
+	// it reactive caused a feedback loop: animateTo()'s rAF callback writes
+	// it every frame, which would re-trigger the $effect below (since
+	// animateTo also reads it synchronously to capture the tween's start
+	// value), restarting the animation from a barely-advanced position on
+	// every frame instead of running one continuous 800ms tween.
+	let transform = { scale: 1, tx: 0, ty: 0 };
+	let animFrame = null;
+
+	function boundsFor(list) {
+		if (!list.length) return null;
+		let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+		for (const n of list) {
+			minX = Math.min(minX, n.x - n.width / 2);
+			maxX = Math.max(maxX, n.x + n.width / 2);
+			minY = Math.min(minY, n.y - n.height / 2);
+			maxY = Math.max(maxY, n.y + n.height / 2);
+		}
+		return { minX, maxX, minY, maxY };
+	}
+
+	function transformForBounds(b, pad, minSpan) {
+		if (!b || !width || !height) return null;
+		const spanX = Math.max(b.maxX - b.minX, minSpan);
+		const spanY = Math.max(b.maxY - b.minY, minSpan);
+		const cx = (b.minX + b.maxX) / 2;
+		const cy = (b.minY + b.maxY) / 2;
+		const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanY);
+		return { scale, tx: width / 2 - cx * scale, ty: height / 2 - cy * scale };
+	}
+
+	function fitAllTransform() {
+		return transformForBounds(boundsFor(nodes), 60, 0);
+	}
+
+	// Minimum window (in virtual units) so a 1-2-paper spotlight still shows
+	// surrounding timeline context instead of isolating one mark in empty space.
+	const MIN_FOCUS_SPAN = 260;
+
+	function focusTransform(ids) {
+		const targets = ids.map((id) => nodeById.get(id)).filter(Boolean);
+		if (!targets.length) return fitAllTransform();
+		return transformForBounds(boundsFor(targets), 90, MIN_FOCUS_SPAN);
+	}
+
+	function currentTarget() {
+		const ids = viewSpec.highlightIds || [];
+		return ids.length ? focusTransform(ids) : fitAllTransform();
+	}
+
+	function easeInOutCubic(t) {
+		return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+	}
+
+	function animateTo(target) {
+		if (!target) return;
+		if (animFrame) cancelAnimationFrame(animFrame);
+		const from = { ...transform };
+		const start = performance.now();
+		const DURATION = 800;
+		function step(now) {
+			const t = Math.min(1, (now - start) / DURATION);
+			const e = easeInOutCubic(t);
+			transform = {
+				scale: from.scale + (target.scale - from.scale) * e,
+				tx: from.tx + (target.tx - from.tx) * e,
+				ty: from.ty + (target.ty - from.ty) * e
+			};
+			draw();
+			if (t < 1) animFrame = requestAnimationFrame(step);
+		}
+		animFrame = requestAnimationFrame(step);
+	}
+
+	function applyTarget(animate) {
+		const target = currentTarget();
+		if (!target) return;
+		if (animate) animateTo(target);
+		else {
+			transform = target;
+			draw();
+		}
 	}
 
 	function toScreen(n) {
 		return { x: n.x * transform.scale + transform.tx, y: n.y * transform.scale + transform.ty };
 	}
 
-	let qtree = $derived.by(() => {
-		if (!nodes.length) return null;
-		const t = transform;
-		const q = quadtree(
-			nodes,
-			(n) => n.x * t.scale + t.tx,
-			(n) => n.y * t.scale + t.ty
-		);
-		return q;
-	});
+	// ------------------------------------------------------------- lookups
+
+	function findNodeAt(mx, my) {
+		for (let i = nodes.length - 1; i >= 0; i--) {
+			const n = nodes[i];
+			if (isDimmed(n)) continue; // faded-out papers aren't interactive while a spotlight is active
+			const p = toScreen(n);
+			const halfW = (n.width * transform.scale) / 2 + 3;
+			const halfH = (n.height * transform.scale) / 2 + 3;
+			if (mx >= p.x - halfW && mx <= p.x + halfW && my >= p.y - halfH && my <= p.y + halfH) return n;
+		}
+		return null;
+	}
 
 	function colorFor(n, pal) {
-		if (n.isSeed) return pal[roles.seed] ?? pal.textPrimary;
 		const spec = viewSpec;
-		if (spec.colorBy === 'mathVsOther') {
-			return n.field === 'Mathematics' ? pal[roles.math] : pal[roles.nonMath];
+		// 'math' / 'nonMath': single-hue highlight against a grey field, not a
+		// two-hue split — the side *not* being talked about stays grey (and
+		// dimmed, see isDimmed) rather than competing for attention with its
+		// own color.
+		if (spec.colorBy === 'math') {
+			return n.field === 'Mathematics' ? pal[roles.math] : pal.muted;
+		}
+		if (spec.colorBy === 'nonMath') {
+			return n.field !== 'Mathematics' ? pal[roles.nonMath] : pal.muted;
 		}
 		if (spec.colorBy === 'pathway') {
 			const c = curatedById.get(n.id);
@@ -93,7 +184,8 @@
 
 	function isDimmed(n) {
 		const spec = viewSpec;
-		if (n.isSeed) return false;
+		if (spec.colorBy === 'math') return n.field !== 'Mathematics';
+		if (spec.colorBy === 'nonMath') return n.field === 'Mathematics';
 		// Curated nodes not in *this step's* highlightIds stay dimmed even in
 		// pathway mode — otherwise every pathway's papers stay lit on every
 		// pathway step, instead of just the one the reader is currently on.
@@ -102,85 +194,111 @@
 		return false;
 	}
 
+	// ---------------------------------------------------------------- draw
+
+	function drawAxis(pal) {
+		const [minYear, maxYear] = timeDomain;
+		const first = Math.ceil(minYear / 10) * 10;
+		const y = height - 26;
+		ctx.strokeStyle = pal.muted;
+		ctx.globalAlpha = 0.4;
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(0, y);
+		ctx.lineTo(width, y);
+		ctx.stroke();
+		ctx.globalAlpha = 0.75;
+		ctx.fillStyle = pal.muted;
+		ctx.font = '11px system-ui, sans-serif';
+		ctx.textAlign = 'center';
+		for (let year = first; year <= maxYear; year += 10) {
+			const sx = yearToVirtualX(year) * transform.scale + transform.tx;
+			if (sx < -20 || sx > width + 20) continue;
+			ctx.beginPath();
+			ctx.moveTo(sx, y - 4);
+			ctx.lineTo(sx, y + 4);
+			ctx.stroke();
+			ctx.fillText(String(year), sx, y + 18);
+		}
+		ctx.globalAlpha = 1;
+	}
+
 	function draw() {
 		if (!ctx || !width || !height) return;
-		const pal = activePalette();
+		const pal = activePalette(theme === 'auto' ? undefined : theme);
 		ctx.save();
 		ctx.scale(dpr, dpr);
 		ctx.clearRect(0, 0, width, height);
 
-		// Edges: only for explicitly highlighted nodes (drawing all 1,032
-		// star edges at once would be visual noise the design doc explicitly
-		// wants to avoid — "restrained", not a hairball).
 		const highlightSet = new Set(viewSpec.highlightIds || []);
-		if (highlightSet.size) {
-			const seed = nodes.find((n) => n.isSeed);
-			if (seed) {
-				const seedPt = toScreen(seed);
-				ctx.strokeStyle = pal.textSecondary;
-				ctx.globalAlpha = 0.5;
-				ctx.lineWidth = 1;
-				for (const id of highlightSet) {
-					const n = nodeById.get(id);
-					if (!n) continue;
-					const p = toScreen(n);
-					ctx.beginPath();
-					ctx.moveTo(seedPt.x, seedPt.y);
-					ctx.lineTo(p.x, p.y);
-					ctx.stroke();
-				}
-			}
-		}
-		ctx.globalAlpha = 1;
 
 		for (const n of nodes) {
 			const p = toScreen(n);
+			const w = n.width * transform.scale;
+			const h = n.height * transform.scale;
+			if (w < 0.3 && h < 0.3) continue;
+
 			const dimmed = isDimmed(n);
 			const isHighlighted = highlightSet.has(n.id);
 			const color = colorFor(n, pal);
-			const r = n.isSeed ? n.radius : isHighlighted ? n.radius + 2 : n.radius;
+			const rw = isHighlighted ? w + 3 : w;
+			const rh = isHighlighted ? h + 3 : h;
+			const radius = Math.min(3, rw / 4, rh / 4);
 
-			ctx.globalAlpha = dimmed ? 0.15 : n.isSeed ? 1 : 0.85;
-			ctx.fillStyle = color;
+			ctx.globalAlpha = dimmed ? 0.15 : 0.9;
 
 			const c = curatedById.get(n.id);
-			const shape = c ? pathwayShape[c.pathway] : 'dot';
+			const outlineOnly = c && pathwayShape[c.pathway] === 'ring' && viewSpec.colorBy === 'pathway';
 			ctx.beginPath();
-			if (shape === 'ring' && viewSpec.colorBy === 'pathway') {
-				ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
-				ctx.lineWidth = 2.5;
+			ctx.roundRect(p.x - rw / 2, p.y - rh / 2, rw, rh, radius);
+			if (outlineOnly) {
+				ctx.lineWidth = 2;
 				ctx.strokeStyle = color;
 				ctx.stroke();
 			} else {
-				ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
+				ctx.fillStyle = color;
 				ctx.fill();
+				// Surface-color separator ring (not a data-colored border) so
+				// touching/overlapping marks stay legible — the dataviz skill's
+				// "surface ring" mechanism, not an outline-as-emphasis.
+				ctx.lineWidth = 1;
+				ctx.strokeStyle = pal.surface;
+				ctx.stroke();
 			}
 
 			if (isHighlighted) {
 				ctx.globalAlpha = 1;
-				ctx.lineWidth = 1.5;
+				ctx.lineWidth = 2;
 				ctx.strokeStyle = pal.textPrimary;
 				ctx.beginPath();
-				ctx.arc(p.x, p.y, r + 2, 0, 2 * Math.PI);
+				ctx.roundRect(p.x - rw / 2 - 2, p.y - rh / 2 - 2, rw + 4, rh + 4, radius + 2);
 				ctx.stroke();
 			}
 		}
 		ctx.globalAlpha = 1;
+		drawAxis(pal);
 		ctx.restore();
 	}
+
+	// ----------------------------------------------------------- pointer
 
 	function handleMove(evt) {
 		const rect = canvas.getBoundingClientRect();
 		const mx = evt.clientX - rect.left;
 		const my = evt.clientY - rect.top;
-		pointer = { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
-		if (!qtree) return;
-		const found = qtree.find(mx, my, 14);
-		hovered = found || null;
+		pointer = { x: mx, y: my };
+		hovered = findNodeAt(mx, my);
 	}
 
 	function handleLeave() {
 		hovered = null;
+	}
+
+	function handleClick(evt) {
+		const rect = canvas.getBoundingClientRect();
+		const mx = evt.clientX - rect.left;
+		const my = evt.clientY - rect.top;
+		selected = findNodeAt(mx, my);
 	}
 
 	onMount(() => {
@@ -192,17 +310,24 @@
 			dpr = window.devicePixelRatio || 1;
 			canvas.width = width * dpr;
 			canvas.height = height * dpr;
-			computeTransform();
-			draw();
+			applyTarget(false); // resize snaps; narrative-driven changes animate
 		});
 		ro.observe(container);
 		return () => ro.disconnect();
 	});
 
 	$effect(() => {
-		// Redraw whenever the view spec (from scroll position) changes.
-		viewSpec;
+		// Theme changes just recolor in place — no camera movement.
+		theme;
 		draw();
+	});
+
+	$effect(() => {
+		// Re-derive the camera target whenever the view spec (from scroll
+		// position) changes, and animate to it — clearing a spotlight zooms
+		// out to fit-all, setting one zooms in, both via the same tween.
+		viewSpec;
+		applyTarget(true);
 	});
 </script>
 
@@ -211,8 +336,12 @@
 		bind:this={canvas}
 		onmousemove={handleMove}
 		onmouseleave={handleLeave}
+		onclick={handleClick}
 		style="width: 100%; height: 100%;"
 	></canvas>
+
+	<div class="graph-caption">Scholarly works that have cited <em>A Survey of Minimal Surfaces</em></div>
+
 	{#if hovered}
 		<div class="tooltip" style="left: {pointer.x + 16}px; top: {pointer.y + 16}px;">
 			<div class="tooltip-title">{hovered.title}</div>
@@ -220,6 +349,10 @@
 				{hovered.authors ? hovered.authors + ' · ' : ''}{hovered.year} · {hovered.field}
 			</div>
 		</div>
+	{/if}
+
+	{#if selected}
+		<PaperDetail node={selected} curatedEntry={selectedCurated} onClose={() => (selected = null)} />
 	{/if}
 </div>
 
@@ -231,6 +364,16 @@
 	}
 	canvas {
 		display: block;
+		cursor: pointer;
+	}
+	.graph-caption {
+		position: absolute;
+		top: 1.25rem;
+		left: 1.25rem;
+		max-width: 22rem;
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		pointer-events: none;
 	}
 	.tooltip {
 		position: absolute;

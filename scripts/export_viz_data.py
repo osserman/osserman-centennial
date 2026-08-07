@@ -55,11 +55,12 @@ CURATED_PAPERS = [
 def fetch_nodes(conn, seed_set_id):
     rows = conn.execute(
         """
-        SELECT w.openalex_id, w.title, w.publication_year, w.doi, w.cited_by_count,
+        SELECT w.openalex_id, w.title, w.publication_year, w.publication_date, w.doi, w.cited_by_count,
                w.fwci, w.citation_pctile, w.top_10_percent, w.abstract,
                s.generation,
                COALESCE(t.field_name, '(no field)') AS field,
                COALESCE(t.subfield_name, '') AS subfield,
+               COALESCE(t.topic_name, '') AS topic,
                (SELECT group_concat(dn, ', ') FROM (
                     SELECT a.display_name AS dn
                     FROM work_authorships wa JOIN authors a ON a.openalex_id = wa.author_id
@@ -70,7 +71,7 @@ def fetch_nodes(conn, seed_set_id):
         FROM seed_set_works s
         JOIN works w ON w.openalex_id = s.work_id
         LEFT JOIN (
-            SELECT wt.work_id, t.field_name, t.subfield_name
+            SELECT wt.work_id, t.field_name, t.subfield_name, t.display_name AS topic_name
             FROM work_topics wt JOIN topics t ON t.openalex_id = wt.topic_id
             WHERE wt.is_primary = 1
         ) t ON t.work_id = w.openalex_id
@@ -85,6 +86,7 @@ def fetch_nodes(conn, seed_set_id):
             "id": r["openalex_id"],
             "title": r["title"],
             "year": r["publication_year"],
+            "publicationDate": r["publication_date"],
             "doi": r["doi"],
             "authors": r["authors"] or "",
             "citedByCount": r["cited_by_count"],
@@ -94,6 +96,7 @@ def fetch_nodes(conn, seed_set_id):
             "abstract": r["abstract"] or "",
             "field": r["field"],
             "subfield": r["subfield"],
+            "topic": r["topic"],
             "isSeed": r["generation"] == 0,
         })
     return nodes

@@ -9,9 +9,6 @@
 </script>
 
 <div class="step-text">
-	{#if step.kicker}
-		<div class="kicker">{step.kicker}</div>
-	{/if}
 	<h2>{step.heading}</h2>
 	{#if step.subheading}
 		<p class="subheading">{step.subheading}</p>
@@ -39,14 +36,6 @@
 		max-width: 34ch;
 		font-size: 1.05rem;
 		line-height: 1.6;
-	}
-	.kicker {
-		font-size: 0.76rem;
-		font-weight: 700;
-		letter-spacing: 0.07em;
-		text-transform: uppercase;
-		color: var(--accent);
-		margin-bottom: 0.65rem;
 	}
 	h2 {
 		font-size: 1.7rem;
