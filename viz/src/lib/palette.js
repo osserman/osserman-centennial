@@ -46,6 +46,16 @@ export const roles = {
 		design_language: 'orange',
 		computational_tool: 'aqua',
 		physical_theory: 'yellow'
+	},
+	// Work-type coloring shows all ~1,032 nodes simultaneously (not one
+	// spotlighted subset at a time like pathway), so it's the same "all-pairs"
+	// dense-scatter case as the main graph — capped at 3 hues (blue/orange/
+	// aqua), with everything else folded into a neutral "Other" (muted, not a
+	// 4th hue) rather than stretching to a less-safe simultaneous palette.
+	workType: {
+		article: 'blue',
+		preprint: 'orange',
+		'book-chapter': 'aqua'
 	}
 };
 

@@ -22,6 +22,7 @@ const NONE_VIEW = { colorBy: 'none', highlightIds: [], dimBackground: false };
 // CitationGraph's colorFor/isDimmed for 'math' vs 'nonMath'.
 const MATH_VIEW = { colorBy: 'math', highlightIds: [], dimBackground: false };
 const NON_MATH_VIEW = { colorBy: 'nonMath', highlightIds: [], dimBackground: false };
+const WORK_TYPE_VIEW = { colorBy: 'workType', highlightIds: [], dimBackground: false };
 const DIM_VIEW = { colorBy: 'none', highlightIds: [], dimBackground: true };
 
 function spotlight(ids) {
@@ -32,8 +33,8 @@ export const steps = [
 	{
 		id: 'intro',
 		kicker: null,
-		heading: 'The propagation of minimal surface mathematics',
-		subheading: 'Tracing the unexpected journeys of math theory to practice',
+		heading: 'Minimal surfaces beyond mathematics',
+		subheading: 'Tracing the unexpected journeys from math theory to other fields',
 		body: [
 			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>.',
 			"It was the first broad graduate-level mathematics textbook spanning this sub-field of geometry.",
@@ -42,6 +43,20 @@ export const steps = [
 		],
 		openQuestion: null,
 		view: NONE_VIEW
+	},
+	{
+		id: 'work-types',
+		kicker: null,
+		heading: 'Not just journal articles',
+		body: ['These 1,000+ citing works span several kinds of scholarly output. These include:'],
+		typeBreakdown: [
+			{ label: 'Journal articles', count: 684, swatch: 'blue' },
+			{ label: 'Preprints', count: 162, swatch: 'orange' },
+			{ label: 'Book chapters', count: 109, swatch: 'aqua' },
+			{ label: 'Other — conference papers, dissertations, books, and more', count: 78, swatch: 'muted' }
+		],
+		openQuestion: null,
+		view: WORK_TYPE_VIEW
 	},
 	{
 		id: 'math',
@@ -348,7 +363,8 @@ export const steps = [
 		heading: 'Explore further',
 		body: [
 			'These are only a small sample of the papers that cite the Survey.',
-			'The graph is interactive — hover any point to see the paper it represents.'
+			'The graph is interactive — hover any point to see the paper it represents.',
+			'Click filter in the top right to limit to a subset of articles.'
 		],
 		openQuestion: null,
 		view: NONE_VIEW

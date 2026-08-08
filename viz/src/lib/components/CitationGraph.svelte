@@ -20,7 +20,7 @@
 
 	/**
 	 * @typedef {Object} ViewSpec
-	 * @property {'none'|'mathVsOther'|'pathway'} colorBy
+	 * @property {'none'|'mathVsOther'|'pathway'|'workType'} colorBy
 	 * @property {string[]} highlightIds - curated node ids to spotlight; also
 	 *   drives the camera (focus on these, or fit-all when empty)
 	 * @property {boolean} dimBackground - mute all non-highlighted nodes heavily
@@ -194,6 +194,9 @@
 			const c = curatedById.get(n.id);
 			if (c && c.pathway) return pal[roles.pathway[c.pathway]] ?? pal.muted;
 			return pal.muted;
+		}
+		if (spec.colorBy === 'workType') {
+			return pal[roles.workType[n.workType]] ?? pal.muted;
 		}
 		return pal.muted;
 	}

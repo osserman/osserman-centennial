@@ -37,6 +37,17 @@
 			{/each}
 		</ul>
 	{/if}
+	{#if step.typeBreakdown?.length}
+		<ul class="type-legend">
+			{#each step.typeBreakdown as t}
+				<li>
+					<span class="swatch swatch-{t.swatch}"></span>
+					{t.label}
+					<span class="type-count">{t.count}</span>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 	{#if step.openQuestion}
 		<aside class="open-question">
 			<span class="open-question-label">Open question</span>
@@ -122,6 +133,41 @@
 	}
 	li::marker {
 		color: var(--accent);
+	}
+	.type-legend {
+		list-style: none;
+		padding-left: 0;
+		margin: 0 0 0.9rem;
+	}
+	.type-legend li {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin-bottom: 0.5rem;
+		color: var(--text-primary);
+	}
+	.swatch {
+		flex-shrink: 0;
+		width: 0.85em;
+		height: 1.15em;
+		border-radius: 2px;
+	}
+	.swatch-blue {
+		background: var(--accent);
+	}
+	.swatch-orange {
+		background: var(--swatch-orange);
+	}
+	.swatch-aqua {
+		background: var(--swatch-aqua);
+	}
+	.swatch-muted {
+		background: var(--text-muted);
+	}
+	.type-count {
+		color: var(--text-muted);
+		font-size: 0.85em;
+		margin-left: auto;
 	}
 	.open-question {
 		margin-top: 1rem;
