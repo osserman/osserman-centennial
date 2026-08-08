@@ -24,6 +24,8 @@
 		return [...counts.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count);
 	}
 
+	const fieldOptions = distinctWithCounts((n) => [n.field]);
+	const subfieldOptions = distinctWithCounts((n) => [n.subfield]);
 	const topicOptions = distinctWithCounts((n) => [n.topic]);
 	const venueOptions = distinctWithCounts((n) => [n.venue]);
 	const institutionOptions = distinctWithCounts((n) => n.institutions || []);
@@ -31,6 +33,8 @@
 	const typeOptions = distinctWithCounts((n) => [n.workType]);
 
 	let keyword = $state('');
+	let selectedFields = $state([]);
+	let selectedSubfields = $state([]);
 	let selectedTopics = $state([]);
 	let selectedVenues = $state([]);
 	let selectedInstitutions = $state([]);
@@ -39,6 +43,8 @@
 
 	let hasActiveFilters = $derived(
 		keyword.trim().length > 0 ||
+			selectedFields.length > 0 ||
+			selectedSubfields.length > 0 ||
 			selectedTopics.length > 0 ||
 			selectedVenues.length > 0 ||
 			selectedInstitutions.length > 0 ||
@@ -52,6 +58,8 @@
 			const hay = `${n.title || ''} ${n.authors || ''} ${n.abstract || ''}`.toLowerCase();
 			if (!hay.includes(kw)) return false;
 		}
+		if (selectedFields.length && !selectedFields.includes(n.field)) return false;
+		if (selectedSubfields.length && !selectedSubfields.includes(n.subfield)) return false;
 		if (selectedTopics.length && !selectedTopics.includes(n.topic)) return false;
 		if (selectedVenues.length && !selectedVenues.includes(n.venue)) return false;
 		if (
@@ -80,6 +88,8 @@
 
 	function clearAll() {
 		keyword = '';
+		selectedFields = [];
+		selectedSubfields = [];
 		selectedTopics = [];
 		selectedVenues = [];
 		selectedInstitutions = [];
@@ -104,6 +114,8 @@
 	<input class="keyword" type="text" placeholder="Search titles, authors, abstracts…" bind:value={keyword} />
 
 	<div class="facets">
+		<FacetSelect label="Field" options={fieldOptions} bind:selected={selectedFields} placeholder="e.g. Mathematics" />
+		<FacetSelect label="Subfield" options={subfieldOptions} bind:selected={selectedSubfields} placeholder="e.g. Geometry and Topology" />
 		<FacetSelect label="Topic" options={topicOptions} bind:selected={selectedTopics} placeholder="e.g. Geometric Analysis" />
 		<FacetSelect label="Journal / venue" options={venueOptions} bind:selected={selectedVenues} placeholder="e.g. arXiv" />
 		<FacetSelect label="Institution" options={institutionOptions} bind:selected={selectedInstitutions} placeholder="e.g. Stanford" />

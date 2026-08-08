@@ -3,13 +3,17 @@
 	// title="" attribute — title is unreliable to notice (no visual affordance
 	// beyond the cursor, slow OS-controlled delay) and impossible to verify
 	// in an automated screenshot pass.
-	let { message, label = 'More information' } = $props();
+	// placement 'top' (default) opens upward from the icon; 'bottom' opens
+	// downward — needed wherever the icon sits close to the top edge of its
+	// scroll container (e.g. the graph caption), where an upward tooltip has
+	// nowhere to go and clips off-screen.
+	let { message, label = 'More information', placement = 'top' } = $props();
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <span class="info-icon" tabindex="0" role="button" aria-label={label}>
 	ⓘ
-	<span class="info-tooltip" role="tooltip">{message}</span>
+	<span class="info-tooltip placement-{placement}" role="tooltip">{message}</span>
 </span>
 
 <style>
@@ -23,7 +27,6 @@
 	}
 	.info-tooltip {
 		position: absolute;
-		bottom: calc(100% + 8px);
 		left: 50%;
 		transform: translateX(-50%);
 		width: 15rem;
@@ -43,14 +46,27 @@
 		pointer-events: none;
 		z-index: 30;
 	}
-	.info-tooltip::after {
+	.placement-top {
+		bottom: calc(100% + 8px);
+	}
+	.placement-bottom {
+		top: calc(100% + 8px);
+	}
+	.placement-top::after,
+	.placement-bottom::after {
 		content: '';
 		position: absolute;
-		top: 100%;
 		left: 50%;
 		transform: translateX(-50%);
 		border: 5px solid transparent;
+	}
+	.placement-top::after {
+		top: 100%;
 		border-top-color: var(--text-primary);
+	}
+	.placement-bottom::after {
+		bottom: 100%;
+		border-bottom-color: var(--text-primary);
 	}
 	.info-icon:hover .info-tooltip,
 	.info-icon:focus .info-tooltip,

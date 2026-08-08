@@ -47,12 +47,12 @@ export const steps = [
 	{
 		id: 'work-types',
 		kicker: null,
-		heading: 'Not just journal articles',
-		body: ['These 1,000+ citing works span several kinds of scholarly output. These include:'],
+		heading: 'Types of work',
+		body: ['These 1,000+ citing works span several kinds of scholarly output. Including:'],
 		typeBreakdown: [
-			{ label: 'Journal articles', count: 684, swatch: 'blue' },
-			{ label: 'Preprints', count: 162, swatch: 'orange' },
-			{ label: 'Book chapters', count: 109, swatch: 'aqua' },
+			{ label: 'Journal articles', count: 684, swatch: 'aqua' },
+			{ label: 'Preprints', count: 162, swatch: 'yellow' },
+			{ label: 'Book chapters', count: 109, swatch: 'violet' },
 			{ label: 'Other — conference papers, dissertations, books, and more', count: 78, swatch: 'muted' }
 		],
 		openQuestion: null,
@@ -61,7 +61,7 @@ export const steps = [
 	{
 		id: 'math',
 		kicker: null,
-		heading: 'Mathematics',
+		heading: 'Most were in mathematics',
 		body: [
 			'More than two thirds of citations come from works within geometry, differential geometry, analysis, and a variety of other mathematical fields.',
 		],

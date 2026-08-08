@@ -152,14 +152,14 @@
 		height: 1.15em;
 		border-radius: 2px;
 	}
-	.swatch-blue {
-		background: var(--accent);
-	}
-	.swatch-orange {
-		background: var(--swatch-orange);
-	}
 	.swatch-aqua {
 		background: var(--swatch-aqua);
+	}
+	.swatch-yellow {
+		background: var(--swatch-yellow);
+	}
+	.swatch-violet {
+		background: var(--swatch-violet);
 	}
 	.swatch-muted {
 		background: var(--text-muted);

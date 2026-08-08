@@ -17,6 +17,7 @@
 	// would carry, especially on every viewSpec redraw/camera frame.
 	import { onMount, untrack } from 'svelte';
 	import { activePalette, roles } from '$lib/palette.js';
+	import InfoTooltip from './InfoTooltip.svelte';
 
 	/**
 	 * @typedef {Object} ViewSpec
@@ -371,12 +372,17 @@
 	></canvas>
 
 	<div class="graph-caption">
-		Scholarly works that have cited <em>A Survey of Minimal Surfaces</em>, each tile scaled by
-		{sizeMetric === 'citations'
-			? 'number of citations'
-			: sizeMetric === 'percentile'
-				? 'field-normalized citation percentile'
-				: 'citation percentile within publication year'}
+		Scholarly works that have cited <em>A Survey of Minimal Surfaces</em>.
+		<span class="caption-row">
+			Each tile sized by citation data.
+			<span class="caption-tooltip-wrap">
+				<InfoTooltip
+					label="How tile size is calculated"
+					placement="bottom"
+					message="Sized by each paper's OpenAlex citation percentile (normalized for its field, publication year, and work type). For papers OpenAlex doesn't compute that for — mostly preprints, dissertations, and conference papers — size instead reflects the paper's raw-citation-count rank within this dataset."
+				/>
+			</span>
+		</span>
 		<span class="graph-source">Source: OpenAlex</span>
 	</div>
 
@@ -414,6 +420,14 @@
 		color: var(--text-secondary);
 		pointer-events: none;
 		line-height: 1.45;
+	}
+	.caption-row {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.caption-tooltip-wrap {
+		pointer-events: auto;
 	}
 	.graph-source {
 		display: block;

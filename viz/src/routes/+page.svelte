@@ -120,7 +120,7 @@
 		{ id: 'percentile', label: 'Percentile' },
 		{ id: 'yearPercentile', label: 'Year %ile' }
 	];
-	let sizeMetric = $state('yearPercentile');
+	let sizeMetric = $state('percentile');
 </script>
 
 <svelte:head>
@@ -217,8 +217,9 @@
 		--text-secondary: #52514e;
 		--text-muted: #898781;
 		--accent: #2a78d6;
-		--swatch-orange: #eb6834;
 		--swatch-aqua: #1baf7a;
+		--swatch-yellow: #eda100;
+		--swatch-violet: #4a3aa7;
 	}
 	/* OS preference — loses to an explicit [data-theme] stamp either way. */
 	@media (prefers-color-scheme: dark) {
@@ -230,8 +231,9 @@
 			--text-secondary: #c3c2b7;
 			--text-muted: #898781;
 			--accent: #3987e5;
-			--swatch-orange: #d95926;
 			--swatch-aqua: #199e70;
+			--swatch-yellow: #c98500;
+			--swatch-violet: #9085e9;
 		}
 	}
 	/* Explicit toggle/URL-param overrides — win in both directions. */
@@ -243,8 +245,9 @@
 		--text-secondary: #c3c2b7;
 		--text-muted: #898781;
 		--accent: #3987e5;
-		--swatch-orange: #d95926;
 		--swatch-aqua: #199e70;
+		--swatch-yellow: #c98500;
+		--swatch-violet: #9085e9;
 	}
 	:global(:root[data-theme='light']) {
 		color-scheme: light;
@@ -254,8 +257,9 @@
 		--text-secondary: #52514e;
 		--text-muted: #898781;
 		--accent: #2a78d6;
-		--swatch-orange: #eb6834;
 		--swatch-aqua: #1baf7a;
+		--swatch-yellow: #eda100;
+		--swatch-violet: #4a3aa7;
 	}
 
 	.layout {

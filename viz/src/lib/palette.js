@@ -23,7 +23,8 @@ export const palette = {
 		blue: '#2a78d6', // slot 1
 		orange: '#eb6834', // slot 2
 		aqua: '#1baf7a', // slot 3
-		yellow: '#eda100' // slot 4
+		yellow: '#eda100', // slot 4
+		violet: '#4a3aa7' // slot 7 — work-type only, kept apart from blue/orange
 	},
 	dark: {
 		surface: '#1a1a19',
@@ -33,7 +34,8 @@ export const palette = {
 		blue: '#3987e5',
 		orange: '#d95926',
 		aqua: '#199e70',
-		yellow: '#c98500'
+		yellow: '#c98500',
+		violet: '#9085e9'
 	}
 };
 
@@ -49,13 +51,17 @@ export const roles = {
 	},
 	// Work-type coloring shows all ~1,032 nodes simultaneously (not one
 	// spotlighted subset at a time like pathway), so it's the same "all-pairs"
-	// dense-scatter case as the main graph — capped at 3 hues (blue/orange/
-	// aqua), with everything else folded into a neutral "Other" (muted, not a
-	// 4th hue) rather than stretching to a less-safe simultaneous palette.
+	// dense-scatter case as the main graph. Deliberately avoids blue/orange —
+	// those already mean math/non-math one step later in the narrative, and
+	// reusing them here read as a disjointed hand-off between adjacent steps.
+	// aqua/yellow/violet re-validated all-pairs-safe in both modes (node
+	// scripts/validate_palette.js "#1baf7a,#eda100,#4a3aa7" --pairs all).
+	// Everything outside the top 3 types folds into a neutral "Other" (muted,
+	// not a 4th hue) rather than stretching past the validated set.
 	workType: {
-		article: 'blue',
-		preprint: 'orange',
-		'book-chapter': 'aqua'
+		article: 'aqua',
+		preprint: 'yellow',
+		'book-chapter': 'violet'
 	}
 };
 
