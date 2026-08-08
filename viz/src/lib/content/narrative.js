@@ -165,8 +165,8 @@ export const steps = [
 		kicker: 'Biology',
 		heading: 'Heart wall myofibers are arranged in minimal surfaces to optimize organ function (2012)',
 		body: [
-			'This paper proposes that the organization of muscle fibers through the wall of the heart can be described by a generalized minimal surface.',
-			'Whether every aspect of this model ultimately proves correct or not, it represents a striking example of mathematicians exploring a geometry decades before anyone suspected it might describe part of a living organ.'
+			"This paper proposes that the arrangement of muscle fibers through the wall of the heart follows a generalized helicoid, which is an extension of one of the classic 19th-century minimal surfaces developed by generations of geometers.",
+			"The authors argue that this geometry helps explain how the heart bundles its muscle fibers while minimizing fiber length and helping the heart pump blood efficiently."
 		],
 		openQuestion: null,
 		view: spotlight(['W2169776346'])

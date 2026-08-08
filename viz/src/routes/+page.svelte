@@ -28,6 +28,18 @@
 		return steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
 	});
 
+	// The filter panel lives over the graph (plenty of width there) rather
+	// than cramped in the narrow text column — a collapsible panel toggled
+	// from the controls row, not a modal, so the graph stays visible while
+	// adjusting filters. Only offered from free-exploration onward, matching
+	// when filtering actually has an effect; force-closed if the reader
+	// scrolls back above that point so it can't get stuck open with its
+	// toggle button hidden.
+	let filtersOpen = $state(false);
+	$effect(() => {
+		if (activeIndex < freeExplorationIndex) filtersOpen = false;
+	});
+
 	// Paper-detail modal: state lives here (not inside CitationGraph) so both
 	// the graph (canvas click) and the left-panel paper titles can open the
 	// same modal. This also fixes a stacking-context bug: CitationGraph's
@@ -107,9 +119,6 @@
 					{#each group.items as { step, index }}
 						<ScrollyStep index={index} active={index === activeIndex}>
 							<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
-							{#if step.id === 'free-exploration'}
-								<FilterPanel nodes={citerNodes} onFilterChange={(ids) => (filteredIds = ids)} />
-							{/if}
 						</ScrollyStep>
 					{/each}
 				</div>
@@ -129,7 +138,21 @@
 			<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
 				{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
 			</button>
+			{#if activeIndex >= freeExplorationIndex}
+				<button
+					class="filters-toggle"
+					class:active={filtersOpen}
+					onclick={() => (filtersOpen = !filtersOpen)}
+				>
+					{filtersOpen ? '✕ Close' : '⚲ Filters'}
+				</button>
+			{/if}
 		</div>
+		{#if filtersOpen}
+			<div class="filter-overlay">
+				<FilterPanel nodes={citerNodes} onFilterChange={(ids) => (filteredIds = ids)} onClose={() => (filtersOpen = false)} />
+			</div>
+		{/if}
 		<CitationGraph
 			nodes={data.nodes}
 			curated={data.curated}
@@ -273,6 +296,32 @@
 	}
 	.theme-toggle:hover {
 		color: var(--text-primary);
+	}
+	.filters-toggle {
+		background: var(--surface-2);
+		color: var(--text-secondary);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+		border-radius: 999px;
+		padding: 0.35rem 0.85rem;
+		font-size: 0.78rem;
+		cursor: pointer;
+	}
+	.filters-toggle:hover {
+		color: var(--text-primary);
+	}
+	.filters-toggle.active {
+		background: var(--accent);
+		color: var(--surface-1);
+		border-color: var(--accent);
+	}
+	.filter-overlay {
+		position: absolute;
+		top: 4.5rem;
+		right: 1.25rem;
+		z-index: 20;
+		width: min(30rem, calc(100% - 2.5rem));
+		max-height: calc(100vh - 6rem);
+		overflow-y: auto;
 	}
 
 	@media (max-width: 900px) {

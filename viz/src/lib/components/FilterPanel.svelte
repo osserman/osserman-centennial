@@ -6,7 +6,7 @@
 	// "show everything" from "nothing matched."
 	import FacetSelect from './FacetSelect.svelte';
 
-	let { nodes = [], onFilterChange } = $props();
+	let { nodes = [], onFilterChange, onClose } = $props();
 
 	// [{value, count}], sorted most-frequent-first — FacetSelect shows this
 	// order as "most common" when its search box is empty, so there's
@@ -91,9 +91,14 @@
 <div class="filter-panel">
 	<div class="filter-header">
 		<span>Explore the papers</span>
-		{#if hasActiveFilters}
-			<button type="button" class="clear" onclick={clearAll}>Clear ({matchCount} matching)</button>
-		{/if}
+		<div class="header-actions">
+			{#if hasActiveFilters}
+				<button type="button" class="clear" onclick={clearAll}>Clear ({matchCount} matching)</button>
+			{/if}
+			{#if onClose}
+				<button type="button" class="close" onclick={onClose} aria-label="Close filters">&times;</button>
+			{/if}
+		</div>
 	</div>
 
 	<input class="keyword" type="text" placeholder="Search titles, authors, abstracts…" bind:value={keyword} />
@@ -112,11 +117,11 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
-		background: var(--surface-2);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+		background: var(--surface-1);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
 		border-radius: 10px;
 		padding: 1.1rem 1.25rem;
-		margin-bottom: 1.5rem;
+		box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
 	}
 	.filter-header {
 		display: flex;
@@ -128,6 +133,11 @@
 		text-transform: uppercase;
 		color: var(--text-secondary);
 	}
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
 	.clear {
 		background: none;
 		border: none;
@@ -138,9 +148,22 @@
 		letter-spacing: normal;
 		cursor: pointer;
 		padding: 0;
+		white-space: nowrap;
 	}
 	.clear:hover {
 		text-decoration: underline;
+	}
+	.close {
+		background: none;
+		border: none;
+		color: var(--text-secondary);
+		font-size: 1.2rem;
+		line-height: 1;
+		cursor: pointer;
+		padding: 0;
+	}
+	.close:hover {
+		color: var(--text-primary);
 	}
 	.keyword {
 		width: 100%;
@@ -158,7 +181,7 @@
 	}
 	.facets {
 		display: grid;
-		grid-template-columns: 1fr;
-		gap: 0.85rem;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.85rem 1rem;
 	}
 </style>
