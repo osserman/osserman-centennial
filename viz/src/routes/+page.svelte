@@ -21,7 +21,18 @@
 	// a new code path.
 	const freeExplorationIndex = steps.findIndex((s) => s.id === 'free-exploration');
 	let filteredIds = $state(null);
+
+	// Debug-only: spotlight papers missing citation_normalized_percentile
+	// (the "Percentile" size metric) so it's visible which/how many papers
+	// fall back to floor-size under that metric — a data-coverage check, not
+	// a narrative view. Takes priority over everything else while active.
+	const missingPercentileIds = citerNodes.filter((n) => n.citationPctile == null).map((n) => n.id);
+	let highlightMissingPercentile = $state(false);
+
 	let activeView = $derived.by(() => {
+		if (highlightMissingPercentile) {
+			return { colorBy: 'none', highlightIds: missingPercentileIds, dimBackground: true };
+		}
 		if (activeIndex >= freeExplorationIndex && filteredIds !== null) {
 			return { colorBy: 'none', highlightIds: filteredIds, dimBackground: true };
 		}
@@ -88,14 +99,14 @@
 	}
 
 	// Size-metric toggle and theme toggle are tuning/dev controls, not part of
-	// the shared prototype's default UI — hidden unless ?custom-params=on is
-	// in the URL, so casual visitors get a clean read-only view while we keep
-	// a way to reach them for tuning.
+	// the shared prototype's default UI — hidden unless ?debug=true is in the
+	// URL, so casual visitors get a clean read-only view while we keep a way
+	// to reach them for tuning.
 	let showCustomParams = $state(false);
 
 	onMount(() => {
 		const params = new URLSearchParams(window.location.search);
-		showCustomParams = params.get('custom-params') === 'on';
+		showCustomParams = params.get('debug') === 'true';
 		const param = params.get('theme');
 		if (param === 'light' || param === 'dark') applyTheme(param);
 	});
@@ -146,6 +157,13 @@
 				</div>
 				<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
 					{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
+				</button>
+				<button
+					class="theme-toggle"
+					class:active={highlightMissingPercentile}
+					onclick={() => (highlightMissingPercentile = !highlightMissingPercentile)}
+				>
+					⚠ Missing %ile ({missingPercentileIds.length})
 				</button>
 			{/if}
 			{#if activeIndex >= freeExplorationIndex}
@@ -306,6 +324,11 @@
 	}
 	.theme-toggle:hover {
 		color: var(--text-primary);
+	}
+	.theme-toggle.active {
+		background: var(--accent);
+		color: var(--surface-1);
+		border-color: var(--accent);
 	}
 	.filters-toggle {
 		background: var(--surface-2);
