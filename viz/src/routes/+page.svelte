@@ -124,7 +124,7 @@
 </script>
 
 <svelte:head>
-	<title>From Pure Mathematics to the World</title>
+	<title>Robert Osserman -- 100 Years</title>
 </svelte:head>
 
 <main class="layout">

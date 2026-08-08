@@ -37,7 +37,7 @@ export const steps = [
 		subheading: 'Tracing the unexpected journeys from math theory to other fields',
 		body: [
 			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>.',
-			"It was the first broad graduate-level mathematics textbook spanning this sub-field of geometry.",
+			"It became the standard graduate-level introduction to this rapidly growing area of geometry.",
 			'More than fifty years later, the book has been cited by over **1,000** scholarly publications.',
 			"Scroll down to learn more."
 		],
