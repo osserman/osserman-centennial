@@ -36,8 +36,7 @@ export const steps = [
 		heading: 'Minimal surfaces beyond mathematics',
 		subheading: 'Tracing the unexpected journeys from math theory to other fields',
 		body: [
-			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>.',
-			"It became the standard graduate-level introduction to this rapidly growing area of geometry.",
+			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>, a graduate-level textbook that became the standard introduction to this rapidly growing area of geometry.',
 			'More than fifty years later, the book has been cited by over **1,000** scholarly publications.',
 			"Scroll down to learn more."
 		],
@@ -369,7 +368,7 @@ export const steps = [
 		openQuestion: null,
 		view: NONE_VIEW
 	},
-	{
+	/*{
 		id: 'epilogue',
 		kicker: null,
 		heading: 'The story is still unfolding',
@@ -383,5 +382,5 @@ export const steps = [
 		],
 		openQuestion: null,
 		view: NONE_VIEW
-	}
+	}*/
 ];
