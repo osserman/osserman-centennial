@@ -101,7 +101,7 @@
 		{ id: 'percentile', label: 'Percentile' },
 		{ id: 'yearPercentile', label: 'Year %ile' }
 	];
-	let sizeMetric = $state('citations');
+	let sizeMetric = $state('yearPercentile');
 </script>
 
 <svelte:head>
