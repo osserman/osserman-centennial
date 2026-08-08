@@ -38,8 +38,8 @@ const DATA_DIR = path.join(__dirname, '..', 'static', 'data');
 const raw = JSON.parse(readFileSync(path.join(DATA_DIR, 'graph_raw.json'), 'utf-8'));
 
 const ASPECT = 0.72; // paper-proportioned (~page aspect), a discrete "document" shape, not a value bar
-const MIN_H = 8;
-const MAX_H = 42;
+const MIN_H = 12;
+const MAX_H = 36;
 
 // Rank-normalize a metric within *this dataset* (empirical percentile rank,
 // 0-1) rather than trusting the metric's assumed theoretical range. This
@@ -67,7 +67,7 @@ function rankNormalized(list, valueFn) {
 
 // citers is defined below xValues but SIZE_METRICS is only invoked after
 // that point (see layoutForMetric loop), so forward-reference is fine.
-let percentileRank, yearPercentileRank;
+let percentileRank, yearPercentileRank, citationCountRank;
 
 // citedByCount is raw, long-tailed data (a few works with 500+ citations,
 // most under 20) — sqrt is a *concave* curve, which is exactly right there:
@@ -89,14 +89,33 @@ let percentileRank, yearPercentileRank;
 // small and only the real top slice stands out, matching what raw citation
 // counts show naturally.
 const RANK_EMPHASIS = 4;
+
+// citation_normalized_percentile and cited_by_percentile_year are both
+// missing for a meaningful slice of papers (78% / 58% coverage respectively)
+// — structurally, not randomly: OpenAlex mostly only computes them for
+// articles/books/book-chapters, so preprints, dissertations, conference
+// papers etc. are excluded regardless of actual impact. Rather than floor
+// every one of those papers to MIN_H (visually indistinguishable from a
+// genuinely low-impact paper), fall back to the rank of raw citedByCount
+// within this same dataset — always present (100% coverage) — run through
+// the identical rank^RANK_EMPHASIS curve. A fallback-sized paper isn't
+// measuring quite the same thing as a real percentile (see the debug
+// "Missing %ile" toggle in +page.svelte to see which is which), but it
+// stays on the same visual scale instead of defaulting to "smallest."
+function withFallback(rank, i) {
+	return rank[i] != null ? rank[i] : citationCountRank[i];
+}
+
 const SIZE_METRICS = {
 	citations: (n) => MIN_H + Math.sqrt(Math.min(n.citedByCount || 0, 900)) * 1.13,
-	percentile: (n, i) =>
-		percentileRank[i] == null ? MIN_H : MIN_H + Math.pow(percentileRank[i], RANK_EMPHASIS) * (MAX_H - MIN_H),
-	yearPercentile: (n, i) =>
-		yearPercentileRank[i] == null
-			? MIN_H
-			: MIN_H + Math.pow(yearPercentileRank[i], RANK_EMPHASIS) * (MAX_H - MIN_H)
+	percentile: (n, i) => {
+		const r = withFallback(percentileRank, i);
+		return r == null ? MIN_H : MIN_H + Math.pow(r, RANK_EMPHASIS) * (MAX_H - MIN_H);
+	},
+	yearPercentile: (n, i) => {
+		const r = withFallback(yearPercentileRank, i);
+		return r == null ? MIN_H : MIN_H + Math.pow(r, RANK_EMPHASIS) * (MAX_H - MIN_H);
+	}
 };
 
 function fractionalYear(dateStr, fallbackYear) {
@@ -111,6 +130,7 @@ function fractionalYear(dateStr, fallbackYear) {
 const citers = raw.nodes.filter((n) => !n.isSeed);
 percentileRank = rankNormalized(citers, (n) => n.citationPctile);
 yearPercentileRank = rankNormalized(citers, (n) => n.citedByPctileYear);
+citationCountRank = rankNormalized(citers, (n) => n.citedByCount ?? 0);
 
 const yearValues = citers.map((n) => fractionalYear(n.publicationDate, n.year));
 const minYear = Math.min(...yearValues);
