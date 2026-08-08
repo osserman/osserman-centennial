@@ -32,8 +32,8 @@ export const steps = [
 	{
 		id: 'intro',
 		kicker: null,
-		heading: 'From Pure Mathematics to the World',
-		subheading: 'Tracing the unexpected journeys of minimal surface theory',
+		heading: 'The propagation of minimal surface mathematatics',
+		subheading: 'Tracing the unexpected journeys of math theory to practice',
 		body: [
 			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>.',
 			"It was the first broad graduate-level mathematics textbook spanning this sub-field of geometry.",
@@ -178,9 +178,8 @@ export const steps = [
 		kicker: 'Biology',
 		heading: 'Gaussian curvature directs the distribution of spontaneous curvature on bilayer membrane necks (2018)',
 		body: [
-			'Cell membranes constantly bend, merge and divide.',
-			'This work investigates how the geometry of narrow membrane necks may influence where proteins accumulate during those processes.',
-			'Rather than simply describing biological shape, geometry becomes part of the proposed mechanism.'
+			"Cell membranes constantly bend, merge and divide as cells grow, communicate and transport materials.",
+			"This paper investigates how the geometry of the narrow membrane necks formed during these processes influences where proteins accumulate."
 		],
 		openQuestion: null,
 		view: spotlight(['W2169776346', 'W2612605708'])
