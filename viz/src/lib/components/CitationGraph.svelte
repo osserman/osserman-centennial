@@ -378,7 +378,12 @@
 	</div>
 
 	{#if hovered}
-		<div class="tooltip" style="left: {pointer.x + 16}px; top: {pointer.y + 16}px;">
+		<div
+			class="tooltip"
+			style="top: {pointer.y + 16}px; {container && pointer.x + 276 > container.clientWidth
+				? `right: ${container.clientWidth - pointer.x + 16}px;`
+				: `left: ${pointer.x + 16}px;`}"
+		>
 			<div class="tooltip-title">{hovered.title}</div>
 			<div class="tooltip-meta">
 				{hovered.authors ? hovered.authors + ' · ' : ''}{hovered.year} · {hovered.field}
