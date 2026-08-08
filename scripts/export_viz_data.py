@@ -56,7 +56,7 @@ def fetch_nodes(conn, seed_set_id):
     rows = conn.execute(
         """
         SELECT w.openalex_id, w.title, w.publication_year, w.publication_date, w.doi, w.cited_by_count,
-               w.fwci, w.citation_pctile, w.top_10_percent, w.abstract,
+               w.fwci, w.citation_pctile, w.top_10_percent, w.abstract, w.type AS work_type,
                w.cited_by_pctile_year_min, w.cited_by_pctile_year_max,
                s.generation,
                COALESCE(t.field_name, '(no field)') AS field,
@@ -106,6 +106,7 @@ def fetch_nodes(conn, seed_set_id):
             "citedByPctileYear": year_pctile,
             "top10Percent": bool(r["top_10_percent"]),
             "abstract": r["abstract"] or "",
+            "workType": r["work_type"] or "",
             "field": r["field"],
             "subfield": r["subfield"],
             "topic": r["topic"],

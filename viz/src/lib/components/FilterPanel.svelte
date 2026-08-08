@@ -8,34 +8,42 @@
 
 	let { nodes = [], onFilterChange } = $props();
 
-	function distinct(getValues) {
-		const set = new Set();
+	// [{value, count}], sorted most-frequent-first — FacetSelect shows this
+	// order as "most common" when its search box is empty, so there's
+	// something real to browse instead of a blind text box (a placeholder
+	// like "e.g. Nature" is a bad hint if nothing in the actual dataset
+	// matches it).
+	function distinctWithCounts(getValues) {
+		const counts = new Map();
 		for (const n of nodes) {
 			for (const v of getValues(n)) {
 				const trimmed = (v || '').trim();
-				if (trimmed) set.add(trimmed);
+				if (trimmed) counts.set(trimmed, (counts.get(trimmed) || 0) + 1);
 			}
 		}
-		return [...set].sort((a, b) => a.localeCompare(b));
+		return [...counts.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count);
 	}
 
-	const topicOptions = distinct((n) => [n.topic]);
-	const venueOptions = distinct((n) => [n.venue]);
-	const institutionOptions = distinct((n) => n.institutions || []);
-	const countryOptions = distinct((n) => n.countries || []);
+	const topicOptions = distinctWithCounts((n) => [n.topic]);
+	const venueOptions = distinctWithCounts((n) => [n.venue]);
+	const institutionOptions = distinctWithCounts((n) => n.institutions || []);
+	const countryOptions = distinctWithCounts((n) => n.countries || []);
+	const typeOptions = distinctWithCounts((n) => [n.workType]);
 
 	let keyword = $state('');
 	let selectedTopics = $state([]);
 	let selectedVenues = $state([]);
 	let selectedInstitutions = $state([]);
 	let selectedCountries = $state([]);
+	let selectedTypes = $state([]);
 
 	let hasActiveFilters = $derived(
 		keyword.trim().length > 0 ||
 			selectedTopics.length > 0 ||
 			selectedVenues.length > 0 ||
 			selectedInstitutions.length > 0 ||
-			selectedCountries.length > 0
+			selectedCountries.length > 0 ||
+			selectedTypes.length > 0
 	);
 
 	function matches(n) {
@@ -53,6 +61,7 @@
 			return false;
 		if (selectedCountries.length && !(n.countries || []).some((c) => selectedCountries.includes(c.trim())))
 			return false;
+		if (selectedTypes.length && !selectedTypes.includes(n.workType)) return false;
 		return true;
 	}
 
@@ -75,6 +84,7 @@
 		selectedVenues = [];
 		selectedInstitutions = [];
 		selectedCountries = [];
+		selectedTypes = [];
 	}
 </script>
 
@@ -89,10 +99,11 @@
 	<input class="keyword" type="text" placeholder="Search titles, authors, abstracts…" bind:value={keyword} />
 
 	<div class="facets">
-		<FacetSelect label="Topic" options={topicOptions} bind:selected={selectedTopics} placeholder="e.g. Minimal Surfaces" />
-		<FacetSelect label="Journal / venue" options={venueOptions} bind:selected={selectedVenues} placeholder="e.g. Nature" />
-		<FacetSelect label="Institution" options={institutionOptions} bind:selected={selectedInstitutions} placeholder="e.g. MIT" />
+		<FacetSelect label="Topic" options={topicOptions} bind:selected={selectedTopics} placeholder="e.g. Geometric Analysis" />
+		<FacetSelect label="Journal / venue" options={venueOptions} bind:selected={selectedVenues} placeholder="e.g. arXiv" />
+		<FacetSelect label="Institution" options={institutionOptions} bind:selected={selectedInstitutions} placeholder="e.g. Stanford" />
 		<FacetSelect label="Country" options={countryOptions} bind:selected={selectedCountries} placeholder="e.g. US" />
+		<FacetSelect label="Type of work" options={typeOptions} bind:selected={selectedTypes} placeholder="e.g. article" />
 	</div>
 </div>
 

@@ -1,26 +1,31 @@
 <script>
 	// One searchable multi-select facet (type to filter, click to add a chip).
-	// Used for topic/venue/institution/country in FilterPanel — flat checkbox
-	// lists don't work at 100+ distinct values per facet.
+	// Used for topic/venue/institution/country/type in FilterPanel — flat
+	// checkbox lists don't work at 100+ distinct values per facet.
+	//
+	// `options` is [{value, count}], pre-sorted by count descending (most
+	// frequent first) by the parent. With an empty query the dropdown shows
+	// the most popular values — so there's something to browse before typing
+	// anything, not just a search box that returns nothing until you already
+	// know an exact value that exists in the data.
 	let { label, options = [], selected = $bindable([]), placeholder = 'Search…' } = $props();
 
 	let query = $state('');
 	let open = $state(false);
 
-	let matches = $derived(
-		query.trim()
-			? options
-					.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()) && !selected.includes(o))
-					.slice(0, 8)
-			: []
-	);
+	let matches = $derived.by(() => {
+		const pool = options.filter((o) => !selected.includes(o.value));
+		const q = query.trim().toLowerCase();
+		const filtered = q ? pool.filter((o) => o.value.toLowerCase().includes(q)) : pool;
+		return filtered.slice(0, 8);
+	});
 
-	function add(o) {
-		selected = [...selected, o];
+	function add(value) {
+		selected = [...selected, value];
 		query = '';
 	}
-	function remove(o) {
-		selected = selected.filter((s) => s !== o);
+	function remove(value) {
+		selected = selected.filter((s) => s !== value);
 	}
 </script>
 
@@ -46,9 +51,15 @@
 		/>
 		{#if open && matches.length}
 			<ul class="dropdown">
-				{#each matches as m (m)}
+				{#if !query.trim()}
+					<li class="dropdown-hint">Most common</li>
+				{/if}
+				{#each matches as m (m.value)}
 					<li>
-						<button type="button" onclick={() => add(m)}>{m}</button>
+						<button type="button" onclick={() => add(m.value)}>
+							<span class="option-value" title={m.value}>{m.value}</span>
+							<span class="option-count">{m.count}</span>
+						</button>
 					</li>
 				{/each}
 			</ul>
@@ -130,8 +141,19 @@
 		padding: 0.25rem;
 		list-style: none;
 	}
+	.dropdown-hint {
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		padding: 0.3rem 0.5rem 0.15rem;
+	}
 	.dropdown li button {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
 		width: 100%;
 		text-align: left;
 		background: none;
@@ -144,5 +166,15 @@
 	}
 	.dropdown li button:hover {
 		background: var(--surface-2);
+	}
+	.option-value {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.option-count {
+		flex-shrink: 0;
+		color: var(--text-muted);
+		font-size: 0.72rem;
 	}
 </style>

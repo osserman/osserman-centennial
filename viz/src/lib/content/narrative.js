@@ -35,7 +35,7 @@ export const steps = [
 		heading: 'From Pure Mathematics to the World',
 		subheading: 'Tracing the unexpected journeys of minimal surface theory',
 		body: [
-			'In 1969, Robert Osserman published *A Survey of Minimal Surfaces*.',
+			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>.',
 			"It was the first broad graduate-level mathematics textbook spanning this sub-field of geometry.",
 			'More than fifty years later, the book has been cited by over **1,000** scholarly publications.',
 			"Scroll down to learn more."
@@ -76,7 +76,7 @@ export const steps = [
 			'The structures need to be strong enough to support the body while remaining porous enough for cells, blood vessels and nutrients to move through them.',
 			'Ideas from minimal surface mathematics offered one possible solution.' 
 		],
-		openQuestion: 'Needs more research: explain the later development of this work and whether these proposed structures were subsequently realized experimentally.',
+		openQuestion: 'Verification questions: is the above accurate; and how important have these minimal-surface informed designs been as the field evolves.',
 		view: DIM_VIEW
 	},
 	{
@@ -86,11 +86,10 @@ export const steps = [
 		kicker: 'Engineering & Bioengineering',
 		heading: 'Bone tissue regeneration: the role of scaffold geometry (2014)',
 		body: [
-			'This influential review argues that the geometry of a scaffold can significantly influence how new bone grows.',
-			'Among the candidate geometries are triply periodic minimal surfaces—smooth, continuously connected forms first studied in mathematics.',
-			'Rather than copying existing biological structures, engineers began asking whether these mathematical geometries might provide better environments for tissue regeneration.'
+			"This influential review argues that the geometry of a scaffold (a porous structure that supports the growth of new bone tissue) can significantly influence how new bone forms.",
+			"Researchers have explored many possible scaffold geometries — from structures inspired by natural bone to mathematically defined architectures. This review identifies minimal-surface geometries as one particularly promising family because they combine interconnected pores with favorable mechanical and transport properties."
 		],
-		openQuestion: null,
+		openQuestion: 'Verification questions: is the above accurate; how have these promising minimal-surfaces approaches held up?',
 		view: spotlight(['W2120559167'])
 	},
 	{
@@ -103,7 +102,7 @@ export const steps = [
 			'By the late 2010s, advances in metal 3D printing made these intricate geometries practical to manufacture.',
 			'This review discusses how they were being investigated for orthopedic implants and other biomedical applications where internal geometry strongly influences mechanical strength and biological performance.'
 		],
-		openQuestion: null,
+		openQuestion: 'Verification question: is the above accurate?',
 		view: spotlight(['W2120559167', 'W2943941736'])
 	},
 
@@ -113,12 +112,11 @@ export const steps = [
 		kicker: 'Materials Science',
 		heading: 'Recognizing shapes nature already produces',
 		body: [
-			'Another branch leads into materials science.',
-			'Some materials spontaneously organize themselves into remarkably intricate internal structures only billionths of a meter across.',
-			'As researchers began studying these microscopic networks, they realized many resembled surfaces mathematicians had already classified decades earlier.',
-			'Minimal surface mathematics became a language for recognizing and describing these hidden geometries.'
+			"One area of materials science studies self-assembly: how, when the conditions are right, molecules can spontaneously organize themselves into remarkably intricate three-dimensional networks only billionths of a meter across.",
+			'As researchers began studying these microscopic networks, they realized many closely resembled surfaces mathematicians had already been exploring for decades.',
+			'Minimal-surface mathematics provided a language for recognizing, describing, and eventually engineering these hidden geometries.'
 		],
-		openQuestion: null,
+		openQuestion: 'Verification question: is the above accurate?',
 		view: DIM_VIEW
 	},
 	{
@@ -129,8 +127,7 @@ export const steps = [
 		heading: 'Bicontinuous Cubic Morphologies in Block Copolymers and Amphiphile/Water Systems (1997)',
 		body: [
 			'Certain plastics and mixtures of oil-like and water-like molecules naturally separate into complex three-dimensional networks.',
-			'This paper helped show how a family of mathematically defined surfaces—including the gyroid and Schwarz surfaces—could describe those structures.',
-			'Rather than inventing new forms, the mathematics helped scientists recognize forms that nature was already producing.'
+			'This paper helped show how a family of minimal surfaces—including the gyroid and Schwarz surfaces—could describe those structures.',
 		],
 		openQuestion: null,
 		view: spotlight(['W2044735577'])
@@ -142,10 +139,11 @@ export const steps = [
 		kicker: 'Materials Science',
 		heading: 'Triply Periodic Minimal Surfaces Decorated with Curved Graphite (1993)',
 		body: [
-			'One of the earliest examples suggesting that minimal-surface geometry could inspire entirely new kinds of carbon structures.'
+			"This paper asked whether carbon atoms could be arranged into entirely new three-dimensional architectures inspired by minimal-surface geometry.", 
+			"It helped launch the study of a family of materials now known as schwarzites, whose unusual geometry continues to attract interest for potential applications in nanomaterials and energy technologies."	
 		],
 		openQuestion:
-			'Needs more research: explain the later development of this work and whether these proposed structures were subsequently realized experimentally.',
+			'Needs more research: verify, and clarify which proposed properties (e.g. mechanical, electronic, catalytic, etc.) have been demonstrated experimentally versus remaining theoretical.',
 		view: spotlight(['W2044735577', 'W2002021482'])
 	},
 
@@ -155,9 +153,7 @@ export const steps = [
 		kicker: 'Biology',
 		heading: 'Does life itself organize around these geometries?',
 		body: [
-			'Minimal surfaces also entered biology.',
-			'Here the mathematics is not primarily being used to design materials.',
-			'Instead, researchers ask whether living systems themselves organize around similar geometries.'
+			'Beyond engineered materials, researchers have also discovered that similar geometries appear throughout nature—from cell membranes to the architecture of the heart.',
 		],
 		openQuestion: null,
 		view: DIM_VIEW

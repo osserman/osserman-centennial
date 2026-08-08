@@ -69,17 +69,34 @@ function rankNormalized(list, valueFn) {
 // that point (see layoutForMetric loop), so forward-reference is fine.
 let percentileRank, yearPercentileRank;
 
-// sqrt (not linear) for all three, for the same reason: raw citedByCount is
-// long-tailed, so sqrt compresses it into an intuitively graduated visual
-// spread. Applying sqrt to the two rank-normalized metrics too — rather than
-// linear — gives all three the same graduated character instead of the
-// percentile metrics reading as flatter/more clumped than citations.
+// citedByCount is raw, long-tailed data (a few works with 500+ citations,
+// most under 20) — sqrt is a *concave* curve, which is exactly right there:
+// it compresses the dominance of those extreme values so the scale stays
+// readable while still leaving the top visibly bigger.
+//
+// Rank (percentile-within-dataset) is a totally different shape: uniform by
+// construction. Applying the same concave sqrt curve to a uniform variable
+// doesn't reveal a skew — it manufactures a fake one, and in the wrong
+// direction: sqrt(0.9) - sqrt(0.5) = 0.24 while sqrt(0.5) - sqrt(0.1) = 0.39,
+// so it visually *flattens* the top of the range and exaggerates the bottom.
+// That's what "the 99th percentile looks no bigger than the 98th" was.
+//
+// A percentile itself doesn't carry the real skew — only a minority of
+// papers are disproportionately influential, and percentile rank treats
+// every gap as equal. RANK_EMPHASIS applies a convex power curve (rank^4)
+// to reintroduce that skew visually: at rank 0.5 the curve is at ~0.06 of
+// the size range, at 0.9 it's ~0.66, at 0.99 it's ~0.96 — most papers stay
+// small and only the real top slice stands out, matching what raw citation
+// counts show naturally.
+const RANK_EMPHASIS = 4;
 const SIZE_METRICS = {
 	citations: (n) => MIN_H + Math.sqrt(Math.min(n.citedByCount || 0, 900)) * 1.13,
 	percentile: (n, i) =>
-		percentileRank[i] == null ? MIN_H : MIN_H + Math.sqrt(percentileRank[i]) * (MAX_H - MIN_H),
+		percentileRank[i] == null ? MIN_H : MIN_H + Math.pow(percentileRank[i], RANK_EMPHASIS) * (MAX_H - MIN_H),
 	yearPercentile: (n, i) =>
-		yearPercentileRank[i] == null ? MIN_H : MIN_H + Math.sqrt(yearPercentileRank[i]) * (MAX_H - MIN_H)
+		yearPercentileRank[i] == null
+			? MIN_H
+			: MIN_H + Math.pow(yearPercentileRank[i], RANK_EMPHASIS) * (MAX_H - MIN_H)
 };
 
 function fractionalYear(dateStr, fallbackYear) {
