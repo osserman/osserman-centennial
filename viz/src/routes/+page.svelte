@@ -227,7 +227,7 @@
 		align-items: flex-start;
 	}
 	.text-panel {
-		width: min(34vw, 30rem);
+		width: min(28vw, 24rem);
 		flex-shrink: 0;
 		padding: 0 2.5rem;
 		border-right: 1px solid var(--surface-2);

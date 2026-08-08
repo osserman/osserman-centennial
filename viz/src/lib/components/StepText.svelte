@@ -47,7 +47,6 @@
 
 <style>
 	.step-text {
-		max-width: 34ch;
 		font-size: 1.05rem;
 		line-height: 1.6;
 	}
