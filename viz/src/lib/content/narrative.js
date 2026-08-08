@@ -32,7 +32,7 @@ export const steps = [
 	{
 		id: 'intro',
 		kicker: null,
-		heading: 'The propagation of minimal surface mathematatics',
+		heading: 'The propagation of minimal surface mathematics',
 		subheading: 'Tracing the unexpected journeys of math theory to practice',
 		body: [
 			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>.',
