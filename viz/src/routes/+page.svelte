@@ -87,8 +87,16 @@
 		applyTheme(theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto');
 	}
 
+	// Size-metric toggle and theme toggle are tuning/dev controls, not part of
+	// the shared prototype's default UI — hidden unless ?custom-params=on is
+	// in the URL, so casual visitors get a clean read-only view while we keep
+	// a way to reach them for tuning.
+	let showCustomParams = $state(false);
+
 	onMount(() => {
-		const param = new URLSearchParams(window.location.search).get('theme');
+		const params = new URLSearchParams(window.location.search);
+		showCustomParams = params.get('custom-params') === 'on';
+		const param = params.get('theme');
 		if (param === 'light' || param === 'dark') applyTheme(param);
 	});
 
@@ -128,16 +136,18 @@
 
 	<div class="graph-panel">
 		<div class="controls">
-			<div class="size-toggle" role="group" aria-label="Node size metric">
-				{#each SIZE_METRICS as m}
-					<button class:active={sizeMetric === m.id} onclick={() => (sizeMetric = m.id)}>
-						{m.label}
-					</button>
-				{/each}
-			</div>
-			<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
-				{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
-			</button>
+			{#if showCustomParams}
+				<div class="size-toggle" role="group" aria-label="Node size metric">
+					{#each SIZE_METRICS as m}
+						<button class:active={sizeMetric === m.id} onclick={() => (sizeMetric = m.id)}>
+							{m.label}
+						</button>
+					{/each}
+				</div>
+				<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
+					{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
+				</button>
+			{/if}
 			{#if activeIndex >= freeExplorationIndex}
 				<button
 					class="filters-toggle"
