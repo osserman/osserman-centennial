@@ -12,6 +12,17 @@
 
 	let { label, options = [], selected = $bindable([]), placeholder = 'Search…' } = $props();
 
+	// Diagnostic logging for the intermittent "clicking a dropdown option
+	// does nothing" bug — reproduction has been too inconsistent to pin down
+	// from code reading alone. Gated behind ?debug=true (same param as the
+	// other tuning controls) so it's silent for normal visitors; open devtools
+	// with that param set and watch for a run of these logs that *doesn't*
+	// end in "add() called" when the bug happens, then share the sequence.
+	const DEBUG = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'true';
+	function dlog(...args) {
+		if (DEBUG) console.log(`[FacetSelect:${label}]`, ...args);
+	}
+
 	let query = $state('');
 	let open = $state(false);
 	let wrapEl;
@@ -49,8 +60,17 @@
 	}
 
 	function handleFocus() {
+		dlog('focus -> open=true');
 		open = true;
 		positionDropdown();
+	}
+
+	function handleBlur() {
+		dlog('blur -> scheduling open=false in 150ms');
+		setTimeout(() => {
+			dlog('blur timeout fired -> open=false (was', open, ')');
+			open = false;
+		}, 150);
 	}
 
 	// A fixed-position dropdown doesn't move with the input if an ancestor
@@ -66,10 +86,43 @@
 	// between mousedown and click, so the click event had nothing left to
 	// fire on and add() silently never ran. That's what caused the
 	// intermittent "clicking an option just closes the dropdown" bug.
+	$effect(() => {
+		dlog('open state ->', open);
+	});
+
+	onMount(() => {
+		if (!DEBUG) return;
+		// Window-level capture click tracer: fires *before* the option
+		// button's own onclick regardless of whether that handler ends up
+		// running at all — if the click never reaches add(), this line still
+		// shows what element the browser actually dispatched the click to
+		// (or that no click happened here at all), which the option's own
+		// onclick log alone can't distinguish.
+		const traceClick = (e) => {
+			if (!wrapEl || !wrapEl.contains(e.target)) return;
+			dlog(
+				'window capture click, target=',
+				e.target?.tagName,
+				e.target?.className,
+				'defaultPrevented=',
+				e.defaultPrevented
+			);
+		};
+		window.addEventListener('click', traceClick, true);
+		return () => window.removeEventListener('click', traceClick, true);
+	});
+
 	onMount(() => {
 		const closeOnScroll = (e) => {
 			if (!open) return;
-			if (dropdownEl && dropdownEl.contains(e.target)) return;
+			const contained = dropdownEl && dropdownEl.contains(e.target);
+			dlog(
+				'scroll event, target=',
+				e.target?.tagName,
+				e.target?.className,
+				contained ? '(inside dropdown, ignoring)' : '(outside dropdown, CLOSING)'
+			);
+			if (contained) return;
 			open = false;
 		};
 		window.addEventListener('scroll', closeOnScroll, true);
@@ -80,7 +133,12 @@
 		};
 	});
 
+	function handleOptionMousedown(value) {
+		dlog('option mousedown:', value, '(open currently', open, ')');
+	}
+
 	function add(value) {
+		dlog('add() called with:', value);
 		selected = [...selected, value];
 		query = '';
 	}
@@ -102,13 +160,7 @@
 		</div>
 	{/if}
 	<div class="input-wrap" bind:this={wrapEl}>
-		<input
-			type="text"
-			{placeholder}
-			bind:value={query}
-			onfocus={handleFocus}
-			onblur={() => setTimeout(() => (open = false), 150)}
-		/>
+		<input type="text" {placeholder} bind:value={query} onfocus={handleFocus} onblur={handleBlur} />
 		{#if open && matches.length}
 			<ul class="dropdown" style={dropdownStyle} bind:this={dropdownEl}>
 				{#if !query.trim()}
@@ -116,7 +168,11 @@
 				{/if}
 				{#each matches as m (m.value)}
 					<li>
-						<button type="button" onclick={() => add(m.value)}>
+						<button
+							type="button"
+							onmousedown={() => handleOptionMousedown(m.value)}
+							onclick={() => add(m.value)}
+						>
 							<span class="option-value" title={m.value}>{m.value}</span>
 							<span class="option-count">{m.count}</span>
 						</button>
