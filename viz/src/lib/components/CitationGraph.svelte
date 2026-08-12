@@ -21,7 +21,7 @@
 
 	/**
 	 * @typedef {Object} ViewSpec
-	 * @property {'none'|'mathVsOther'|'pathway'|'workType'} colorBy
+	 * @property {'none'|'mathVsOther'|'pathway'|'workType'|'filter'} colorBy
 	 * @property {string[]} highlightIds - curated node ids to spotlight; also
 	 *   drives the camera (focus on these, or fit-all when empty)
 	 * @property {boolean} dimBackground - mute all non-highlighted nodes heavily
@@ -179,7 +179,7 @@
 		return null;
 	}
 
-	function colorFor(n, pal) {
+	function colorFor(n, pal, highlightSet) {
 		const spec = viewSpec;
 		// 'math' / 'nonMath': single-hue highlight against a grey field, not a
 		// two-hue split — the side *not* being talked about stays grey (and
@@ -198,6 +198,13 @@
 		}
 		if (spec.colorBy === 'workType') {
 			return pal[roles.workType[n.workType]] ?? pal.muted;
+		}
+		// Filter results: a solid fill on matches (not an outline — with
+		// hundreds of simultaneous matches, a ring per mark reads as visual
+		// noise, not emphasis) against the same muted/dimmed non-matches every
+		// other spotlight mode uses.
+		if (spec.colorBy === 'filter') {
+			return highlightSet?.has(n.id) ? pal[roles.math] : pal.muted;
 		}
 		return pal.muted;
 	}
@@ -261,7 +268,7 @@
 
 			const dimmed = isDimmed(n);
 			const isHighlighted = highlightSet.has(n.id);
-			const color = colorFor(n, pal);
+			const color = colorFor(n, pal, highlightSet);
 			const rw = isHighlighted ? w + 3 : w;
 			const rh = isHighlighted ? h + 3 : h;
 			const radius = Math.min(3, rw / 4, rh / 4);
@@ -279,7 +286,10 @@
 			ctx.strokeStyle = pal.surface;
 			ctx.stroke();
 
-			if (isHighlighted) {
+			// Filter mode marks matches with a solid fill (above) instead of
+			// this outline ring — with hundreds of simultaneous matches, a ring
+			// around each one reads as noise, not emphasis.
+			if (isHighlighted && viewSpec.colorBy !== 'filter') {
 				ctx.globalAlpha = 1;
 				ctx.lineWidth = 2;
 				ctx.strokeStyle = pal.textPrimary;

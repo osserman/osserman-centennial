@@ -34,7 +34,7 @@
 			return { colorBy: 'none', highlightIds: missingPercentileIds, dimBackground: true };
 		}
 		if (activeIndex >= freeExplorationIndex && filteredIds !== null) {
-			return { colorBy: 'none', highlightIds: filteredIds, dimBackground: true };
+			return { colorBy: 'filter', highlightIds: filteredIds, dimBackground: true };
 		}
 		return steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
 	});
