@@ -15,6 +15,7 @@
 	let query = $state('');
 	let open = $state(false);
 	let wrapEl;
+	let dropdownEl;
 	let dropdownStyle = $state('');
 
 	let matches = $derived.by(() => {
@@ -55,9 +56,21 @@
 	// A fixed-position dropdown doesn't move with the input if an ancestor
 	// scrolls (there's no live link between them) — closing on scroll is
 	// simpler and more robust than repositioning on every scroll event.
+	//
+	// Capture-phase `scroll` listeners on window see EVERY scroll in the
+	// tree on the way down, including the dropdown list's own internal
+	// scrollbar (max-height + overflow-y:auto) — not just an ancestor
+	// panel scrolling. Without the target check below, clicking an option
+	// that causes even a 1px native "scroll this newly-focused button into
+	// view" adjustment would close the dropdown (removing it from the DOM)
+	// between mousedown and click, so the click event had nothing left to
+	// fire on and add() silently never ran. That's what caused the
+	// intermittent "clicking an option just closes the dropdown" bug.
 	onMount(() => {
-		const closeOnScroll = () => {
-			if (open) open = false;
+		const closeOnScroll = (e) => {
+			if (!open) return;
+			if (dropdownEl && dropdownEl.contains(e.target)) return;
+			open = false;
 		};
 		window.addEventListener('scroll', closeOnScroll, true);
 		window.addEventListener('resize', closeOnScroll);
@@ -97,7 +110,7 @@
 			onblur={() => setTimeout(() => (open = false), 150)}
 		/>
 		{#if open && matches.length}
-			<ul class="dropdown" style={dropdownStyle}>
+			<ul class="dropdown" style={dropdownStyle} bind:this={dropdownEl}>
 				{#if !query.trim()}
 					<li class="dropdown-hint">Most common</li>
 				{/if}
