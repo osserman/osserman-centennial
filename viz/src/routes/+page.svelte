@@ -176,8 +176,8 @@
 				</button>
 			{/if}
 		</div>
-		{#if filtersOpen}
-			<div class="filter-overlay">
+		{#if activeIndex >= freeExplorationIndex}
+			<div class="filter-overlay" class:hidden={!filtersOpen}>
 				<FilterPanel nodes={citerNodes} onFilterChange={(ids) => (filteredIds = ids)} onClose={() => (filtersOpen = false)} />
 			</div>
 		{/if}
@@ -367,6 +367,11 @@
 		width: min(30rem, calc(100% - 2.5rem));
 		max-height: calc(100vh - 6rem);
 		overflow-y: auto;
+	}
+	/* display:none (not #if) when closed, so FilterPanel stays mounted and
+	   its selections survive close/reopen instead of resetting each time. */
+	.filter-overlay.hidden {
+		display: none;
 	}
 
 	@media (max-width: 900px) {
