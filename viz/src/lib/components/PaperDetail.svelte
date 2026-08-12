@@ -45,18 +45,30 @@
 
 		<h3 id="paper-detail-title">{node.title}</h3>
 		<div class="meta">
-			{node.authors ? node.authors + ' · ' : ''}{node.year}
-			{#if node.field}· {node.field}{#if node.subfield} ({node.subfield}){/if}{/if}
+			{node.authors ? node.authors + ' · ' : ''}{node.year}{node.venue ? ' · ' + node.venue : ''}
 		</div>
 
-		{#if node.topic}
-			<div class="topic-row">
-				<span class="topic-label">OpenAlex topic</span>
-				<span class="topic-value">{node.topic}</span>
-				<InfoTooltip
-					label="About OpenAlex topics"
-					message="OpenAlex's automated topic classification is not always accurate, especially for older or interdisciplinary papers — treat this as a hint, not ground truth."
-				/>
+		{#if node.field || node.topic}
+			<div class="openalex-section">
+				<div class="openalex-header">
+					<span class="openalex-label">OpenAlex classification</span>
+					<InfoTooltip
+						label="About OpenAlex classification"
+						message="Field, subfield, and topic are all OpenAlex's automated classification, not human-verified — not always accurate, especially for older or interdisciplinary papers. Treat these as hints, not ground truth."
+					/>
+				</div>
+				{#if node.field}
+					<div class="openalex-row">
+						<span class="openalex-row-label">Field</span>
+						<span class="openalex-row-value">{node.field}{node.subfield ? ` → ${node.subfield}` : ''}</span>
+					</div>
+				{/if}
+				{#if node.topic}
+					<div class="openalex-row">
+						<span class="openalex-row-label">Topic</span>
+						<span class="openalex-row-value">{node.topic}</span>
+					</div>
+				{/if}
 			</div>
 		{/if}
 
@@ -146,22 +158,40 @@
 		font-size: 0.9rem;
 		margin-bottom: 0.6rem;
 	}
-	.topic-row {
+	.openalex-section {
+		margin-bottom: 1.25rem;
+		padding: 0.6rem 0.75rem;
+		background: var(--surface-2);
+		border-radius: 6px;
+	}
+	.openalex-header {
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
-		font-size: 0.82rem;
-		color: var(--text-secondary);
-		margin-bottom: 1.25rem;
+		margin-bottom: 0.4rem;
 	}
-	.topic-label {
+	.openalex-label {
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		font-size: 0.68rem;
 		font-weight: 700;
 		color: var(--text-muted);
 	}
-	.topic-value {
+	.openalex-row {
+		display: flex;
+		gap: 0.5rem;
+		font-size: 0.82rem;
+		line-height: 1.4;
+	}
+	.openalex-row + .openalex-row {
+		margin-top: 0.2rem;
+	}
+	.openalex-row-label {
+		flex-shrink: 0;
+		width: 3.5rem;
+		color: var(--text-muted);
+	}
+	.openalex-row-value {
 		color: var(--text-primary);
 	}
 	.stats {
