@@ -51,6 +51,21 @@
 		if (activeIndex < freeExplorationIndex) filtersOpen = false;
 	});
 
+	// Wheel/scroll input inside the filter panel that isn't fully absorbed by
+	// its own internal scrolling can chain to the page's scroll behind it —
+	// which moves activeIndex back, which the effect above reads as "scrolled
+	// away from free-exploration" and force-closes the panel. Locking the
+	// page's own scroll while the panel is open stops that entirely; the
+	// panel's own overflow-y:auto content still scrolls normally since this
+	// only blocks the *document's* scroll position, not a descendant's.
+	$effect(() => {
+		if (typeof document === 'undefined' || !filtersOpen) return;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = '';
+		};
+	});
+
 	// Paper-detail modal: state lives here (not inside CitationGraph) so both
 	// the graph (canvas click) and the left-panel paper titles can open the
 	// same modal. This also fixes a stacking-context bug: CitationGraph's
@@ -367,6 +382,10 @@
 		width: min(30rem, calc(100% - 2.5rem));
 		max-height: calc(100vh - 6rem);
 		overflow-y: auto;
+		/* Belt-and-suspenders alongside the body scroll lock: stops scroll
+		   input from chaining to the page once this panel's own content hits
+		   its scroll boundary. */
+		overscroll-behavior: contain;
 	}
 	/* display:none (not #if) when closed, so FilterPanel stays mounted and
 	   its selections survive close/reopen instead of resetting each time. */

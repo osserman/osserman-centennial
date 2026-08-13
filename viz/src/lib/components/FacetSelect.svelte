@@ -8,7 +8,7 @@
 	// the most popular values — so there's something to browse before typing
 	// anything, not just a search box that returns nothing until you already
 	// know an exact value that exists in the data.
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	let { label, options = [], selected = $bindable([]), placeholder = 'Search…' } = $props();
 
@@ -25,6 +25,7 @@
 
 	let query = $state('');
 	let open = $state(false);
+	let facetEl;
 	let wrapEl;
 	let dropdownEl;
 	let dropdownStyle = $state('');
@@ -52,10 +53,19 @@
 		if (!wrapEl) return;
 		const rect = wrapEl.getBoundingClientRect();
 		const spaceBelow = window.innerHeight - rect.bottom;
-		const spaceAbove = rect.top;
+		// Anchor the *upward* case to the top of the whole facet block (label
+		// + chips + input), not just the input. Chips sit above the input, so
+		// an upward dropdown anchored to the input's own top edge lands right
+		// on top of them (and gets worse as more chips are added, since
+		// that's the same space an upward dropdown occupies). The block's top
+		// edge, by contrast, never moves as chips accumulate below it — chips
+		// grow the block downward from a fixed top, so anchoring there keeps
+		// every existing chip visible regardless of how many there are.
+		const topRect = (facetEl || wrapEl).getBoundingClientRect();
+		const spaceAbove = topRect.top;
 		const openUp = spaceBelow < DROPDOWN_MAX_H + 12 && spaceAbove > spaceBelow;
 		dropdownStyle = openUp
-			? `left:${rect.left}px; width:${rect.width}px; bottom:${window.innerHeight - rect.top + 4}px;`
+			? `left:${rect.left}px; width:${rect.width}px; bottom:${window.innerHeight - topRect.top + 4}px;`
 			: `left:${rect.left}px; width:${rect.width}px; top:${rect.bottom + 4}px;`;
 	}
 
@@ -133,21 +143,49 @@
 		};
 	});
 
-	function handleOptionMousedown(value) {
-		dlog('option mousedown:', value, '(open currently', open, ')');
+	// preventDefault stops the button from taking focus on mousedown, which
+	// is what was causing the bug: a button gaining focus inside a scrollable
+	// container (the dropdown, max-height + overflow-y:auto) can trigger the
+	// browser's native "scroll this newly-focused element fully into view"
+	// behavior. The mouse doesn't move during that scroll, so by mouseup the
+	// button has shifted out from under the now-stationary cursor — and a
+	// `click` only fires when mousedown and mouseup land on the same element,
+	// so it silently never fires. Confirmed via the debug log: the failing
+	// case showed mousedown but no subsequent "window capture click" at all.
+	// Keeping focus on the input instead means no scroll-into-view, no blur,
+	// and the click fires reliably every time.
+	function handleOptionMousedown(value, e) {
+		e.preventDefault();
+		dlog('option mousedown:', value, '(open currently', open, ') — preventDefault to keep input focused');
+	}
+
+	// The dropdown position is computed from the input's screen position at
+	// a point in time (see positionDropdown) — but adding a chip grows the
+	// .chips row *above* the input, pushing the input down. Without
+	// recomputing here, the dropdown stays glued to its stale position and
+	// ends up covering the newly-grown chips row instead of sitting just
+	// below the input, so a second/third selection isn't visibly confirmed.
+	// tick() waits for that layout reflow to actually happen before
+	// re-measuring.
+	async function repositionAfterLayoutChange() {
+		if (!open) return;
+		await tick();
+		positionDropdown();
 	}
 
 	function add(value) {
 		dlog('add() called with:', value);
 		selected = [...selected, value];
 		query = '';
+		repositionAfterLayoutChange();
 	}
 	function remove(value) {
 		selected = selected.filter((s) => s !== value);
+		repositionAfterLayoutChange();
 	}
 </script>
 
-<div class="facet">
+<div class="facet" bind:this={facetEl}>
 	<div class="facet-label">{label}</div>
 	{#if selected.length}
 		<div class="chips">
@@ -170,7 +208,7 @@
 					<li>
 						<button
 							type="button"
-							onmousedown={() => handleOptionMousedown(m.value)}
+							onmousedown={(e) => handleOptionMousedown(m.value, e)}
 							onclick={() => add(m.value)}
 						>
 							<span class="option-value" title={m.value}>{m.value}</span>
