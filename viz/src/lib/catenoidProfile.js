@@ -3,17 +3,19 @@
 // (which revolves the same points into a 3D mesh and integrates their area).
 // One source of truth for the geometry, not two parallel generators that
 // could drift apart.
-
-// Ring radius R and half-separation L. L/R ≈ 0.58 is safely under the
-// Goldschmidt limit (L/R ≲ 0.6627, beyond which no smooth catenoid can
-// connect the two rings — it wants to pinch into two flat disks instead) —
-// locked in now so a later Euler solve at these exact boundary values
-// always has a valid answer, even though that solve isn't built yet.
-export const R = 1.2;
-export const L = 0.7;
+//
+// R (ring radius) and L (half-separation) are parameters, not constants —
+// +page.svelte owns them as reactive state so a ?debug=true panel can tune
+// them live. GOLDSCHMIDT_LIMIT is the hard ceiling: past L/R ≈ 0.6627, no
+// smooth catenoid can connect two rings that far apart relative to their
+// radius — it wants to pinch into two flat disks instead — so a later Euler
+// solve needs L/R comfortably under this, not just "a valid-looking shape."
+export const DEFAULT_R = 1.05;
+export const DEFAULT_L = 0.67;
+export const GOLDSCHMIDT_LIMIT = 0.6627;
 export const PROFILE_SEGMENTS = 40;
 
-function sampleProfile(radiusAt) {
+function sampleProfile(R, L, radiusAt) {
 	const points = [];
 	for (let i = 0; i <= PROFILE_SEGMENTS; i++) {
 		const z = -L + (2 * L * i) / PROFILE_SEGMENTS;
@@ -22,16 +24,16 @@ function sampleProfile(radiusAt) {
 	return points;
 }
 
-export function cylinderProfile() {
-	return sampleProfile(() => R);
+export function cylinderProfile(R, L) {
+	return sampleProfile(R, L, () => R);
 }
 
 // Piecewise-linear "V" profile: constant radius R at both rings, tapering
 // to midR at the midpoint via two straight segments. A fully closed waist
 // (midR=0, two cones meeting at a point on the axis) is a normal,
 // non-degenerate case for LatheGeometry — same as the tip of a cone.
-export function vProfile(midR) {
-	return sampleProfile((z) => (z <= 0 ? R + ((midR - R) * (z + L)) / L : midR + ((R - midR) * z) / L));
+export function vProfile(R, L, midR) {
+	return sampleProfile(R, L, (z) => (z <= 0 ? R + ((midR - R) * (z + L)) / L : midR + ((R - midR) * z) / L));
 }
 
 // Smooth profile through (-L,R) -> (-spread,midR) -> (spread,midR) -> (L,R),
@@ -42,7 +44,7 @@ export function vProfile(midR) {
 // valid (if slightly soft-cornered) degenerate case, not the exact V —
 // stage 2 uses vProfile directly for the sharp-corner look the spec
 // describes; this is only used once the spread handle is unlocked.
-export function curveProfile(midR, spread) {
+export function curveProfile(R, L, midR, spread) {
 	const s = Math.max(spread, 0.001); // avoid a zero-length middle segment
 	const key = [
 		{ z: -L, r: R },
@@ -69,13 +71,13 @@ export function curveProfile(midR, spread) {
 		const h11 = t3 - t2;
 		return h00 * p1.r + h10 * m1 + h01 * p2.r + h11 * m2;
 	}
-	return sampleProfile(rAt);
+	return sampleProfile(R, L, rAt);
 }
 
 // Generic surface-of-revolution area integrator — Simpson's rule over
 // Area = 2*pi * integral( r(z) * sqrt(1 + (dr/dz)^2) dz ). Works unchanged
-// for any profile (cylinder, V, smooth curve), so there's one
-// implementation instead of a per-shape formula. Sanity-checked against
+// for any profile (cylinder, V, smooth curve) regardless of R/L, so there's
+// one implementation instead of a per-shape formula. Sanity-checked against
 // the closed-form cylinder area 2*pi*R*2L.
 export function surfaceArea(points) {
 	const n = points.length - 1;

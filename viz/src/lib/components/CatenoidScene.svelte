@@ -10,12 +10,19 @@
 	import * as THREE from 'three';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 	import { palette } from '$lib/palette.js';
-	import { R, L, surfaceArea } from '$lib/catenoidProfile.js';
+	import { surfaceArea } from '$lib/catenoidProfile.js';
 
-	let { profile, revealed = true, onAreaChange, onRevealComplete } = $props();
+	let { profile, R, L, revealProgress = 1, onAreaChange } = $props();
 
 	const REVOLUTION_SEGMENTS = 48;
-	const REVEAL_DURATION_MS = 1200;
+
+	// Camera lerps from a 3/4 view (good for watching the sweep-reveal take
+	// shape) to a near-straight-on view perpendicular to the tube's axis —
+	// same side-on framing ProfileEditor's own 2D curve uses — as
+	// `revealProgress` goes 0 -> 1. Not perfectly flat/orthographic (a
+	// slight y offset) so it still reads as 3D once the sandbox stages begin.
+	const CAMERA_START = new THREE.Vector3(2.4, 1.4, 3.0);
+	const CAMERA_END = new THREE.Vector3(0, 0.15, 4.6);
 
 	function buildLathe(points, phiLength) {
 		const vec2s = points.map((p) => new THREE.Vector2(p.r, p.z));
@@ -24,11 +31,7 @@
 
 	let container;
 	let renderer, scene, group, camera, controls, mesh, resizeObserver, animFrame;
-	let revealTweenFrame = null;
-	// Seeded from the `revealed` prop inside onMount below (a closure, not
-	// a top-level read) — deliberately a one-time snapshot, not tracked
-	// reactively afterward, so 0 here is just a neutral placeholder.
-	let currentPhiLength = $state(0);
+	let ringMeshes = [];
 
 	function rebuildMesh(points, phiLength) {
 		const geometry = buildLathe(points, phiLength);
@@ -48,77 +51,85 @@
 		group.add(mesh);
 		// untrack: onAreaChange runs synchronously inside this function, which
 		// itself runs inside the $effect below — without untrack, the parent's
-		// resulting state writes (e.g. +page.svelte's cinchRange, updated from
-		// this callback) get attributed back into *this* effect's own reactive
-		// context and re-invalidate it, causing an infinite update loop
-		// (confirmed via effect_update_depth_exceeded during development —
-		// disabling just the parent's cinchRange write made the loop stop,
-		// isolating it to this exact callback-during-effect pattern). untrack
-		// severs that attribution, same fix already used in CitationGraph.svelte
-		// for the analogous "effect's call chain synchronously touches
-		// something reactive it shouldn't be attributed to" problem.
+		// resulting state writes get attributed back into *this* effect's own
+		// reactive context and re-invalidate it, causing an infinite update
+		// loop (hit this for real during development — see git history).
+		// Same fix already used in CitationGraph.svelte for the analogous
+		// "effect's call chain synchronously touches something reactive it
+		// shouldn't be attributed to" problem.
 		untrack(() => onAreaChange?.(surfaceArea(points)));
 	}
 
-	// `profile` must be read unconditionally here, not inside the `if` — on
-	// this effect's first run (before onMount has set `scene`), `scene` is
-	// falsy, so a guarded `if (scene) rebuildMesh(profile)` would never
-	// reach the `profile` read on that run at all. Svelte's effects
-	// re-derive their dependency set fresh from whatever was actually read
-	// on each run, so skipping that read means the effect registers no
-	// dependency on `profile` and never fires again on later changes.
-	$effect(() => {
-		const points = profile;
-		if (scene && !revealTweenFrame) rebuildMesh(points, currentPhiLength);
-	});
-
-	// Sweeps phiLength from 0 to 2*pi over REVEAL_DURATION_MS — the "pull
-	// the line around the circumference" reveal. Runs its own rAF loop
-	// (separate from the render tick) so it can rebuild geometry only on
-	// the frames it actually changes phiLength, and reports completion via
-	// onRevealComplete so the page can enable its Continue button.
-	function playReveal() {
-		const start = performance.now();
-		function step(now) {
-			const t = Math.min(1, (now - start) / REVEAL_DURATION_MS);
-			currentPhiLength = t * Math.PI * 2;
-			rebuildMesh(profile, currentPhiLength);
-			if (t < 1) {
-				revealTweenFrame = requestAnimationFrame(step);
-			} else {
-				revealTweenFrame = null;
-				onRevealComplete?.();
-			}
+	function rebuildRings() {
+		for (const ring of ringMeshes) {
+			group.remove(ring);
+			ring.geometry.dispose();
 		}
-		revealTweenFrame = requestAnimationFrame(step);
+		ringMeshes = [];
+		const ringMaterial = new THREE.MeshStandardMaterial({ color: palette.light.textPrimary ?? 0x0b0b0b });
+		for (const z of [-L, L]) {
+			const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.015, 12, 64), ringMaterial);
+			ring.rotation.x = Math.PI / 2;
+			ring.position.y = z;
+			group.add(ring);
+			ringMeshes.push(ring);
+		}
 	}
 
-	// Same deliberate one-time-snapshot deal as currentPhiLength above —
-	// seeded inside onMount, not read here at the top level.
-	let hasRevealed = $state(false);
+	function applyCameraForProgress(p) {
+		camera.position.lerpVectors(CAMERA_START, CAMERA_END, p);
+		camera.lookAt(0, 0, 0);
+	}
+
+	// `profile`/`revealProgress`/`R`/`L` must be read unconditionally at the
+	// top of each effect, not inside an `if` — on an effect's first run
+	// (before onMount has set `scene`/`group`), a guarded read would never
+	// happen on that run at all, and Svelte's effects re-derive their
+	// dependency set fresh from whatever was actually read on each run, so
+	// skipping a read means the effect never fires again on later changes
+	// to that value. (Hit this exact bug during the first version of this
+	// component too.)
 	$effect(() => {
-		if (revealed && !hasRevealed && scene) {
-			hasRevealed = true;
-			playReveal();
+		const points = profile;
+		const p = revealProgress;
+		if (scene) rebuildMesh(points, p * Math.PI * 2);
+	});
+
+	$effect(() => {
+		const r = R;
+		const l = L;
+		if (group) rebuildRings();
+	});
+
+	// Camera is driven directly (lerped) during the scroll-scrubbed reveal;
+	// OrbitControls is constructed lazily, only once reveal completes, so it
+	// picks up the camera's exact end-of-lerp position/orientation as its
+	// own baseline rather than fighting the manual positioning or snapping
+	// from some stale default. See render tick below: controls.update() is
+	// only ever called once `controls` exists.
+	$effect(() => {
+		const p = revealProgress;
+		if (!camera) return;
+		if (p < 1) {
+			applyCameraForProgress(p);
+		} else if (!controls) {
+			applyCameraForProgress(1);
+			controls = new OrbitControls(camera, renderer.domElement);
+			controls.enablePan = false;
+			controls.enableDamping = true;
+			controls.minDistance = 2;
+			controls.maxDistance = 8;
+			controls.target.set(0, 0, 0);
 		}
 	});
 
 	onMount(() => {
-		currentPhiLength = revealed ? Math.PI * 2 : 0;
-		hasRevealed = revealed;
-
 		scene = new THREE.Scene();
 		camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-		camera.position.set(2.4, 1.4, 3.0);
+		camera.position.copy(CAMERA_START);
 
 		renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 		container.appendChild(renderer.domElement);
-
-		controls = new OrbitControls(camera, renderer.domElement);
-		controls.enablePan = false;
-		controls.enableDamping = true;
-		controls.minDistance = 2;
-		controls.maxDistance = 8;
 
 		scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 		const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -135,16 +146,9 @@
 		group.rotation.z = Math.PI / 2;
 		scene.add(group);
 
-		const ringMaterial = new THREE.MeshStandardMaterial({ color: palette.light.textPrimary ?? 0x0b0b0b });
-		for (const z of [-L, L]) {
-			const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.015, 12, 64), ringMaterial);
-			ring.rotation.x = Math.PI / 2;
-			ring.position.y = z;
-			group.add(ring);
-		}
-
-		rebuildMesh(profile, currentPhiLength);
-		if (revealed) onRevealComplete?.();
+		rebuildRings();
+		rebuildMesh(profile, revealProgress * Math.PI * 2);
+		applyCameraForProgress(revealProgress);
 
 		resizeObserver = new ResizeObserver((entries) => {
 			const { width, height } = entries[0].contentRect;
@@ -157,7 +161,7 @@
 		resizeObserver.observe(container);
 
 		function tick() {
-			controls.update();
+			if (controls) controls.update();
 			renderer.render(scene, camera);
 			animFrame = requestAnimationFrame(tick);
 		}
@@ -165,9 +169,8 @@
 
 		return () => {
 			cancelAnimationFrame(animFrame);
-			if (revealTweenFrame) cancelAnimationFrame(revealTweenFrame);
 			resizeObserver.disconnect();
-			controls.dispose();
+			if (controls) controls.dispose();
 			renderer.dispose();
 		};
 	});

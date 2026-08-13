@@ -5,9 +5,11 @@
 	// already uses drag-to-orbit (OrbitControls), so reusing drag gestures
 	// there for control points would be ambiguous (rotate the camera, or
 	// move a point?). Plain 2D pointer math here instead of 3D raycasting.
-	import { R, L, vProfile, curveProfile } from '$lib/catenoidProfile.js';
+	import { vProfile, curveProfile } from '$lib/catenoidProfile.js';
 
 	let {
+		R,
+		L,
 		midR = $bindable(R),
 		spread = $bindable(0),
 		mode = 'v', // 'v' (stage 2, sharp corner) | 'curve' (stage 3, smooth)
@@ -32,7 +34,7 @@
 		return ((x - PAD_X) / (WIDTH - 2 * PAD_X)) * (2 * L) - L;
 	}
 
-	let profilePoints = $derived(mode === 'curve' ? curveProfile(midR, spread) : vProfile(midR));
+	let profilePoints = $derived(mode === 'curve' ? curveProfile(R, L, midR, spread) : vProfile(R, L, midR));
 	let pathD = $derived(
 		'M ' + profilePoints.map((p) => `${toX(p.z).toFixed(1)},${toY(p.r).toFixed(1)}`).join(' L ')
 	);
