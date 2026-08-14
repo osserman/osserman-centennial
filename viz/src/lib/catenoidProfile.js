@@ -12,21 +12,35 @@
 // bug: a cinch radius from before could end up larger than the new ring
 // radius. Fixed values sidestep that entirely, no resync logic needed).
 //
-// GOLDSCHMIDT_LIMIT (L/R ≈ 0.6627) is a hard mathematical fact, not a rough
-// approximation: a catenoid connecting rings of radius R at z=±L requires
-// solving c·cosh(L/c) = R for the catenary parameter c, and that equation
-// has a real positive solution only when R is at least the minimum of
-// c·cosh(L/c) over all c>0 — which works out to exactly L/R ≤ 0.6627. Past
-// that ratio there is no catenoid at all connecting the rings (not a
-// "stretched" or "zoomed" one — none), and the true area-minimizer is the
-// disconnected Goldschmidt solution (two flat disks) instead. L/R = 0.65
-// here keeps a later Euler-reveal step landing on an actual catenoid, with
-// a small margin under the limit (numerics get sensitive very close to the
-// fold, where the two catenary solutions that exist below the limit merge
-// into one and then vanish above it).
+// There are actually *two* distinct thresholds here, not one — worth being
+// precise about, since conflating them previously produced a real bug (the
+// "catenary (minimum)" bar showing a value the reader could beat by hand).
+//
+// GOLDSCHMIDT_LIMIT (L/R ≈ 0.6627) is the *existence* threshold: a catenoid
+// connecting rings of radius R at z=±L requires solving c·cosh(L/c) = R for
+// the catenary parameter c, and that equation has a real positive solution
+// only when L/R is at most this value. Past it, no catenoid exists at all —
+// not a "stretched" one, none — and the only candidate left is the
+// disconnected Goldschmidt solution (two flat disks).
+//
+// GLOBAL_MIN_LIMIT (L/R ≈ 0.5277, found by numerically sweeping
+// catenaryProfile's computed area against 2*pi*R^2 and bisecting the
+// crossing) is a *stricter*, separate threshold: below it, the catenoid is
+// the true global area-minimizer among connected surfaces. Between it and
+// GOLDSCHMIDT_LIMIT, a catenoid still exists and still satisfies the
+// zero-mean-curvature equation — but it's only a *local* minimum. The
+// Goldschmidt disks (area 2*pi*R^2) are already lower there, and so is any
+// connected surface that gets close enough to that disk-like shape. This is
+// exactly what happened at the previous L/R=0.65: the catenary bar was a
+// real, correctly-computed solution, but a hand-dragged smooth curve pulled
+// wide and low legitimately beat it, because 0.65 sits between the two
+// thresholds, not below both. L/R = 0.5 keeps real margin under
+// GLOBAL_MIN_LIMIT specifically (not just under the looser existence
+// limit), so "the catenary is the minimum" is actually true again.
 export const DEFAULT_R = 1;
-export const DEFAULT_L = 0.65;
+export const DEFAULT_L = 0.5;
 export const GOLDSCHMIDT_LIMIT = 0.6627;
+export const GLOBAL_MIN_LIMIT = 0.5277;
 export const PROFILE_SEGMENTS = 40;
 
 function sampleProfile(R, L, radiusAt) {
