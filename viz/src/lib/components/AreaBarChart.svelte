@@ -4,7 +4,7 @@
 	// non-static bar shows a live value plus a persistent lighter band
 	// spanning the min/max area explored so far while dragging — "the
 	// range of surface areas you've uncovered," not just the current one.
-	let { bars = [] } = $props(); // [{ label, value, min?, max?, isStatic? }]
+	let { bars = [] } = $props(); // [{ label, value, min?, max?, isStatic?, isAnswer? }]
 
 	const BAR_W = 46;
 	const GAP = 28;
@@ -47,7 +47,12 @@
 			{@const bandH = barH(bar.max) - barH(bar.min)}
 			<path d={topRoundedPath(x, bandTop, BAR_W, bandH, 4)} class="range-band" />
 		{/if}
-		<path d={topRoundedPath(x, HEIGHT - PAD_BOTTOM - valueH, BAR_W, valueH, 4)} class="bar" class:static={bar.isStatic} />
+		<path
+			d={topRoundedPath(x, HEIGHT - PAD_BOTTOM - valueH, BAR_W, valueH, 4)}
+			class="bar"
+			class:static={bar.isStatic}
+			class:answer={bar.isAnswer}
+		/>
 		<text x={x + BAR_W / 2} y={HEIGHT - PAD_BOTTOM - valueH - 8} class="value-label" text-anchor="middle">
 			{bar.value.toFixed(2)}
 		</text>
@@ -70,6 +75,9 @@
 	}
 	.bar.static {
 		fill: var(--text-muted);
+	}
+	.bar.answer {
+		fill: var(--swatch-aqua);
 	}
 	.range-band {
 		fill: var(--accent);

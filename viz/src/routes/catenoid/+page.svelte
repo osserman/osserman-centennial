@@ -3,7 +3,7 @@
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import AreaBarChart from '$lib/components/AreaBarChart.svelte';
-	import { DEFAULT_R, DEFAULT_L, vProfile, curveProfile, cylinderProfile } from '$lib/catenoidProfile.js';
+	import { DEFAULT_R, DEFAULT_L, vProfile, curveProfile, cylinderProfile, catenaryProfile } from '$lib/catenoidProfile.js';
 
 	// R/L were briefly reactive (debug sliders, since removed) — dynamically
 	// changing them after midR/spread had already been initialized from the
@@ -19,7 +19,7 @@
 	// scroll position (see the citation chapter's activeIndex edge cases
 	// earlier this project). The outer scrollytelling that will eventually
 	// link multiple interactions together is a separate, later concern.
-	let stage = $state('intro'); // 'intro' | 'cinch' | 'curve'
+	let stage = $state('intro'); // 'intro' | 'cinch' | 'curve' | 'catenary'
 
 	let midR = $state(DEFAULT_R);
 	// Starts offset from center (not 0) so the spread handle isn't rendered
@@ -37,13 +37,20 @@
 	let cinchRange = $state({ min: Infinity, max: -Infinity });
 	let curveRange = $state({ min: Infinity, max: -Infinity });
 	let cinchBest = $state(null);
+	let curveBest = $state(null);
+	let catenaryArea = $state(null);
 
+	// catenaryProfile returns null past GOLDSCHMIDT_LIMIT — not reachable at
+	// the fixed ringR/ringL above (chosen specifically to stay under it), but
+	// falling back to the cylinder rather than crashing if that ever changes.
 	let profile = $derived(
-		stage === 'curve'
-			? curveProfile(ringR, ringL, midR, spread)
-			: stage === 'cinch'
-				? vProfile(ringR, ringL, midR)
-				: cylinderProfile(ringR, ringL)
+		stage === 'catenary'
+			? (catenaryProfile(ringR, ringL) ?? cylinderProfile(ringR, ringL))
+			: stage === 'curve'
+				? curveProfile(ringR, ringL, midR, spread)
+				: stage === 'cinch'
+					? vProfile(ringR, ringL, midR)
+					: cylinderProfile(ringR, ringL)
 	);
 
 	function handleAreaChange(a) {
@@ -54,6 +61,8 @@
 			cinchRange = { min: Math.min(cinchRange.min, a), max: Math.max(cinchRange.max, a) };
 		} else if (stage === 'curve') {
 			curveRange = { min: Math.min(curveRange.min, a), max: Math.max(curveRange.max, a) };
+		} else if (stage === 'catenary') {
+			catenaryArea = a;
 		}
 	}
 
@@ -80,26 +89,52 @@
 				max: finite(cinchRange.max)
 			});
 			list.push({ label: 'Smooth curve', value: area, min: finite(curveRange.min), max: finite(curveRange.max) });
+		} else if (stage === 'catenary') {
+			list.push({ label: 'V-shape', value: cinchBest ?? finite(cinchRange.min) ?? 0 });
+			list.push({ label: 'Smooth curve', value: curveBest ?? finite(curveRange.min) ?? 0 });
+			if (catenaryArea != null) list.push({ label: 'Catenary', value: catenaryArea, isAnswer: true });
 		}
 		return list;
+	});
+
+	// How much area your best hand-shaped smooth curve left on the table
+	// compared to the true minimum — a direct, computed answer to "how do
+	// I compare the two side by side."
+	let comparisonNote = $derived.by(() => {
+		if (stage !== 'catenary' || catenaryArea == null) return '';
+		const best = curveBest ?? finite(curveRange.min);
+		if (best == null) return '';
+		const pct = ((best - catenaryArea) / catenaryArea) * 100;
+		return pct < 0.05
+			? 'Your best smooth curve matched the true minimum almost exactly.'
+			: `Your best smooth curve was ${pct.toFixed(1)}% above the true minimum.`;
 	});
 
 	function goNext() {
 		if (stage === 'cinch') {
 			cinchBest = finite(cinchRange.min) ?? area;
 			stage = 'curve';
+		} else if (stage === 'curve') {
+			curveBest = finite(curveRange.min) ?? area;
+			stage = 'catenary';
 		}
 	}
 
-	let continueEnabled = $derived(stage === 'cinch' ? hasInteractedCinch : false);
-	let continueLabel = $derived(stage === 'cinch' ? 'Try a smooth curve' : '');
+	let continueEnabled = $derived(
+		stage === 'cinch' ? hasInteractedCinch : stage === 'curve' ? hasInteractedCurve : false
+	);
+	let continueLabel = $derived(
+		stage === 'cinch' ? 'Try a smooth curve' : stage === 'curve' ? 'Show the minimum' : ''
+	);
 
 	let body = $derived(
 		stage === 'cinch'
 			? 'Drag the point up or down to find a surface connecting the rings with an area less than the cylinder.'
 			: stage === 'curve'
 				? 'What if the transition were smooth instead of sharp? Drag the second point sideways to soften the curve.'
-				: ''
+				: stage === 'catenary'
+					? "In 1744, Leonhard Euler proved this exact curve — the catenary — produces the smallest possible surface. Rotated, it's called a catenoid."
+					: ''
 	);
 
 	// Scroll-scrubbed reveal: revealProgress tracks how far the intro text
@@ -168,23 +203,29 @@
 			<h1>Connecting two rings</h1>
 			<p class="prompt">{body}</p>
 
-			<ProfileEditor
-				R={ringR}
-				L={ringL}
-				bind:midR
-				bind:spread
-				mode={stage === 'curve' ? 'curve' : 'v'}
-				showSpreadHandle={stage === 'curve'}
-			/>
+			{#if stage === 'cinch' || stage === 'curve'}
+				<ProfileEditor
+					R={ringR}
+					L={ringL}
+					bind:midR
+					bind:spread
+					mode={stage === 'curve' ? 'curve' : 'v'}
+					showSpreadHandle={stage === 'curve'}
+				/>
+			{/if}
 
 			<AreaBarChart {bars} />
 
-			{#if stage !== 'curve'}
+			{#if comparisonNote}
+				<p class="comparison-note">{comparisonNote}</p>
+			{/if}
+
+			{#if stage === 'cinch' || stage === 'curve'}
 				<button class="continue-btn" disabled={!continueEnabled} onclick={goNext}>
 					{continueLabel}
 				</button>
-			{:else}
-				<p class="up-next">Next: Euler's 1744 answer — coming soon.</p>
+			{:else if stage === 'catenary'}
+				<p class="up-next">Up next: how minimal surfaces became a mathematical field of their own — coming soon.</p>
 			{/if}
 		{/if}
 	</div>
@@ -254,6 +295,11 @@
 		font-size: 0.85rem;
 		color: var(--text-muted);
 		font-style: italic;
+		margin: 0;
+	}
+	.comparison-note {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
 		margin: 0;
 	}
 	.scene-panel {
