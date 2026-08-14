@@ -3,23 +3,14 @@
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import AreaBarChart from '$lib/components/AreaBarChart.svelte';
-	import {
-		DEFAULT_R,
-		DEFAULT_L,
-		GOLDSCHMIDT_LIMIT,
-		vProfile,
-		curveProfile,
-		cylinderProfile
-	} from '$lib/catenoidProfile.js';
+	import { DEFAULT_R, DEFAULT_L, vProfile, curveProfile, cylinderProfile } from '$lib/catenoidProfile.js';
 
-	// ?debug=true reveals the R/L tuning sliders — same convention as the
-	// citation chapter's debug controls. Evaluated fresh on the client
-	// during hydration (this file is prerendered, where `window` doesn't
-	// exist, but the component script re-runs in the browser too).
-	const DEBUG = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'true';
-
-	let ringR = $state(DEFAULT_R);
-	let ringL = $state(DEFAULT_L);
+	// R/L were briefly reactive (debug sliders, since removed) — dynamically
+	// changing them after midR/spread had already been initialized from the
+	// old values caused a real bug (a stale cinch radius could end up larger
+	// than the new ring radius). Fixed constants sidestep that entirely.
+	const ringR = DEFAULT_R;
+	const ringL = DEFAULT_L;
 
 	// Internal staging. 'intro' is scroll-scrubbed (see below); 'cinch' and
 	// 'curve' are the click/drag-driven sandbox, advanced via a Continue
@@ -199,23 +190,6 @@
 	</div>
 
 	<div class="scene-panel">
-		{#if DEBUG}
-			<div class="debug-panel">
-				<label>
-					R
-					<input type="range" min="0.5" max="1.8" step="0.01" bind:value={ringR} />
-					{ringR.toFixed(2)}
-				</label>
-				<label>
-					L
-					<input type="range" min="0.2" max="1.2" step="0.01" bind:value={ringL} />
-					{ringL.toFixed(2)}
-				</label>
-				<div class="ratio" class:over={ringL / ringR > GOLDSCHMIDT_LIMIT}>
-					L/R = {(ringL / ringR).toFixed(3)} (limit {GOLDSCHMIDT_LIMIT})
-				</div>
-			</div>
-		{/if}
 		<CatenoidScene {profile} R={ringR} L={ringL} {revealProgress} onAreaChange={handleAreaChange} />
 	</div>
 </main>
@@ -289,35 +263,6 @@
 		top: 0;
 		height: 100vh;
 	}
-	.debug-panel {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		z-index: 10;
-		background: var(--surface-1);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
-		border-radius: 8px;
-		padding: 0.75rem 1rem;
-		font-size: 0.78rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
-	.debug-panel label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		color: var(--text-secondary);
-	}
-	.debug-panel .ratio {
-		color: var(--text-muted);
-		font-size: 0.72rem;
-	}
-	.debug-panel .ratio.over {
-		color: #d03b3b;
-		font-weight: 700;
-	}
-
 	@media (max-width: 900px) {
 		.layout {
 			flex-direction: column;

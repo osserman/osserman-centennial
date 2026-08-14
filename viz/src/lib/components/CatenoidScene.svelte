@@ -9,7 +9,7 @@
 	import { onMount, untrack } from 'svelte';
 	import * as THREE from 'three';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-	import { palette } from '$lib/palette.js';
+	import { activePalette } from '$lib/palette.js';
 	import { surfaceArea } from '$lib/catenoidProfile.js';
 
 	let { profile, R, L, revealProgress = 1, onAreaChange } = $props();
@@ -21,8 +21,10 @@
 	// same side-on framing ProfileEditor's own 2D curve uses — as
 	// `revealProgress` goes 0 -> 1. Not perfectly flat/orthographic (a
 	// slight y offset) so it still reads as 3D once the sandbox stages begin.
-	const CAMERA_START = new THREE.Vector3(2.4, 1.4, 3.0);
-	const CAMERA_END = new THREE.Vector3(0, 0.15, 4.6);
+	// Backed out further than the original tight framing so the shape sits
+	// comfortably within the frame with room to spare at both ends of the lerp.
+	const CAMERA_START = new THREE.Vector3(4.0, 2.3, 5.3);
+	const CAMERA_END = new THREE.Vector3(0, 0.25, 6.9);
 
 	function buildLathe(points, phiLength) {
 		const vec2s = points.map((p) => new THREE.Vector2(p.r, p.z));
@@ -42,7 +44,7 @@
 		mesh = new THREE.Mesh(
 			geometry,
 			new THREE.MeshStandardMaterial({
-				color: palette.light.blue,
+				color: activePalette().blue,
 				side: THREE.DoubleSide,
 				metalness: 0.1,
 				roughness: 0.6
@@ -66,7 +68,12 @@
 			ring.geometry.dispose();
 		}
 		ringMeshes = [];
-		const ringMaterial = new THREE.MeshStandardMaterial({ color: palette.light.textPrimary ?? 0x0b0b0b });
+		// activePalette() with no override follows document.documentElement's
+		// [data-theme] stamp if set, else the OS prefers-color-scheme — same
+		// fallback CitationGraph.svelte uses. This page has no manual
+		// light/dark toggle of its own, so there's no live re-check needed
+		// beyond what already happens here on every ring/mesh rebuild.
+		const ringMaterial = new THREE.MeshStandardMaterial({ color: activePalette().textPrimary ?? 0x0b0b0b });
 		for (const z of [-L, L]) {
 			const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.015, 12, 64), ringMaterial);
 			ring.rotation.x = Math.PI / 2;
@@ -116,9 +123,12 @@
 			applyCameraForProgress(1);
 			controls = new OrbitControls(camera, renderer.domElement);
 			controls.enablePan = false;
+			// Mouse-wheel zoom fights normal page scroll whenever the cursor
+			// happens to be over the canvas — not worth it here (rotate-drag
+			// alone already shows the shape is 3D), and "the page stops
+			// scrolling and starts zooming" mid-scroll is a bad surprise.
+			controls.enableZoom = false;
 			controls.enableDamping = true;
-			controls.minDistance = 2;
-			controls.maxDistance = 8;
 			controls.target.set(0, 0, 0);
 		}
 	});

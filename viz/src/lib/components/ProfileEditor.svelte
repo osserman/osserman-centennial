@@ -20,6 +20,15 @@
 	const HEIGHT = 150;
 	const PAD_X = 24;
 	const PAD_Y = 18;
+	// The spread handle is rendered this many px above the curve rather than
+	// exactly on it. At spread=0 it would otherwise sit at the exact same
+	// point as the mid handle (both at x=0, y=toY(midR)) — and since the mid
+	// handle is later in the DOM, painted on top, it silently ate every
+	// pointer event meant for the one underneath. A fixed vertical offset
+	// keeps the two handles visually and functionally separate at every
+	// spread value, including 0, without needing spread's own drag math
+	// (horizontal-only) to change at all.
+	const SPREAD_HANDLE_Y_OFFSET = -16;
 
 	function toX(z) {
 		return PAD_X + ((z + L) / (2 * L)) * (WIDTH - 2 * PAD_X);
@@ -89,7 +98,7 @@
 	{#if showSpreadHandle}
 		<circle
 			cx={toX(spread)}
-			cy={toY(midR)}
+			cy={toY(midR) + SPREAD_HANDLE_Y_OFFSET}
 			r="7"
 			class="handle handle-spread"
 			onpointerdown={onSpreadPointerDown}
