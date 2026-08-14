@@ -200,3 +200,31 @@ export function catenaryProfile(R, L) {
 	const profile2 = profileForX(x2);
 	return surfaceArea(profile1) <= surfaceArea(profile2) ? profile1 : profile2;
 }
+
+// The largest area any profile in this interaction can produce for the
+// given R/L, found by a numeric sweep over both interactive families
+// (vProfile's midR, curveProfile's midR x spread). Both have real local
+// maxima well above the cylinder's own area — e.g. at the current R/L,
+// vProfile peaks around 7.13 at midR≈0.145, well above the cylinder's
+// 6.28 — so the cylinder alone is NOT a safe upper bound.
+//
+// This exists so AreaBarChart's Y axis can use one fixed scale for the
+// whole interaction. Rescaling the axis reactively to whatever's on
+// screen (the previous behavior) was actively misleading: a bar whose
+// value was genuinely growing could appear to hold the same height (axis
+// silently stretching under it), and the cylinder's bar — never changing —
+// could appear to shrink, purely because the axis had grown to fit
+// something else. A fixed ceiling, covering the true max up front, makes
+// bar height trustworthy for direct comparison throughout.
+export function maxPossibleArea(R, L, resolution = 60) {
+	let max = surfaceArea(cylinderProfile(R, L));
+	for (let i = 0; i <= resolution; i++) {
+		const midR = (R * i) / resolution;
+		max = Math.max(max, surfaceArea(vProfile(R, L, midR)));
+		for (let j = 0; j <= resolution; j++) {
+			const spread = (L * 0.98 * j) / resolution;
+			max = Math.max(max, surfaceArea(curveProfile(R, L, midR, spread)));
+		}
+	}
+	return max;
+}

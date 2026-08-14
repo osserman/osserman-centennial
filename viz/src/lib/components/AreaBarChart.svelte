@@ -4,7 +4,16 @@
 	// non-static bar shows a live value plus a persistent lighter band
 	// spanning the min/max area explored so far while dragging — "the
 	// range of surface areas you've uncovered," not just the current one.
-	let { bars = [] } = $props(); // [{ label, value, min?, max?, isStatic?, isAnswer? }]
+	// maxVal is a FIXED axis ceiling the caller computes once up front (see
+	// maxPossibleArea in catenoidProfile.js) — deliberately not derived from
+	// `bars` here. Rescaling the axis reactively to whatever's currently
+	// on screen was actively misleading: a bar whose value was genuinely
+	// growing could appear to hold the same height (axis silently
+	// stretching under it), and a bar that never changes at all (the
+	// cylinder) could appear to shrink, purely because the axis grew to
+	// fit something else. A fixed ceiling keeps height trustworthy for
+	// direct comparison throughout the whole interaction.
+	let { bars = [], maxVal = 1 } = $props(); // [{ label, value, min?, max?, isStatic?, isAnswer? }]
 
 	const BAR_W = 46;
 	const GAP = 28;
@@ -13,7 +22,6 @@
 	const PAD_BOTTOM = 26;
 	const PLOT_H = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
-	let maxVal = $derived(Math.max(1, ...bars.flatMap((b) => [b.value, b.max ?? b.value])) * 1.1);
 	let width = $derived(bars.length * (BAR_W + GAP) + GAP);
 
 	function barH(v) {

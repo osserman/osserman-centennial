@@ -3,7 +3,15 @@
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import AreaBarChart from '$lib/components/AreaBarChart.svelte';
-	import { DEFAULT_R, DEFAULT_L, vProfile, curveProfile, cylinderProfile, catenaryProfile } from '$lib/catenoidProfile.js';
+	import {
+		DEFAULT_R,
+		DEFAULT_L,
+		vProfile,
+		curveProfile,
+		cylinderProfile,
+		catenaryProfile,
+		maxPossibleArea
+	} from '$lib/catenoidProfile.js';
 
 	// R/L were briefly reactive (debug sliders, since removed) — dynamically
 	// changing them after midR/spread had already been initialized from the
@@ -11,6 +19,12 @@
 	// than the new ring radius). Fixed constants sidestep that entirely.
 	const ringR = DEFAULT_R;
 	const ringL = DEFAULT_L;
+
+	// Computed once, up front, from the fixed ring geometry above — not from
+	// whatever's currently interactive — so AreaBarChart's Y axis never
+	// rescales mid-interaction. See maxPossibleArea's own comment for why
+	// that reactive rescaling was actively misleading.
+	const chartMaxVal = maxPossibleArea(ringR, ringL) * 1.1;
 
 	// Internal staging. 'intro' is scroll-scrubbed (see below); 'cinch' and
 	// 'curve' are the click/drag-driven sandbox, advanced via a Continue
@@ -214,7 +228,7 @@
 				/>
 			{/if}
 
-			<AreaBarChart {bars} />
+			<AreaBarChart {bars} maxVal={chartMaxVal} />
 
 			{#if comparisonNote}
 				<p class="comparison-note">{comparisonNote}</p>
