@@ -45,6 +45,7 @@
 	}
 </script>
 
+<p class="chart-title">Surface area</p>
 <svg class="bar-chart" viewBox="0 0 {width} {HEIGHT}" role="img" aria-label="Surface area comparison">
 	<line x1="0" x2={width} y1={HEIGHT - PAD_BOTTOM} y2={HEIGHT - PAD_BOTTOM} class="baseline" />
 	{#each bars as bar, i (bar.label)}
@@ -69,6 +70,14 @@
 </svg>
 
 <style>
+	.chart-title {
+		margin: 0 0 0.35rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
 	.bar-chart {
 		width: 100%;
 		height: auto;

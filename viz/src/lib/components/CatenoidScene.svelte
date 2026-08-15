@@ -9,6 +9,7 @@
 	import { onMount, untrack } from 'svelte';
 	import * as THREE from 'three';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+	import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 	import { activePalette } from '$lib/palette.js';
 	import { surfaceArea } from '$lib/catenoidProfile.js';
 
@@ -43,11 +44,24 @@
 		}
 		mesh = new THREE.Mesh(
 			geometry,
-			new THREE.MeshStandardMaterial({
+			// Physical (not Standard) material — a nod to the soap-film slide
+			// later in the narrative: real translucency (transparent+opacity,
+			// not just a flat alpha look) plus a low roughness clearcoat for a
+			// glossy sheen, and `iridescence` for the faint rainbow shimmer a
+			// thin soap film shows under light. Subtle by design (opacity 0.82,
+			// iridescence 0.6) — meant to read as "surface," not "bubble."
+			new THREE.MeshPhysicalMaterial({
 				color: activePalette().blue,
 				side: THREE.DoubleSide,
-				metalness: 0.1,
-				roughness: 0.6
+				metalness: 0,
+				roughness: 0.25,
+				transparent: true,
+				opacity: 0.82,
+				clearcoat: 0.6,
+				clearcoatRoughness: 0.15,
+				iridescence: 0.6,
+				iridescenceIOR: 1.3,
+				iridescenceThicknessRange: [100, 400]
 			})
 		);
 		group.add(mesh);
@@ -141,6 +155,17 @@
 		renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 		container.appendChild(renderer.domElement);
 
+		// MeshPhysicalMaterial's clearcoat/iridescence sheen is image-based
+		// lighting — it reflects the environment, not just the two point/ambient
+		// lights below. Without one it renders essentially flat. A generic lit
+		// "room" (not a real photo env, just soft irregular light) is enough to
+		// make the sheen and translucency actually read as glossy film rather
+		// than flat blue.
+		const pmremGenerator = new THREE.PMREMGenerator(renderer);
+		const envTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+		scene.environment = envTexture;
+		pmremGenerator.dispose();
+
 		scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 		const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 		dirLight.position.set(3, 4, 5);
@@ -181,6 +206,7 @@
 			cancelAnimationFrame(animFrame);
 			resizeObserver.disconnect();
 			if (controls) controls.dispose();
+			envTexture.dispose();
 			renderer.dispose();
 		};
 	});

@@ -180,7 +180,13 @@ const CATENARY_X_STAR = bisect((x) => x * Math.tanh(x) - 1, 0.5, 3);
 // from memory, both are generated and compared by actual computed area, and
 // the smaller-area one wins. Returns null if L/R exceeds the limit (no
 // catenoid exists at all — see the long comment on GOLDSCHMIDT_LIMIT above).
-export function catenaryProfile(R, L) {
+//
+// Shared by catenaryProfile (below, returns just the winning points — the
+// original/only consumer) and catenaryParam (returns just the winning `c` —
+// added later for the unroll animation's curve-extension, which needs the
+// actual catenary parameter to extend r(z)=c*cosh(z/c) past z=±L rather than
+// guessing a taper). One root-find, not two independent copies of it.
+function solveCatenary(R, L) {
 	const k = R / L;
 	const kMin = Math.cosh(CATENARY_X_STAR) / CATENARY_X_STAR;
 	if (k < kMin) return null;
@@ -193,12 +199,20 @@ export function catenaryProfile(R, L) {
 
 	function profileForX(x) {
 		const c = L / x;
-		return sampleProfile(R, L, (z) => c * Math.cosh(z / c));
+		return { c, points: sampleProfile(R, L, (z) => c * Math.cosh(z / c)) };
 	}
 
-	const profile1 = profileForX(x1);
-	const profile2 = profileForX(x2);
-	return surfaceArea(profile1) <= surfaceArea(profile2) ? profile1 : profile2;
+	const a = profileForX(x1);
+	const b = profileForX(x2);
+	return surfaceArea(a.points) <= surfaceArea(b.points) ? a : b;
+}
+
+export function catenaryProfile(R, L) {
+	return solveCatenary(R, L)?.points ?? null;
+}
+
+export function catenaryParam(R, L) {
+	return solveCatenary(R, L)?.c ?? null;
 }
 
 // The largest area any profile in this interaction can produce for the
