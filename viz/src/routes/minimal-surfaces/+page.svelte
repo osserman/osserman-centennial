@@ -19,11 +19,14 @@
 	} from '$lib/catenoidProfile.js';
 	import { slides } from '$lib/content/minimalSurfaces.js';
 
-	// Slide 1 is a standalone full-viewport intro screen (see .intro-hero
-	// below), not part of the two-column scrollytelling flow — everything
-	// from Slide 2 on shares the text-panel/scene-panel layout.
+	// First and last slides are standalone full-viewport cover screens (see
+	// .cover-section below) bookending the stanza, not part of the
+	// two-column scrollytelling flow — everything in between shares the
+	// text-panel/scene-panel layout. The outro doesn't have (or need) a
+	// built visual, unlike every slide in the middle.
 	const introSlide = slides[0];
-	const scrollySlides = slides.slice(1);
+	const outroSlide = slides[slides.length - 1];
+	const scrollySlides = slides.slice(1, -1);
 
 	let activeIndex = $state(0);
 	const eulerIndex = scrollySlides.findIndex((s) => s.id === 'euler-question');
@@ -270,8 +273,8 @@
 	<title>Minimal Surfaces</title>
 </svelte:head>
 
-<section class="intro-hero">
-	<div class="intro-card">
+<section class="cover-section">
+	<div class="cover-card">
 		<p class="kicker">Stanza II</p>
 		<h1>{introSlide.title}</h1>
 		{#each introSlide.body as para}
@@ -449,8 +452,21 @@
 	</div>
 </main>
 
+<section class="cover-section">
+	<div class="cover-card">
+		<p class="kicker">End of Stanza II</p>
+		<h1>{outroSlide.title}</h1>
+		{#each outroSlide.body as para}
+			<p>{@html renderInline(para)}</p>
+		{/each}
+	</div>
+</section>
+
 <style>
-	.intro-hero {
+	/* Shared by the intro (Slide 1) and outro (last slide) — both are
+	   full-bleed centered cards bookending the stanza, outside the
+	   two-column scrollytelling flow the slides in between use. */
+	.cover-section {
 		min-height: 100vh;
 		display: flex;
 		align-items: center;
@@ -458,7 +474,7 @@
 		padding: 2rem;
 		box-sizing: border-box;
 	}
-	.intro-card {
+	.cover-card {
 		max-width: 34rem;
 		display: flex;
 		flex-direction: column;
@@ -478,7 +494,7 @@
 		text-transform: uppercase;
 		color: var(--accent);
 	}
-	.intro-card h1 {
+	.cover-card h1 {
 		margin: 0;
 		font-size: 2.2rem;
 		font-weight: 700;
@@ -486,7 +502,7 @@
 		letter-spacing: -0.01em;
 		color: var(--text-primary);
 	}
-	.intro-card p {
+	.cover-card p {
 		margin: 0;
 		font-size: 1.05rem;
 		line-height: 1.6;
