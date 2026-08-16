@@ -13,7 +13,7 @@
 	import { activePalette } from '$lib/palette.js';
 	import { surfaceArea } from '$lib/catenoidProfile.js';
 
-	let { profile, R, L, revealProgress = 1, onAreaChange } = $props();
+	let { profile, R, L, revealProgress = 1, onAreaChange, onCameraChange } = $props();
 
 	const REVOLUTION_SEGMENTS = 48;
 
@@ -144,6 +144,18 @@
 			controls.enableZoom = false;
 			controls.enableDamping = true;
 			controls.target.set(0, 0, 0);
+			// Reports the camera's position whenever the reader actually
+			// rotates it — so if they leave this scene mid-rotation, whatever
+			// scene replaces it (CatenaryUnrollScene, on Slide 3) can pick up
+			// from that same orientation and animate smoothly back to
+			// face-on, instead of snapping to some fixed default position the
+			// reader never actually saw. Only ever fires from real
+			// interaction (OrbitControls' own 'change' event), not every
+			// frame, so it doesn't turn into a per-tick reactivity storm.
+			controls.addEventListener('change', () => {
+				onCameraChange?.({ x: camera.position.x, y: camera.position.y, z: camera.position.z });
+			});
+			onCameraChange?.({ x: camera.position.x, y: camera.position.y, z: camera.position.z });
 		}
 	});
 

@@ -14,6 +14,14 @@
 // slides without a built visual yet; the Euler's-question slide (id
 // 'euler-question') has none because its visual is the live catenoid
 // interactive instead.
+//
+// 'euler-question' has two extra fields the other slides don't: `stages`
+// is the cinch/curve/catenary sandbox's own copy — `prompt` scrolls in
+// (same as `body`, just in its own nested sequence, see the page's nested
+// <Scrolly>), `caption` is stationary text shown next to the drag control
+// once that stage is reached. `body` here is the reveal-phase narrative
+// that plays alongside the cylinder sweeping open, before the sandbox
+// appears.
 
 export const slides = [
 	{
@@ -32,7 +40,22 @@ export const slides = [
 		body: [
 			'In 1744, Leonhard Euler asked a deceptively simple question:',
 			'> What surface of revolution connects two rings using the least possible area?',
-			'Try to beat him.'
+			'A good place to start would be rotating a straight line around the rings to make a cylinder.'
+		],
+		stages: [
+			{
+				prompt: 'But we can do better if we cinch the middle.',
+				caption: 'Drag the point up and down.'
+			},
+			{
+				prompt: 'What if the transition were smooth instead of sharp?',
+				caption: 'Drag the second point sideways to soften the curve.'
+			},
+			{
+				prompt:
+					"In 1744, Leonhard Euler proved this exact curve — the catenary — produces the smallest possible surface. Rotated, it's called a catenoid.",
+				caption: 'The optimal curve.'
+			}
 		]
 		// Visual: the live catenoid interactive, rendered directly by this page.
 	},

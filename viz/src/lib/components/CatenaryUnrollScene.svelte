@@ -1,52 +1,65 @@
 <script>
-	// Slide 3's scene: the finished catenoid from Slide 2 unrolls back down to
-	// the catenary curve that generates it, staged by a single continuous
+	// Slide 3's scene: the finished catenoid from Slide 2 gives way to the
+	// catenary curve that generates it, staged by a single continuous
 	// `progress` prop (0->1, scroll-scrubbed by the page — see
 	// updateCatenaryProgress in +page.svelte). Same imperative-scene pattern
 	// as CatenoidScene.svelte (own onMount, own render loop), deliberately
 	// simpler: no OrbitControls (this is a passive scroll-driven animation,
 	// not a drag sandbox) and no area callback.
 	//
-	// Stages, by progress range (see the comments on each piece below for
-	// why these particular boundaries):
-	//   0.00-0.45  surface unrolls (phiLength 2pi->~0) and the rings collapse
-	//              toward points, while the camera eases toward face-on
-	//   0.30-0.45  cross-fade: the Lathe surface fades out as a thin curve
-	//              "line" mesh (built from the same profile points) fades in
-	//   0.45-0.55  camera finishes settling exactly face-on
-	//   0.55-0.70  a straight axis grows in through the collapsed rings
-	//   0.70-1.00  the curve extends past z=+-L using the real catenary
-	//              formula r(z) = c*cosh(z/c), not a guessed taper
+	// Three straightforward stages, in order — no geometry morphing (an
+	// earlier version progressively collapsed the Lathe surface's phiLength
+	// and shrank the rings frame by frame; this replaces that with plain
+	// opacity cross-fades, which is simpler to follow both in code and on
+	// screen):
+	//   0.00-0.25  camera eases to a face-on view; catenoid + rings unchanged
+	//   0.25-0.55  the catenary line and axis fade in *while* the catenoid
+	//              surface and rings fade out, at the same time — not
+	//              sequentially. An earlier version faded the line/axis in
+	//              first, fully, while the catenoid was still fully opaque —
+	//              which meant the axis was fully visible but obscured by
+	//              the still-solid catenoid for a while. Crossfading them
+	//              together means the axis is only ever competing with a
+	//              catenoid that's *also* partway transparent.
+	//   0.55-1.00  the curve extends past z=+-L using the real catenary
+	//              formula r(z) = c*cosh(z/c) (not a guessed taper), while
+	//              the camera pans down (position and look-at target shift
+	//              together, so it's a pure translation — no rotation, no
+	//              skew) to keep the growing curve centered in frame
 	import { onMount } from 'svelte';
 	import * as THREE from 'three';
 	import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 	import { activePalette } from '$lib/palette.js';
 	import { catenaryProfile, catenaryParam } from '$lib/catenoidProfile.js';
 
-	let { R, L, progress = 0 } = $props();
+	let { R, L, progress = 0, startCameraPos = null } = $props();
 
 	const REVOLUTION_SEGMENTS = 48;
-	const MIN_PHI = 0.015; // never fully 0 - LatheGeometry degenerates there
-	const MIN_RING_FRAC = 0.02; // rings shrink toward a point, not to it exactly
-	const EXTEND_LENGTH_FRAC = 2.2; // extend the curve by this many L's past each ring
+	const EXTEND_LENGTH_FRAC = 3.0; // extend the curve by this many L's past each ring
+	const AXIS_HALF_LENGTH_FRAC = 4.5; // axis reaches this many L's past center, each side
 
-	const UNROLL_END = 0.45;
-	const CROSSFADE_START = 0.3;
-	const CROSSFADE_END = 0.45;
-	const CAMERA_END_T = 0.55;
-	const AXIS_START = 0.55;
-	const AXIS_END = 0.7;
-	const EXTEND_START = 0.7;
+	const CAMERA_END_T = 0.25;
+	const FADE_START = 0.25;
+	const FADE_END = 0.55;
+	const EXTEND_START = 0.55;
 	const EXTEND_END = 1.0;
 
-	// Continuity with CatenoidScene's own end-of-reveal camera position (see
-	// its CAMERA_END) — this scene picks up close to where that one left
-	// off, then only needs a modest final adjustment (not a big rotation) to
-	// reach a perfectly centered face-on view, since a camera looking mostly
-	// along world Z already reads as "face-on" for the flat curve the shape
-	// collapses into (see the group-orientation comment in onMount below).
-	const CAMERA_START = new THREE.Vector3(0, 0.25, 6.9);
+	// Default start position — continuity with CatenoidScene's own
+	// end-of-reveal camera (see its CAMERA_END). Overridden per-mount by
+	// `startCameraPos` when the reader actually rotated Slide 2's camera
+	// (see onMount below) — either way, this scene eases from wherever it
+	// starts to a perfectly centered face-on view. A camera looking mostly
+	// along world Z already reads as "face-on" for the catenary (which lies
+	// flat in the world X-Y plane — see the group-orientation comment in
+	// onMount below), so reaching it is a modest adjustment, not a big
+	// rotation, even from a rotated starting point.
+	const CAMERA_START_DEFAULT = new THREE.Vector3(0, 0.25, 6.9);
 	const CAMERA_FACEON = new THREE.Vector3(0, 0, 7.5);
+	let cameraStart = CAMERA_START_DEFAULT;
+	// How far the camera (and its look-at target, together — see updateScene)
+	// pans upward in world space while the curve extends, so the growing
+	// curve doesn't end up crowded against the top of the frame.
+	const PAN_AMOUNT = (ringL) => ringL * 3;
 
 	function remap(t, lo, hi) {
 		return Math.max(0, Math.min(1, (t - lo) / (hi - lo)));
@@ -56,10 +69,7 @@
 	// (r = c*cosh(z/c)) that generated it — an actual continuation of the
 	// mathematical curve, not a taper made up for the animation. Grows
 	// outward over EXTEND_START..EXTEND_END rather than appearing all at once.
-	function computeProfilePoints(prog) {
-		const base = catenaryProfile(R, L);
-		if (!base) return null;
-		const c = catenaryParam(R, L);
+	function computeProfilePoints(prog, base, c) {
 		const extendLen = L * EXTEND_LENGTH_FRAC * remap(prog, EXTEND_START, EXTEND_END);
 		if (extendLen <= 0 || c == null) return base;
 		const EXT_SEGMENTS = 16;
@@ -76,15 +86,14 @@
 		return [...left, ...base, ...right];
 	}
 
-	function buildLathe(points, phiLength) {
+	function buildLathe(points) {
 		const vec2s = points.map((p) => new THREE.Vector2(Math.max(p.r, 1e-4), p.z));
-		return new THREE.LatheGeometry(vec2s, REVOLUTION_SEGMENTS, 0, phiLength);
+		return new THREE.LatheGeometry(vec2s, REVOLUTION_SEGMENTS, 0, Math.PI * 2);
 	}
 
 	// Local (x,y,z) = (r, z_profile, 0) is exactly where a Lathe vertex at
 	// phi=0 already sits (see buildLathe) — the curve line is built in that
-	// same local space so it lines up with the surface throughout the
-	// cross-fade instead of needing separate placement logic.
+	// same local space so it lines up with the surface it's fading in over.
 	function buildCurveLine(points) {
 		const vecs = points.map((p) => new THREE.Vector3(p.r, p.z, 0));
 		const curve = new THREE.CatmullRomCurve3(vecs);
@@ -93,77 +102,67 @@
 
 	let container;
 	let renderer, scene, group, camera, resizeObserver, animFrame;
-	let mesh, curveLine, axis;
+	let curveLine;
 	let meshMaterial, lineMaterial;
-	let ringMeshes = [];
+	let baseProfile, catenaryC;
 
 	function updateScene(prog) {
-		const points = computeProfilePoints(prog);
-		if (!points) return;
+		// --- camera eases to face-on (0 -> CAMERA_END_T) ---
+		const camT = remap(prog, 0, CAMERA_END_T);
+		const basePos = new THREE.Vector3().lerpVectors(cameraStart, CAMERA_FACEON, camT);
 
-		// --- surface unroll + ring collapse (0 -> UNROLL_END) ---
-		const collapseT = remap(prog, 0, UNROLL_END);
-		const phiLength = MIN_PHI + (Math.PI * 2 - MIN_PHI) * (1 - collapseT);
-		const ringR = R * (1 - collapseT * (1 - MIN_RING_FRAC));
-
-		if (mesh) {
-			group.remove(mesh);
-			mesh.geometry.dispose();
-		}
-		mesh = new THREE.Mesh(buildLathe(catenaryProfile(R, L), phiLength), meshMaterial);
-		group.add(mesh);
-
-		for (const ring of ringMeshes) {
-			group.remove(ring);
-			ring.geometry.dispose();
-		}
-		ringMeshes = [];
-		const ringMaterial = new THREE.MeshStandardMaterial({ color: activePalette().textPrimary ?? 0x0b0b0b });
-		for (const z of [-L, L]) {
-			const ring = new THREE.Mesh(new THREE.TorusGeometry(ringR, 0.015, 12, 64), ringMaterial);
-			ring.rotation.x = Math.PI / 2;
-			ring.position.y = z;
-			group.add(ring);
-			ringMeshes.push(ring);
-		}
-
-		// --- surface <-> line cross-fade (CROSSFADE_START -> CROSSFADE_END) ---
-		const fadeT = remap(prog, CROSSFADE_START, CROSSFADE_END);
-		meshMaterial.opacity = 0.82 * (1 - fadeT);
-		meshMaterial.visible = fadeT < 1;
+		// --- curve extends (EXTEND_START -> EXTEND_END), camera pans to follow ---
+		const panT = remap(prog, EXTEND_START, EXTEND_END);
+		const panY = PAN_AMOUNT(L) * panT;
+		camera.position.set(basePos.x, basePos.y + panY, basePos.z);
+		camera.lookAt(0, panY, 0);
 
 		if (curveLine) {
 			group.remove(curveLine);
 			curveLine.geometry.dispose();
 		}
+		const points = computeProfilePoints(prog, baseProfile, catenaryC);
 		curveLine = new THREE.Mesh(buildCurveLine(points), lineMaterial);
-		lineMaterial.opacity = fadeT;
-		lineMaterial.visible = fadeT > 0;
 		group.add(curveLine);
 
-		// --- axis grows in (AXIS_START -> AXIS_END) ---
-		const axisT = remap(prog, AXIS_START, AXIS_END);
-		const axisHalfLength = L * 2.0;
-		axis.scale.y = axisHalfLength * 2 * axisT;
-		axis.visible = axisT > 0;
+		// --- catenary line + axis fade in, catenoid + rings fade out, together ---
+		const fadeT = remap(prog, FADE_START, FADE_END);
+		lineMaterial.opacity = fadeT;
+		lineMaterial.visible = fadeT > 0;
+		axisMaterial.opacity = fadeT;
+		axis.visible = fadeT > 0;
 
-		// --- camera eases to face-on (0 -> CAMERA_END_T) ---
-		const camT = remap(prog, 0, CAMERA_END_T);
-		camera.position.lerpVectors(CAMERA_START, CAMERA_FACEON, camT);
-		camera.lookAt(0, 0, 0);
+		const catenoidOpacity = 0.82 * (1 - fadeT);
+		meshMaterial.opacity = catenoidOpacity;
+		meshMaterial.visible = fadeT < 1;
+		ringMaterial.opacity = 1 - fadeT;
+		for (const ring of ringMeshes) ring.visible = fadeT < 1;
 	}
+
+	let mesh, axis, axisMaterial, ringMaterial;
+	let ringMeshes = [];
 
 	$effect(() => {
 		const p = progress;
-		const r = R;
-		const l = L;
 		if (scene) updateScene(p);
 	});
 
 	onMount(() => {
+		// Snapshot once, at mount — not tracked reactively afterward. This
+		// scene is fully unmounted whenever the reader scrolls away from
+		// Slide 3 (see the {#if} in +page.svelte), so onMount already fires
+		// fresh every time they scroll back into it, naturally picking up
+		// wherever CatenoidScene's camera was left most recently. Reading it
+		// reactively instead would risk this scene's own animated camera
+		// position fighting a still-updating prop if the two scenes were
+		// ever mounted at overlapping times.
+		if (startCameraPos) {
+			cameraStart = new THREE.Vector3(startCameraPos.x, startCameraPos.y, startCameraPos.z);
+		}
+
 		scene = new THREE.Scene();
 		camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-		camera.position.copy(CAMERA_START);
+		camera.position.copy(cameraStart);
 
 		renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 		container.appendChild(renderer.domElement);
@@ -180,16 +179,24 @@
 
 		// Same group convention as CatenoidScene: LatheGeometry revolves
 		// around local Y, so the group is rotated 90° about Z to lay the
-		// revolution axis flat along world X. At phi=0 (or once the surface
-		// has collapsed to a sliver near it), the flat profile lies in the
-		// local X-Y plane, which lands in the world X-Y plane too (z=0) —
-		// so a camera looking mostly along world Z already sees it face-on,
-		// which is why CAMERA_FACEON only needs a modest final adjustment
-		// rather than a large rotation.
+		// revolution axis flat along world X.
 		group = new THREE.Group();
 		group.rotation.z = Math.PI / 2;
 		scene.add(group);
 
+		baseProfile = catenaryProfile(R, L);
+		catenaryC = catenaryParam(R, L);
+
+		// The catenoid + rings are static geometry now (no more per-frame
+		// unrolling/collapsing) — built once here, animated only via opacity
+		// in updateScene. depthWrite:false on both: a `transparent:true`
+		// material still writes to the depth buffer as if fully opaque by
+		// default, which occludes anything behind it (the axis, sitting
+		// right through the tube's hollow center) via the depth test
+		// regardless of how transparent it currently looks — the axis was
+		// getting clipped by the catenoid's silhouette even mid-fade,
+		// nowhere near actually opaque. Turning depthWrite off makes it
+		// blend by opacity alone, like it visually should.
 		meshMaterial = new THREE.MeshPhysicalMaterial({
 			color: activePalette().blue,
 			side: THREE.DoubleSide,
@@ -197,29 +204,53 @@
 			roughness: 0.25,
 			transparent: true,
 			opacity: 0.82,
+			depthWrite: false,
 			clearcoat: 0.6,
 			clearcoatRoughness: 0.15,
 			iridescence: 0.6,
 			iridescenceIOR: 1.3,
 			iridescenceThicknessRange: [100, 400]
 		});
+		mesh = new THREE.Mesh(buildLathe(baseProfile), meshMaterial);
+		group.add(mesh);
+
+		ringMaterial = new THREE.MeshStandardMaterial({
+			color: activePalette().textPrimary ?? 0x0b0b0b,
+			transparent: true,
+			opacity: 1,
+			depthWrite: false
+		});
+		for (const z of [-L, L]) {
+			const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.015, 12, 64), ringMaterial);
+			ring.rotation.x = Math.PI / 2;
+			ring.position.y = z;
+			group.add(ring);
+			ringMeshes.push(ring);
+		}
+
 		lineMaterial = new THREE.MeshStandardMaterial({
 			color: activePalette().blue,
 			transparent: true,
 			opacity: 0,
+			depthWrite: false,
 			roughness: 0.4,
 			metalness: 0.1
 		});
 
-		axis = new THREE.Mesh(
-			new THREE.CylinderGeometry(0.006, 0.006, 1, 8),
-			new THREE.MeshStandardMaterial({ color: activePalette().muted ?? 0x898781 })
-		);
+		// Fixed full length from the start (not grown via scale like an
+		// earlier version) — it only fades in, alongside the curve line.
+		axisMaterial = new THREE.MeshStandardMaterial({
+			color: activePalette().muted ?? 0x898781,
+			transparent: true,
+			opacity: 0,
+			depthWrite: false
+		});
+		const axisLength = AXIS_HALF_LENGTH_FRAC * L * 2;
+		axis = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, axisLength, 8), axisMaterial);
 		axis.visible = false;
 		group.add(axis);
 
 		updateScene(progress);
-		camera.lookAt(0, 0, 0);
 
 		resizeObserver = new ResizeObserver((entries) => {
 			const { width, height } = entries[0].contentRect;

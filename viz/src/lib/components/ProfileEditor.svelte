@@ -107,11 +107,6 @@
 	role="img"
 	aria-label="Profile curve editor"
 >
-	<!-- ring boundaries, as vertical reference ticks -->
-	<line x1={toX(-L)} x2={toX(-L)} y1={toY(0)} y2={toY(R)} class="ring-guide" />
-	<line x1={toX(L)} x2={toX(L)} y1={toY(0)} y2={toY(R)} class="ring-guide" />
-	<line x1={PAD_X} x2={WIDTH - PAD_X} y1={toY(0)} y2={toY(0)} class="axis" />
-
 	<path d={pathD} class="profile-line" class:frozen />
 	{#if overlayPathD}
 		<path d={overlayPathD} class="overlay-line" />
@@ -167,16 +162,6 @@
 	   at ~300px rendered to nearly invisible hairlines and pinpricks once
 	   the box shrank to ~176px. Sized for how they look at *this* box's
 	   actual rendered size, not the viewBox's nominal 320-unit width. */
-	.ring-guide {
-		stroke: var(--text-muted);
-		stroke-width: 1.8;
-		opacity: 0.4;
-	}
-	.axis {
-		stroke: var(--text-muted);
-		stroke-width: 1.8;
-		opacity: 0.25;
-	}
 	.profile-line {
 		fill: none;
 		stroke: var(--accent);

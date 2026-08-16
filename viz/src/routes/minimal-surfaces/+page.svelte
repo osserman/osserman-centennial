@@ -6,7 +6,7 @@
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import CatenaryUnrollScene from '$lib/components/CatenaryUnrollScene.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
-	import AreaBarChart from '$lib/components/AreaBarChart.svelte';
+	import SurfaceAreaBars from '$lib/components/SurfaceAreaBars.svelte';
 	import {
 		DEFAULT_R,
 		DEFAULT_L,
@@ -28,6 +28,12 @@
 	let activeIndex = $state(0);
 	const eulerIndex = scrollySlides.findIndex((s) => s.id === 'euler-question');
 	const catenaryAnswerIndex = scrollySlides.findIndex((s) => s.id === 'euler-answer');
+	// The euler-question slide's copy has two extra fields (`stages`) the
+	// generic slides don't — see the comment on it in minimalSurfaces.js.
+	// Pulled out here since the scene-panel section below needs it too, but
+	// isn't inside the `{#each scrollySlides as slide}` loop that would
+	// otherwise put `slide` in scope.
+	const eulerSlide = scrollySlides[eulerIndex];
 
 	// Minimal inline-markdown support, same convention as StepText.svelte —
 	// **bold** only, plus *italic* (used for book titles in this copy).
@@ -78,14 +84,9 @@
 	// Per-stage drag instructions live as stationary text next to the
 	// editor (not in the scrolling prompt) so they're always paired with
 	// the control they describe, regardless of how far the reader has
-	// scrolled past the prompt that introduced it.
-	let dragCaption = $derived(
-		stage === 'cinch'
-			? 'Drag the point up and down.'
-			: stage === 'curve'
-				? 'Drag the second point sideways to soften the curve.'
-				: ''
-	);
+	// scrolled past the prompt that introduced it. Pulled from the same
+	// eulerSlide.stages entry the scrolling prompt below comes from.
+	let dragCaption = $derived(eulerSlide.stages[stageIndex]?.caption ?? '');
 
 	let profile = $derived(
 		stage === 'catenary'
@@ -105,6 +106,13 @@
 			catenaryArea = a;
 		}
 	}
+
+	// Wherever the reader last left CatenoidScene's camera (only updates on
+	// actual OrbitControls rotation — see its onCameraChange) — so if Slide
+	// 3's CatenaryUnrollScene mounts after they've rotated the shape, it can
+	// start its own rotate-to-face-on animation from that same orientation
+	// instead of snapping to a fixed default they never saw.
+	let catenoidCameraPos = $state(null);
 
 	function finite(v) {
 		return Number.isFinite(v) ? v : undefined;
@@ -290,56 +298,54 @@
 						<div class="euler-flow">
 							<div class="intro-spacer-lead"></div>
 
-							<!-- Title always here; editor + drag caption wait for
-							     sandboxVisible (see its declaration) — shown right as the
-							     "cinch the middle" prompt is about to appear, not from the
-							     very start. z-index matters here (not just for visual
-							     layering): .stage-steps below wraps a <Scrolly>, whose own
-							     root is `position:relative` — a *positioned* sibling with
-							     no z-index paints in DOM order among other positioned
-							     elements, regardless of who's "sticky" — so without this,
-							     the later, unrelated .stage-steps content silently
-							     painted over this panel (and ate its pointer events,
-							     making the editor's drag handles unclickable) once
-							     scrolled far enough that the two visually overlapped. -->
+							<!-- Title always here; the area bars wait for sandboxVisible
+							     (see its declaration) — shown right as the "cinch the
+							     middle" prompt is about to appear, not from the very
+							     start. The draggable editor itself now lives over the 3D
+							     scene instead (see .editor-overlay below), not in this
+							     column. z-index still matters here: .stage-steps below
+							     wraps a <Scrolly>, whose own root is `position:relative` —
+							     a *positioned* sibling with no z-index paints in DOM order
+							     among other positioned elements regardless of who's
+							     "sticky", so without this the scrolling prompt text
+							     painted over this panel once scrolled far enough to
+							     overlap it (a real bug hit building the earlier version of
+							     this section, before the editor moved out). -->
 							<div class="intro-sticky" bind:this={introTextEl}>
 								<h2>{slide.title}</h2>
 								{#if sandboxVisible}
-									<div class="editor-row">
-										<ProfileEditor
-											R={ringR}
-											L={ringL}
-											bind:midR
-											bind:spread
-											mode={stage === 'cinch' ? 'v' : 'curve'}
-											showSpreadHandle={stage === 'curve'}
-											frozen={stage === 'catenary'}
-											overlayProfile={stage === 'catenary' ? profile : null}
-										/>
-										{#if dragCaption}
-											<p class="drag-caption">{dragCaption}</p>
-										{/if}
-									</div>
+									<SurfaceAreaBars {bars} maxVal={chartMaxVal} />
+									{#if comparisonNote}
+										<p class="comparison-note">{comparisonNote}</p>
+									{/if}
 								{/if}
 							</div>
 
 							<!-- Reveal narrative: plain scrolling text (not sticky, not
 							     tracked by any Scrolly) — nothing here needs to know
 							     which paragraph is "active," it's just flavor text
-							     accompanying the sweep-open animation. min-height gives
-							     the reveal (REVEAL_VH of scroll) room to finish before
-							     .stage-steps' first trigger zone becomes reachable —
-							     without it, a reader scrolling straight through lands on
-							     "curve" the instant the sandbox appears, skipping
-							     "cinch" entirely (this happened for real building it). -->
+							     accompanying the sweep-open animation. Text and buffer
+							     are two separate elements on purpose (see their CSS) —
+							     an earlier version centered the text inside one big
+							     (200vh) box to keep .stage-steps from peeking in before
+							     the reveal finished, but that meant the text itself sat
+							     around the box's *middle*, well past where
+							     `sandboxVisible` (tied to a fixed 90vh scroll budget)
+							     actually flips — so the editor/chart appeared while this
+							     text was still front and center. Splitting them lets the
+							     text settle early (readable while the reveal plays) and
+							     the plain spacer underneath carry the rest of the "don't
+							     let the next block peek in yet" buffer on its own. -->
 							<div class="reveal-narrative">
-								<p class="prompt">In 1744, Leonhard Euler asked a deceptively simple question:</p>
-								<blockquote>What surface of revolution connects two rings using the least possible area?</blockquote>
-								<p class="prompt">
-									A good place to start would be rotating a straight line around the rings to
-									make a cylinder.
-								</p>
+								{#each eulerSlide.body as para}
+									{#if para.startsWith('> ')}
+										<blockquote>{@html renderInline(para.slice(2))}</blockquote>
+									{:else}
+										<p class="prompt">{@html renderInline(para)}</p>
+									{/if}
+								{/each}
 							</div>
+							<div class="reveal-narrative-spacer"></div>
 
 							<!-- Per-stage prompts: normal document flow (not sticky), so
 							     each one visibly scrolls up from underneath the pinned
@@ -355,19 +361,11 @@
 							     git history for details). -->
 							<div class="stage-steps">
 								<Scrolly bind:active={stageIndex}>
-									<ScrollyStep index={0} active={stageIndex === 0}>
-										<p class="prompt">But we can do better if we cinch the middle.</p>
-									</ScrollyStep>
-									<ScrollyStep index={1} active={stageIndex === 1}>
-										<p class="prompt">What if the transition were smooth instead of sharp?</p>
-									</ScrollyStep>
-									<ScrollyStep index={2} active={stageIndex === 2}>
-										<p class="prompt">
-											In 1744, Leonhard Euler proved this exact curve — the catenary —
-											produces the smallest possible surface. Rotated, it's called a
-											catenoid.
-										</p>
-									</ScrollyStep>
+									{#each eulerSlide.stages as s, i}
+										<ScrollyStep index={i} active={stageIndex === i}>
+											<p class="prompt">{s.prompt}</p>
+										</ScrollyStep>
+									{/each}
 								</Scrolly>
 							</div>
 						</div>
@@ -407,17 +405,44 @@
 
 	<div class="scene-panel">
 		{#if activeIndex === eulerIndex}
-			<CatenoidScene {profile} R={ringR} L={ringL} {revealProgress} onAreaChange={handleAreaChange} />
+			<CatenoidScene
+				{profile}
+				R={ringR}
+				L={ringL}
+				{revealProgress}
+				onAreaChange={handleAreaChange}
+				onCameraChange={(pos) => (catenoidCameraPos = pos)}
+			/>
 			{#if sandboxVisible}
-				<div class="chart-overlay">
-					<AreaBarChart {bars} maxVal={chartMaxVal} />
-					{#if comparisonNote}
-						<p class="comparison-note">{comparisonNote}</p>
+				<!-- No card/border on purpose — sits directly over the 3D view
+				     rather than in a boxed-off container, per explicit request.
+				     ProfileEditor itself lost its own reference-line "frame" (the
+				     ring-guide/axis ticks) at the same time — those read as an
+				     unwanted little chart-within-a-chart once this moved onto the
+				     open scene rather than sitting in the narrow text column. -->
+				<div class="editor-overlay">
+					{#if dragCaption}
+						<p class="drag-caption">{dragCaption}</p>
 					{/if}
+					<ProfileEditor
+						R={ringR}
+						L={ringL}
+						bind:midR
+						bind:spread
+						mode={stage === 'cinch' ? 'v' : 'curve'}
+						showSpreadHandle={stage === 'curve'}
+						frozen={stage === 'catenary'}
+						overlayProfile={stage === 'catenary' ? profile : null}
+					/>
 				</div>
 			{/if}
 		{:else if activeIndex === catenaryAnswerIndex}
-			<CatenaryUnrollScene R={ringR} L={ringL} progress={catenaryProgress} />
+			<CatenaryUnrollScene
+				R={ringR}
+				L={ringL}
+				progress={catenaryProgress}
+				startCameraPos={catenoidCameraPos}
+			/>
 		{:else}
 			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
 		{/if}
@@ -562,29 +587,31 @@
 		padding: 2rem 0 1.25rem;
 		border-bottom: 1px solid var(--surface-2);
 	}
-	.editor-row {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-	.editor-row :global(.profile-editor) {
-		flex-shrink: 0;
-	}
-	.drag-caption {
-		margin: 0;
-		font-size: 0.9rem;
-		font-style: italic;
-		color: var(--text-secondary);
-	}
-	/* min-height matches REVEAL_VH in the script — see the template comment
-	   on this element for why. Centered like ScrollyStep's own content, for
-	   a consistent reading position with the rest of the page. */
+	/* Text settles within roughly one viewport (90vh, centered like
+	   ScrollyStep's own content) — comparable to REVEAL_SPAN_PX (90vh), so
+	   the text has genuinely scrolled past by the time `sandboxVisible`
+	   flips and the editor/chart appear, rather than still sitting front
+	   and center (a real bug: an earlier version stretched this box to
+	   200vh to solve a *different* problem — see .reveal-narrative-spacer
+	   below — which meant the text sat around the box's middle, well past
+	   when sandboxVisible actually flips). */
 	.reveal-narrative {
 		min-height: 90vh;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		gap: 1rem;
+	}
+	/* Pure buffer, no content — exists only so the *next* block ("cinch")
+	   can't peek in at the bottom of the viewport before the reveal
+	   finishes. Needs .reveal-narrative (90vh) + this >= REVEAL_SPAN_PX
+	   (90vh) + one full viewport (100vh) — i.e. this alone needs to be at
+	   least ~100vh. Kept close to that minimum (not padded further) since
+	   any extra here directly delays how soon the "cinch" prompt can
+	   arrive after the editor/chart appear — padding this out further
+	   read as a laggy pause once the safety margin above was covered. */
+	.reveal-narrative-spacer {
+		height: 105vh;
 	}
 	/* Each prompt below gets ScrollyStep's normal 70vh (90vh for the
 	   first/last, since this is its own nested <Scrolly> root) — the same
@@ -612,22 +639,22 @@
 		top: 0;
 		height: 100vh;
 	}
-	/* Floats over the 3D view rather than stacking in the (already sticky,
-	   already tall) left column — keeps that column short enough to leave
-	   room for the surrounding narrative text to keep scrolling normally,
-	   and puts the numbers next to the shape they describe. */
-	.chart-overlay {
+	/* Top-left of the 3D view, no card/border (see the template comment on
+	   this element) — just the caption and the bare line. */
+	.editor-overlay {
 		position: absolute;
+		top: 1.5rem;
 		left: 1.5rem;
-		bottom: 1.5rem;
 		z-index: 5;
-		width: min(20rem, calc(100% - 3rem));
-		padding: 1rem 1.1rem 0.85rem;
-		border-radius: 12px;
-		border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
-		background: color-mix(in srgb, var(--surface-1) 88%, transparent);
-		backdrop-filter: blur(6px);
-		box-shadow: 0 4px 18px color-mix(in srgb, var(--text-primary) 12%, transparent);
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.drag-caption {
+		margin: 0;
+		font-size: 0.9rem;
+		font-style: italic;
+		color: var(--text-secondary);
 	}
 	.comparison-note {
 		margin-top: 0.6rem;
@@ -643,7 +670,7 @@
 			border-right: none;
 		}
 		.scene-panel {
-			/* Not `static` — .chart-overlay is absolutely positioned against
+			/* Not `static` — .editor-overlay is absolutely positioned against
 			   this element, which requires it to stay a positioned ancestor
 			   even once it's no longer sticky-pinned on narrow layouts. */
 			position: relative;
