@@ -135,6 +135,14 @@
 		const catenoidOpacity = 0.82 * (1 - fadeT);
 		meshMaterial.opacity = catenoidOpacity;
 		meshMaterial.visible = fadeT < 1;
+		// meshMaterial only needs depthWrite off once the axis is actually
+		// fading in behind it (fadeT > 0) — see the depthWrite comment in
+		// onMount. Before that (fadeT === 0, axis not visible yet), leaving
+		// it on lets the rings be properly, partially occluded by the
+		// catenoid's near side, same as CatenoidScene's rings — without
+		// this, the rings rendered as full unoccluded outlines even while
+		// the surface was fully opaque (reported against a screenshot).
+		meshMaterial.depthWrite = fadeT <= 0;
 		ringMaterial.opacity = 1 - fadeT;
 		for (const ring of ringMeshes) ring.visible = fadeT < 1;
 	}
@@ -189,14 +197,15 @@
 
 		// The catenoid + rings are static geometry now (no more per-frame
 		// unrolling/collapsing) — built once here, animated only via opacity
-		// in updateScene. depthWrite:false on both: a `transparent:true`
+		// in updateScene. meshMaterial's depthWrite starts true (normal depth
+		// behavior, so the rings are properly, partially occluded by the
+		// near side of the surface) and is only switched off once the axis
+		// starts fading in behind it (see updateScene) — a `transparent:true`
 		// material still writes to the depth buffer as if fully opaque by
-		// default, which occludes anything behind it (the axis, sitting
-		// right through the tube's hollow center) via the depth test
-		// regardless of how transparent it currently looks — the axis was
-		// getting clipped by the catenoid's silhouette even mid-fade,
-		// nowhere near actually opaque. Turning depthWrite off makes it
-		// blend by opacity alone, like it visually should.
+		// default, which would occlude the axis (sitting right through the
+		// tube's hollow center) via the depth test regardless of how
+		// transparent it currently looks, clipping it even mid-fade, nowhere
+		// near actually opaque.
 		meshMaterial = new THREE.MeshPhysicalMaterial({
 			color: activePalette().blue,
 			side: THREE.DoubleSide,
@@ -204,7 +213,6 @@
 			roughness: 0.25,
 			transparent: true,
 			opacity: 0.82,
-			depthWrite: false,
 			clearcoat: 0.6,
 			clearcoatRoughness: 0.15,
 			iridescence: 0.6,
@@ -217,8 +225,7 @@
 		ringMaterial = new THREE.MeshStandardMaterial({
 			color: activePalette().textPrimary ?? 0x0b0b0b,
 			transparent: true,
-			opacity: 1,
-			depthWrite: false
+			opacity: 1
 		});
 		for (const z of [-L, L]) {
 			const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.015, 12, 64), ringMaterial);

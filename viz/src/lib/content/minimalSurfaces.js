@@ -72,16 +72,32 @@ export const slides = [
 	{
 		id: 'defining-property',
 		title: 'The special curvature of the Catenoid',
+		// `stages` replaces `body` for this slide — each prompt is shown in
+		// the sticky panel in turn as the reader scrolls through
+		// MeanCurvatureScene's own five animation beats (see
+		// MEAN_CURVATURE_STAGES / curvatureStageIndex in +page.svelte),
+		// rather than sitting as one static block for the whole animation.
+		stages: [
+			{ prompt: "In the decades that followed, it was proven that the catenoid has a very interesting property. Let's zoom into a single point on its surface." },
+			{ prompt: 'Around the point on top of the catenoid, there are two curves that reveal how the surface bends -- one bends along the **catenary curve**, and the other around the **rotational curve**.' },
+			{ prompt: 'Isolated from the surface, we can see two curves bend in opposite directions.' },
+			{ prompt: 'Rotating the curves lets us see that these principal curves on the surface around this point...' },
+			{ prompt: '... have the exact same amount of curvature, but in opposite directions. This feature, defined as a **mean curvature of zero** is true not just at this point, but at all points on the surface of the catenoid... And more strikingly at all points of every smooth minimal surface.' }
+		]
+		// Visual: MeanCurvatureScene, rendered directly by this page (see
+		// the scene-panel branch for curvatureIndex in +page.svelte).
+	},
+	{
+		id: 'soap-film',
+		title: 'Nature mimics maths mimics nature',
 		body: [
-			'In the decades that followed it was proven that the catenoid has a very interesting property:',
-			'The curvature is not only negative everywhere, but at every point, the surface bends equally in opposite directions.',
-			'In other words its **mean curvature is zero everywhere**.',
-//			'The two principal curvatures exactly balance.',
-			'This turns out to be true for every smooth minimal surface.',
-//			'> H = (κ₁ + κ₂) / 2 = 0'
-// 			'While the pseudo-sphere has constant negative curvature, it does not have 0 mean curvature. And while minimal surfaces have 0 mean curvature, and no positive curvature, their negative curvature need not be constant.'
+			'Minimal surfaces are mathematical objects.',
+			"But researching them has often involved natural models, specifically soal films.", 
+			"In the 1770's ___ showed that the physics of soap films, following the laws of surface tensions, should form minimal surfaces.",
+			"But it wasn't until the 1840s, a hundred years after Euler's proof, that Plateau developed a stable enough soap film mixture to systematically reseaarch them, starting decades of experiments into surfaces formed around __.",
+			'By pulling apart two rings dipped in soap, he made the catenoid Euler described..',
 		],
-		visualLabel: 'Principal-curvature visualization on the catenoid'
+		visualLabel: 'Soap-film visualization'
 	},
 	{
 		id: 'field-grows',
@@ -92,17 +108,6 @@ export const slides = [
 			'This new approach helped transform isolated examples into a coherent field of geometry.'
 		],
 		visualLabel: 'Gallery of minimal surfaces (Riemann’s family)'
-	},
-	{
-		id: 'soap-film',
-		title: 'Nature Had Been Making Them All Along',
-		body: [
-			'Minimal surfaces are mathematical objects.',
-			'But they are also physical ones.',
-			'Stretch a soap film between two rings and, under the right conditions, it naturally forms a catenoid.',
-			'The same geometry Euler described on paper appears in the physical world.'
-		],
-		visualLabel: 'Soap-film visualization'
 	},
 	{
 		id: 'two-centuries',

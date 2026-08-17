@@ -5,6 +5,7 @@
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import CatenaryUnrollScene from '$lib/components/CatenaryUnrollScene.svelte';
+	import MeanCurvatureScene from '$lib/components/MeanCurvatureScene.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import SurfaceAreaBars from '$lib/components/SurfaceAreaBars.svelte';
 	import {
@@ -31,6 +32,7 @@
 	let activeIndex = $state(0);
 	const eulerIndex = scrollySlides.findIndex((s) => s.id === 'euler-question');
 	const catenaryAnswerIndex = scrollySlides.findIndex((s) => s.id === 'euler-answer');
+	const curvatureIndex = scrollySlides.findIndex((s) => s.id === 'defining-property');
 	// The euler-question slide's copy has two extra fields (`stages`) the
 	// generic slides don't — see the comment on it in minimalSurfaces.js.
 	// Pulled out here since the scene-panel section below needs it too, but
@@ -62,6 +64,50 @@
 	let midR = $state(DEFAULT_R);
 	const INITIAL_SPREAD = DEFAULT_L * 0.12;
 	let spread = $state(INITIAL_SPREAD);
+
+	// Nudge: if the reader hasn't touched the cinch control point within a
+	// bit of scrolling after the sandbox (V-shape bar + editor) appears,
+	// ease midR down a little on their behalf — enough to show a visible V,
+	// not the full answer — as a hint that the point is draggable.
+	//
+	// Originally checked the cinch prompt's own on-screen position ("halfway
+	// up the viewport"), matching how the request was phrased, but measuring
+	// against a live DOM rect turned out to give almost no grace period in
+	// practice: by the time sandboxVisible flips true, the cinch prompt
+	// (see the recent spacer retune) is *already* ~38% of the way down the
+	// viewport — past the "halfway up" line before a single further scroll
+	// event fires. Using scroll distance since sandboxVisible instead gives
+	// an actual, tunable grace window, and is more robust to future
+	// retuning of the surrounding spacer heights than a raw viewport
+	// position would be. Fires at most once per page load (autoNudged), and
+	// only if midR is still at its untouched default when the threshold is
+	// crossed.
+	let autoNudged = false;
+	const NUDGE_TARGET_FRAC = 0.85; // how far in from the untouched (R) default
+	const NUDGE_DURATION_MS = 700;
+	const NUDGE_GRACE_PX = 350; // ~half the cinch step's own ~650px dwell window
+
+	function maybeAutoNudge() {
+		if (autoNudged || stage !== 'cinch' || !sandboxVisible || settleScrollY === null) return;
+		if (midR !== DEFAULT_R) {
+			// Already touched — don't nudge, and stop checking.
+			autoNudged = true;
+			return;
+		}
+		const scrollSinceSandbox = window.scrollY - settleScrollY - REVEAL_SPAN_PX();
+		if (scrollSinceSandbox < NUDGE_GRACE_PX) return;
+		autoNudged = true;
+		const start = midR;
+		const target = DEFAULT_R * NUDGE_TARGET_FRAC;
+		const startTime = performance.now();
+		function tick(now) {
+			const t = Math.min(1, (now - startTime) / NUDGE_DURATION_MS);
+			const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+			midR = start + (target - start) * eased;
+			if (t < 1) requestAnimationFrame(tick);
+		}
+		requestAnimationFrame(tick);
+	}
 
 	let area = $state(0);
 	let cinchRange = $state({ min: Infinity, max: -Infinity });
@@ -253,18 +299,69 @@
 		catenaryProgress = Math.max(0, Math.min(1, traveled / CATENARY_SPAN_PX()));
 	}
 
+	// Third, independent instance of the same arrival/settle pattern above,
+	// driving Slide 4's zero-mean-curvature demonstration. Deliberately
+	// duplicated again rather than extracted into a shared helper — this
+	// scroll math has had several real, subtle bugs shaken out of it already
+	// this session, and bundling a refactor with a new complex animation in
+	// the same pass was judged too risky. Worth extracting once things settle.
+	let curvatureProgress = $state(0);
+	let curvatureTextEl = $state();
+	// Roughly matches the 5 ScrollyStep prompts' own scroll budget below
+	// (90+70+70+70+90 = 390vh) so curvatureProgress finishes right around
+	// when the last prompt has scrolled through — tuned visually, same as
+	// every other span/spacer pairing in this file.
+	const CURVATURE_SPAN_VH = 3.6;
+	let curvatureSettleScrollY = null;
+
+	function CURVATURE_SPAN_PX() {
+		return CURVATURE_SPAN_VH * window.innerHeight;
+	}
+
+	function updateCurvatureProgress() {
+		if (!curvatureTextEl) return;
+		const rect = curvatureTextEl.getBoundingClientRect();
+
+		if (rect.top > STICKY_TOP_PX) {
+			curvatureProgress = 0;
+			curvatureSettleScrollY = null;
+			return;
+		}
+
+		if (curvatureSettleScrollY === null) curvatureSettleScrollY = window.scrollY;
+		const traveled = window.scrollY - curvatureSettleScrollY;
+		curvatureProgress = Math.max(0, Math.min(1, traveled / CURVATURE_SPAN_PX()));
+	}
+
+	// Which of defining-property's 5 stage prompts is showing — bound from
+	// its own nested <Scrolly> (see the template), same mechanism/precedent
+	// as eulerSlide's stageIndex: a separate, independently-paced
+	// IntersectionObserver-driven index, not mathematically locked to
+	// curvatureProgress (which keeps driving MeanCurvatureScene's continuous
+	// animation on its own). The two are kept *roughly* in step by tuning
+	// this slide's total scroll height against CURVATURE_SPAN_VH, the same
+	// "eyeball and tune" approach used for eulerSlide's own two mechanisms.
+	let curvatureStageIndex = $state(0);
+
 	onMount(() => {
 		updateScrollProgress();
 		updateCatenaryProgress();
+		updateCurvatureProgress();
 		window.addEventListener('scroll', updateScrollProgress, { passive: true });
 		window.addEventListener('scroll', updateCatenaryProgress, { passive: true });
+		window.addEventListener('scroll', updateCurvatureProgress, { passive: true });
+		window.addEventListener('scroll', maybeAutoNudge, { passive: true });
 		window.addEventListener('resize', updateScrollProgress);
 		window.addEventListener('resize', updateCatenaryProgress);
+		window.addEventListener('resize', updateCurvatureProgress);
 		return () => {
 			window.removeEventListener('scroll', updateScrollProgress);
 			window.removeEventListener('scroll', updateCatenaryProgress);
+			window.removeEventListener('scroll', updateCurvatureProgress);
+			window.removeEventListener('scroll', maybeAutoNudge);
 			window.removeEventListener('resize', updateScrollProgress);
 			window.removeEventListener('resize', updateCatenaryProgress);
+			window.removeEventListener('resize', updateCurvatureProgress);
 		};
 	});
 </script>
@@ -389,6 +486,35 @@
 							</div>
 							<div class="catenary-spacer-trail"></div>
 						</div>
+					{:else if slide.id === 'defining-property'}
+						<!-- Same shape as euler-question above (sticky title, then a
+						     nested <Scrolly> of per-stage prompts that physically
+						     scroll up from underneath it), not euler-answer's
+						     single-static-block version — matches feedback that a
+						     stationary swapped caption read as less "scrolling
+						     through the steps" than eulerSlide's own prompts do.
+						     curvatureStageIndex (this nested Scrolly's own bound
+						     index) only drives which prompt is highlighted;
+						     curvatureProgress (a separate, continuous arrival/settle
+						     calc below) keeps driving MeanCurvatureScene itself —
+						     same two-mechanisms-loosely-paced-together approach as
+						     eulerSlide's revealProgress/stageIndex pair. -->
+						<div class="euler-flow">
+							<div class="intro-spacer-lead"></div>
+							<div class="intro-sticky" bind:this={curvatureTextEl}>
+								<h2>{slide.title}</h2>
+							</div>
+							<div class="stage-steps">
+								<Scrolly bind:active={curvatureStageIndex}>
+									{#each slide.stages as s, i}
+										<ScrollyStep index={i} active={curvatureStageIndex === i}>
+											<p class="prompt">{@html renderInline(s.prompt)}</p>
+										</ScrollyStep>
+									{/each}
+								</Scrolly>
+							</div>
+							<div class="curvature-spacer-trail"></div>
+						</div>
 					{:else}
 						<div class="slide-text">
 							<h2>{slide.title}</h2>
@@ -446,6 +572,8 @@
 				progress={catenaryProgress}
 				startCameraPos={catenoidCameraPos}
 			/>
+		{:else if activeIndex === curvatureIndex}
+			<MeanCurvatureScene R={ringR} L={ringL} progress={curvatureProgress} />
 		{:else}
 			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
 		{/if}
@@ -612,22 +740,34 @@
 	   below — which meant the text sat around the box's middle, well past
 	   when sandboxVisible actually flips). */
 	.reveal-narrative {
-		min-height: 90vh;
+		min-height: 60vh;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		gap: 1rem;
 	}
-	/* Pure buffer, no content — exists only so the *next* block ("cinch")
-	   can't peek in at the bottom of the viewport before the reveal
-	   finishes. Needs .reveal-narrative (90vh) + this >= REVEAL_SPAN_PX
-	   (90vh) + one full viewport (100vh) — i.e. this alone needs to be at
-	   least ~100vh. Kept close to that minimum (not padded further) since
-	   any extra here directly delays how soon the "cinch" prompt can
-	   arrive after the editor/chart appear — padding this out further
-	   read as a laggy pause once the safety margin above was covered. */
+	/* Pure buffer, no content. A much larger version of this (~105vh) was
+	   here previously, sized to stop the "cinch" ScrollyStep from
+	   triggering (stageIndex -> 0) before revealProgress hit 1 — but the
+	   only thing that combination actually breaks is dragCaption/the
+	   editor overlay, and those are already separately gated on
+	   sandboxVisible (see the {#if sandboxVisible} around the editor
+	   overlay below), not on stageIndex. The "cinch" *prompt* text itself
+	   isn't gated on sandboxVisible at all, so there's no real hazard in
+	   letting it become active a little before the editor appears — it
+	   reads as scene-setting narrative either way. That old height was
+	   creating a long dead scroll (mesh done, editor/chart already
+	   showing, nothing happening) between the sandbox appearing and the
+	   "cinch" prompt finally arriving (reported directly against a
+	   screenshot). Tried shrinking this all the way to ~20vh first, which
+	   fixed the gap but overcorrected the other way — "cinch" then only
+	   stayed active for ~150px before the next prompt took over, barely
+	   readable. 70vh lands the "cinch" prompt right as the sandbox
+	   appears (no gap) while still giving it a real dwell window
+	   (~650px) before "curve" takes over — checked via a scroll trace,
+	   not just eyeballed. */
 	.reveal-narrative-spacer {
-		height: 105vh;
+		height: 70vh;
 	}
 	/* Each prompt below gets ScrollyStep's normal 70vh (90vh for the
 	   first/last, since this is its own nested <Scrolly> root) — the same
@@ -647,6 +787,13 @@
 	   and show the finished extended curve (a real bug hit building this). */
 	.catenary-spacer-trail {
 		height: 350vh;
+	}
+	/* Same "outer Scrolly's trigger line sits at viewport center" slack
+	   reasoning as .catenary-spacer-trail above, sized against the smaller
+	   scroll budget here (.stage-steps' own ~390vh, not a bespoke fixed
+	   height) since the 5 ScrollyStep prompts already carry most of the load. */
+	.curvature-spacer-trail {
+		height: 100vh;
 	}
 	.scene-panel {
 		flex: 1;
