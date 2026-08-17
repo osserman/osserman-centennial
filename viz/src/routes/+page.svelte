@@ -1,345 +1,215 @@
 <script>
-	import { onMount } from 'svelte';
-	import Scrolly from '$lib/components/Scrolly.svelte';
-	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
-	import StepText from '$lib/components/StepText.svelte';
-	import CitationGraph from '$lib/components/CitationGraph.svelte';
-	import PaperDetail from '$lib/components/PaperDetail.svelte';
-	import FilterPanel from '$lib/components/FilterPanel.svelte';
-	import { steps } from '$lib/content/narrative.js';
+	// Site home page — the essay from intro-text.md (the user's own draft,
+	// kept at the repo root), plus card links into each stanza. This used to
+	// be the citation-network page (now moved to /beyond-mathematics); this
+	// is the first thing a reader sees.
+	//
+	// Hand-written markup rather than a data-driven `body` array + shared
+	// renderInline (the convention every stanza page uses) — two of these
+	// paragraphs need an <InfoTooltip> footnote marker embedded *inline*,
+	// which a string-based {@html} renderer can't compose in. This page is
+	// also a one-off (unlike the stanza pages, which repeat the same shape
+	// across many slides), so the data-driven convention isn't buying
+	// anything here anyway.
+	import { base } from '$app/paths';
+	import InfoTooltip from '$lib/components/InfoTooltip.svelte';
 
-	let { data } = $props();
-	const citerNodes = data.nodes.filter((n) => !n.isSeed);
-
-	let activeIndex = $state(0);
-
-	// Filters (FilterPanel, rendered inside the free-exploration step) apply
-	// from that step onward — index comparison, not a single-step id check,
-	// so they stay active into the epilogue too rather than flickering off.
-	// null = no filters active. Overrides the step's own view with the same
-	// dim/highlight mechanism every narrative step already uses, rather than
-	// a new code path.
-	const freeExplorationIndex = steps.findIndex((s) => s.id === 'free-exploration');
-	let filteredIds = $state(null);
-
-	// Debug-only: spotlight papers missing citation_normalized_percentile
-	// (the "Percentile" size metric) so it's visible which/how many papers
-	// fall back to floor-size under that metric — a data-coverage check, not
-	// a narrative view. Takes priority over everything else while active.
-	const missingPercentileIds = citerNodes.filter((n) => n.citationPctile == null).map((n) => n.id);
-	let highlightMissingPercentile = $state(false);
-
-	let activeView = $derived.by(() => {
-		if (highlightMissingPercentile) {
-			return { colorBy: 'none', highlightIds: missingPercentileIds, dimBackground: true };
-		}
-		if (activeIndex >= freeExplorationIndex && filteredIds !== null) {
-			return { colorBy: 'filter', highlightIds: filteredIds, dimBackground: true };
-		}
-		return steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
-	});
-
-	// The filter panel lives over the graph (plenty of width there) rather
-	// than cramped in the narrow text column — a collapsible panel toggled
-	// from the controls row, not a modal, so the graph stays visible while
-	// adjusting filters. Only offered from free-exploration onward, matching
-	// when filtering actually has an effect; force-closed if the reader
-	// scrolls back above that point so it can't get stuck open with its
-	// toggle button hidden.
-	let filtersOpen = $state(false);
-	$effect(() => {
-		if (activeIndex < freeExplorationIndex) filtersOpen = false;
-	});
-
-	// Wheel/scroll input inside the filter panel that isn't fully absorbed by
-	// its own internal scrolling can chain to the page's scroll behind it —
-	// which moves activeIndex back, which the effect above reads as "scrolled
-	// away from free-exploration" and force-closes the panel. Locking the
-	// page's own scroll while the panel is open stops that entirely; the
-	// panel's own overflow-y:auto content still scrolls normally since this
-	// only blocks the *document's* scroll position, not a descendant's.
-	$effect(() => {
-		if (typeof document === 'undefined' || !filtersOpen) return;
-		document.body.style.overflow = 'hidden';
-		return () => {
-			document.body.style.overflow = '';
-		};
-	});
-
-	// Paper-detail modal: state lives here (not inside CitationGraph) so both
-	// the graph (canvas click) and the left-panel paper titles can open the
-	// same modal. This also fixes a stacking-context bug: CitationGraph's
-	// panel is `position: sticky`, which always creates a new stacking
-	// context, so a modal nested inside it had its z-index evaluated only
-	// *within* that context — the sticky topic-header (z-index:5, at the
-	// page's root stacking context) could end up painting on top of it.
-	// Rendering the modal here, as a sibling at the root level, avoids that.
-	const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
-	const curatedById = new Map(data.curated.map((c) => [c.id, c]));
-	let selectedId = $state(null);
-	let selectedNode = $derived(selectedId ? nodeById.get(selectedId) : null);
-	let selectedCurated = $derived(selectedNode ? (curatedById.get(selectedNode.id) ?? null) : null);
-
-	// Group consecutive steps that share a kicker (e.g. the 3 Engineering
-	// steps) so the kicker can render once as a sticky header that stays
-	// pinned while its papers scroll past underneath — "lock the topic while
-	// introducing the papers within it." Steps without a kicker (intro, math,
-	// beyond-intro, free-exploration, epilogue) each get their own headerless
-	// group of one.
-	const groups = [];
-	for (let i = 0; i < steps.length; i++) {
-		const step = steps[i];
-		const last = groups[groups.length - 1];
-		if (last && step.kicker && last.kicker === step.kicker) last.items.push({ step, index: i });
-		else groups.push({ kicker: step.kicker, items: [{ step, index: i }] });
-	}
-
-	// Theme: 'auto' follows the OS; 'light'/'dark' is an explicit override,
-	// settable via the toggle button or a ?theme=light|dark URL param (for
-	// sharing/screenshotting a specific mode without touching OS settings).
-	let theme = $state('auto');
-
-	function applyTheme(t) {
-		theme = t;
-		if (t === 'auto') delete document.documentElement.dataset.theme;
-		else document.documentElement.dataset.theme = t;
-		const url = new URL(window.location.href);
-		if (t === 'auto') url.searchParams.delete('theme');
-		else url.searchParams.set('theme', t);
-		history.replaceState(null, '', url);
-	}
-
-	function cycleTheme() {
-		applyTheme(theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto');
-	}
-
-	// Size-metric toggle and theme toggle are tuning/dev controls, not part of
-	// the shared prototype's default UI — hidden unless ?debug=true is in the
-	// URL, so casual visitors get a clean read-only view while we keep a way
-	// to reach them for tuning.
-	let showCustomParams = $state(false);
-
-	onMount(() => {
-		const params = new URLSearchParams(window.location.search);
-		showCustomParams = params.get('debug') === 'true';
-		const param = params.get('theme');
-		if (param === 'light' || param === 'dark') applyTheme(param);
-	});
-
-	// Node-size metric: a comparison toggle, not a narrative control — raw
-	// citation count structurally favors older papers (more time to
-	// accumulate citations), so field/year-normalized alternatives are
-	// offered side by side rather than picking one.
-	const SIZE_METRICS = [
-		{ id: 'citations', label: 'Citations' },
-		{ id: 'percentile', label: 'Percentile' },
-		{ id: 'yearPercentile', label: 'Year %ile' }
+	// Cards without a built page yet render disabled with a "coming soon"
+	// treatment (matching VisualPlaceholder's own wording elsewhere) rather
+	// than a dead link or an omitted card — the reader can see the full
+	// shape of the project even before every stanza exists.
+	const cards = [
+		{
+			kicker: 'Stanza I',
+			title: 'Imagination, Reality, and Hyperbolic Geometry',
+			href: `${base}/non-euclidean-geometry`
+		},
+		{
+			kicker: 'Stanza II',
+			title: 'Minimal Surfaces, the Elegant Math of Soap Bubbles',
+			href: `${base}/minimal-surfaces`
+		},
+		{
+			kicker: 'Stanza III',
+			title: 'Beyond Mathematics: The Expansion of Minimal Surfaces Beyond Mathematics',
+			href: `${base}/beyond-mathematics`
+		},
+		{ kicker: 'Coda', title: 'Coda', href: null }
 	];
-	let sizeMetric = $state('percentile');
 </script>
 
 <svelte:head>
 	<title>Robert Osserman -- 100 Years</title>
 </svelte:head>
 
-<main class="layout">
-	<div class="text-panel">
-		<Scrolly bind:active={activeIndex}>
-			{#each groups as group}
-				<div class="topic-group">
-					{#if group.kicker}
-						<div class="topic-header">{group.kicker}</div>
-					{/if}
-					{#each group.items as { step, index }}
-						<ScrollyStep index={index} active={index === activeIndex}>
-							<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
-						</ScrollyStep>
-					{/each}
-				</div>
-			{/each}
-		</Scrolly>
-	</div>
+<main class="page">
+	<article class="essay">
+		<p class="kicker">A mathematical ode to my father</p>
+		<h1>A Mathematical Ode to My Father</h1>
+		<p class="byline">Written for the centennial of Robert Osserman</p>
 
-	<div class="graph-panel">
-		<div class="controls">
-			{#if showCustomParams}
-				<div class="size-toggle" role="group" aria-label="Node size metric">
-					{#each SIZE_METRICS as m}
-						<button class:active={sizeMetric === m.id} onclick={() => (sizeMetric = m.id)}>
-							{m.label}
-						</button>
-					{/each}
+		<p>
+			My father was a mathematician and a teacher. His most visible legacy is the book <em>Poetry of
+				the Universe</em>, a Mathematical Exploration of the Cosmos. On the surface, it helps readers
+			build an intuition for the curvature of space.<InfoTooltip
+				superscript
+				symbol="1"
+				label="Footnote 1"
+				message="While evidence has since mounted against the curvature of space, the book paints a concrete picture of what scientists mean by that when they try to determine the shape of the universe."
+			/>
+		</p>
+
+		<p>
+			Beneath the surface, it illuminates the interplay between imagination, creativity, observation,
+			and measurement in the centuries-long evolution of scientific knowledge.
+			<strong>Theoretical math connects</strong> here <strong>not just to applications</strong> it eventually
+			enables, <strong>but also to poetry</strong> -- to the ability to theorize about what lies beyond
+			what we can touch and observe.
+		</p>
+
+		<p>
+			He teaches these themes in the book alongside the geometry of curved surfaces. This geometry's
+			relevance extends far beyond the possible shape of the universe. It is also foundational to the
+			field of math he dedicated his career to: <strong>minimal surfaces</strong>.
+			<strong>He chose this field not because it was seen as useful or applicable</strong>, or even
+			fashionable within Math, but <strong>because he found it beautiful and elegant</strong>, and
+			because it required creativity and allowed for playfulness.<InfoTooltip
+				superscript
+				symbol="2"
+				label="Footnote 2"
+				message={'A search for "minimal surfaces" will quickly bring up soap bubbles, which I fondly remember my dad playing with for us, as he brought his work home.'}
+			/>
+		</p>
+
+		<p>
+			I do not have the depth of mathematical knowledge to understand the field and his research. But
+			as I've tried to understand a little more about the problems he pondered, I felt more connected
+			to him and the delight he took in intellectual and creative pursuits. It has also led me to a
+			story that echoes those I loved reading in <em>Poetry of the Universe</em>. The story of how his
+			own field, developed by a community of researchers across a centuries-long dialogue of theory and
+			observation, has now made a leap to a fascinating and growing range of fields in science and
+			engineering that never could have been anticipated.
+		</p>
+
+		<p class="lead-in">Here is that story.</p>
+	</article>
+
+	<div class="cards">
+		{#each cards as card}
+			{#if card.href}
+				<a class="card" href={card.href}>
+					<p class="card-kicker">{card.kicker}</p>
+					<p class="card-title">{card.title}</p>
+				</a>
+			{:else}
+				<div class="card card-disabled">
+					<p class="card-kicker">{card.kicker}</p>
+					<p class="card-title">{card.title}</p>
+					<p class="card-soon">Coming soon</p>
 				</div>
-				<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
-					{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
-				</button>
-				<button
-					class="theme-toggle"
-					class:active={highlightMissingPercentile}
-					onclick={() => (highlightMissingPercentile = !highlightMissingPercentile)}
-				>
-					⚠ Missing %ile ({missingPercentileIds.length})
-				</button>
 			{/if}
-			{#if activeIndex >= freeExplorationIndex}
-				<button
-					class="filters-toggle"
-					class:active={filtersOpen}
-					onclick={() => (filtersOpen = !filtersOpen)}
-				>
-					{filtersOpen ? '✕ Close' : '⚲ Filters'}
-				</button>
-			{/if}
-		</div>
-		{#if activeIndex >= freeExplorationIndex}
-			<div class="filter-overlay" class:hidden={!filtersOpen}>
-				<FilterPanel nodes={citerNodes} onFilterChange={(ids) => (filteredIds = ids)} onClose={() => (filtersOpen = false)} />
-			</div>
-		{/if}
-		<CitationGraph
-			nodes={data.nodes}
-			curated={data.curated}
-			timeDomain={data.timeDomain}
-			viewSpec={activeView}
-			{theme}
-			{sizeMetric}
-			onSelectNode={(node) => (selectedId = node?.id ?? null)}
-		/>
+		{/each}
 	</div>
 </main>
 
-{#if selectedNode}
-	<PaperDetail node={selectedNode} curatedEntry={selectedCurated} onClose={() => (selectedId = null)} />
-{/if}
-
 <style>
-	.layout {
+	.page {
+		max-width: 42rem;
+		margin: 0 auto;
+		padding: 5rem 2rem 6rem;
+		box-sizing: border-box;
+	}
+	.essay {
 		display: flex;
-		align-items: flex-start;
+		flex-direction: column;
+		gap: 1.2rem;
 	}
-	.text-panel {
-		width: min(28vw, 24rem);
-		flex-shrink: 0;
-		padding: 0 2.5rem;
-		border-right: 1px solid var(--surface-2);
-	}
-	.topic-group {
-		position: relative;
-	}
-	.topic-header {
-		position: sticky;
-		top: 0;
-		z-index: 5;
-		background: var(--surface-1);
-		padding: 0.85rem 0;
+	.kicker {
+		margin: 0;
 		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	h1 {
+		margin: 0;
+		font-size: 2.4rem;
+		font-weight: 700;
+		line-height: 1.15;
+		letter-spacing: -0.01em;
+		color: var(--text-primary);
+	}
+	.byline {
+		margin: -0.6rem 0 0.6rem;
+		font-size: 1rem;
+		font-style: italic;
+		color: var(--text-muted);
+	}
+	.essay p {
+		margin: 0;
+		font-size: 1.08rem;
+		line-height: 1.65;
+		color: var(--text-secondary);
+	}
+	.essay em {
+		color: var(--text-primary);
+	}
+	.essay strong {
+		color: var(--text-primary);
+		font-weight: 700;
+	}
+	.lead-in {
+		margin-top: 0.6rem;
+		font-weight: 700;
+		color: var(--text-primary);
+	}
+	.cards {
+		margin-top: 3rem;
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 1rem;
+	}
+	.card {
+		display: block;
+		padding: 1.5rem;
+		border: 1px solid var(--surface-2);
+		border-radius: 12px;
+		background: var(--surface-2);
+		text-decoration: none;
+		transition: border-color 0.15s ease;
+	}
+	.card:hover {
+		border-color: var(--accent);
+	}
+	.card-kicker {
+		margin: 0 0 0.4rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--accent);
-		border-bottom: 1px solid var(--surface-2);
 	}
-	.graph-panel {
-		position: sticky;
-		top: 0;
-		height: 100vh;
-		flex: 1;
-		min-width: 0;
-	}
-	.controls {
-		position: absolute;
-		top: 1.25rem;
-		right: 1.25rem;
-		z-index: 20;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-	.size-toggle {
-		display: flex;
-		background: var(--surface-2);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
-		border-radius: 999px;
-		padding: 0.2rem;
-		gap: 0.15rem;
-	}
-	.size-toggle button {
-		background: none;
-		border: none;
-		color: var(--text-secondary);
-		border-radius: 999px;
-		padding: 0.3rem 0.7rem;
-		font-size: 0.75rem;
-		cursor: pointer;
-	}
-	.size-toggle button.active {
-		background: var(--accent);
-		color: var(--surface-1);
-	}
-	.theme-toggle {
-		background: var(--surface-2);
-		color: var(--text-secondary);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
-		border-radius: 999px;
-		padding: 0.35rem 0.85rem;
-		font-size: 0.78rem;
-		cursor: pointer;
-	}
-	.theme-toggle:hover {
+	.card-title {
+		margin: 0;
+		font-size: 1.05rem;
+		font-weight: 600;
+		line-height: 1.35;
 		color: var(--text-primary);
 	}
-	.theme-toggle.active {
-		background: var(--accent);
-		color: var(--surface-1);
-		border-color: var(--accent);
+	.card-disabled {
+		opacity: 0.55;
 	}
-	.filters-toggle {
-		background: var(--surface-2);
-		color: var(--text-secondary);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
-		border-radius: 999px;
-		padding: 0.35rem 0.85rem;
-		font-size: 0.78rem;
-		cursor: pointer;
+	.card-soon {
+		margin: 0.6rem 0 0;
+		font-size: 0.72rem;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--text-muted);
 	}
-	.filters-toggle:hover {
-		color: var(--text-primary);
-	}
-	.filters-toggle.active {
-		background: var(--accent);
-		color: var(--surface-1);
-		border-color: var(--accent);
-	}
-	.filter-overlay {
-		position: absolute;
-		top: 4.5rem;
-		right: 1.25rem;
-		z-index: 20;
-		width: min(30rem, calc(100% - 2.5rem));
-		max-height: calc(100vh - 6rem);
-		overflow-y: auto;
-		/* Belt-and-suspenders alongside the body scroll lock: stops scroll
-		   input from chaining to the page once this panel's own content hits
-		   its scroll boundary. */
-		overscroll-behavior: contain;
-	}
-	/* display:none (not #if) when closed, so FilterPanel stays mounted and
-	   its selections survive close/reopen instead of resetting each time. */
-	.filter-overlay.hidden {
-		display: none;
-	}
-
-	@media (max-width: 900px) {
-		.layout {
-			flex-direction: column;
-		}
-		.text-panel {
-			width: auto;
-			border-right: none;
-		}
-		.graph-panel {
-			position: static;
-			height: 60vh;
+	@media (max-width: 640px) {
+		.cards {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

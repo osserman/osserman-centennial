@@ -1,0 +1,345 @@
+<script>
+	import { onMount } from 'svelte';
+	import Scrolly from '$lib/components/Scrolly.svelte';
+	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
+	import StepText from '$lib/components/StepText.svelte';
+	import CitationGraph from '$lib/components/CitationGraph.svelte';
+	import PaperDetail from '$lib/components/PaperDetail.svelte';
+	import FilterPanel from '$lib/components/FilterPanel.svelte';
+	import { steps } from '$lib/content/narrative.js';
+
+	let { data } = $props();
+	const citerNodes = data.nodes.filter((n) => !n.isSeed);
+
+	let activeIndex = $state(0);
+
+	// Filters (FilterPanel, rendered inside the free-exploration step) apply
+	// from that step onward — index comparison, not a single-step id check,
+	// so they stay active into the epilogue too rather than flickering off.
+	// null = no filters active. Overrides the step's own view with the same
+	// dim/highlight mechanism every narrative step already uses, rather than
+	// a new code path.
+	const freeExplorationIndex = steps.findIndex((s) => s.id === 'free-exploration');
+	let filteredIds = $state(null);
+
+	// Debug-only: spotlight papers missing citation_normalized_percentile
+	// (the "Percentile" size metric) so it's visible which/how many papers
+	// fall back to floor-size under that metric — a data-coverage check, not
+	// a narrative view. Takes priority over everything else while active.
+	const missingPercentileIds = citerNodes.filter((n) => n.citationPctile == null).map((n) => n.id);
+	let highlightMissingPercentile = $state(false);
+
+	let activeView = $derived.by(() => {
+		if (highlightMissingPercentile) {
+			return { colorBy: 'none', highlightIds: missingPercentileIds, dimBackground: true };
+		}
+		if (activeIndex >= freeExplorationIndex && filteredIds !== null) {
+			return { colorBy: 'filter', highlightIds: filteredIds, dimBackground: true };
+		}
+		return steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
+	});
+
+	// The filter panel lives over the graph (plenty of width there) rather
+	// than cramped in the narrow text column — a collapsible panel toggled
+	// from the controls row, not a modal, so the graph stays visible while
+	// adjusting filters. Only offered from free-exploration onward, matching
+	// when filtering actually has an effect; force-closed if the reader
+	// scrolls back above that point so it can't get stuck open with its
+	// toggle button hidden.
+	let filtersOpen = $state(false);
+	$effect(() => {
+		if (activeIndex < freeExplorationIndex) filtersOpen = false;
+	});
+
+	// Wheel/scroll input inside the filter panel that isn't fully absorbed by
+	// its own internal scrolling can chain to the page's scroll behind it —
+	// which moves activeIndex back, which the effect above reads as "scrolled
+	// away from free-exploration" and force-closes the panel. Locking the
+	// page's own scroll while the panel is open stops that entirely; the
+	// panel's own overflow-y:auto content still scrolls normally since this
+	// only blocks the *document's* scroll position, not a descendant's.
+	$effect(() => {
+		if (typeof document === 'undefined' || !filtersOpen) return;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = '';
+		};
+	});
+
+	// Paper-detail modal: state lives here (not inside CitationGraph) so both
+	// the graph (canvas click) and the left-panel paper titles can open the
+	// same modal. This also fixes a stacking-context bug: CitationGraph's
+	// panel is `position: sticky`, which always creates a new stacking
+	// context, so a modal nested inside it had its z-index evaluated only
+	// *within* that context — the sticky topic-header (z-index:5, at the
+	// page's root stacking context) could end up painting on top of it.
+	// Rendering the modal here, as a sibling at the root level, avoids that.
+	const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
+	const curatedById = new Map(data.curated.map((c) => [c.id, c]));
+	let selectedId = $state(null);
+	let selectedNode = $derived(selectedId ? nodeById.get(selectedId) : null);
+	let selectedCurated = $derived(selectedNode ? (curatedById.get(selectedNode.id) ?? null) : null);
+
+	// Group consecutive steps that share a kicker (e.g. the 3 Engineering
+	// steps) so the kicker can render once as a sticky header that stays
+	// pinned while its papers scroll past underneath — "lock the topic while
+	// introducing the papers within it." Steps without a kicker (intro, math,
+	// beyond-intro, free-exploration, epilogue) each get their own headerless
+	// group of one.
+	const groups = [];
+	for (let i = 0; i < steps.length; i++) {
+		const step = steps[i];
+		const last = groups[groups.length - 1];
+		if (last && step.kicker && last.kicker === step.kicker) last.items.push({ step, index: i });
+		else groups.push({ kicker: step.kicker, items: [{ step, index: i }] });
+	}
+
+	// Theme: 'auto' follows the OS; 'light'/'dark' is an explicit override,
+	// settable via the toggle button or a ?theme=light|dark URL param (for
+	// sharing/screenshotting a specific mode without touching OS settings).
+	let theme = $state('auto');
+
+	function applyTheme(t) {
+		theme = t;
+		if (t === 'auto') delete document.documentElement.dataset.theme;
+		else document.documentElement.dataset.theme = t;
+		const url = new URL(window.location.href);
+		if (t === 'auto') url.searchParams.delete('theme');
+		else url.searchParams.set('theme', t);
+		history.replaceState(null, '', url);
+	}
+
+	function cycleTheme() {
+		applyTheme(theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto');
+	}
+
+	// Size-metric toggle and theme toggle are tuning/dev controls, not part of
+	// the shared prototype's default UI — hidden unless ?debug=true is in the
+	// URL, so casual visitors get a clean read-only view while we keep a way
+	// to reach them for tuning.
+	let showCustomParams = $state(false);
+
+	onMount(() => {
+		const params = new URLSearchParams(window.location.search);
+		showCustomParams = params.get('debug') === 'true';
+		const param = params.get('theme');
+		if (param === 'light' || param === 'dark') applyTheme(param);
+	});
+
+	// Node-size metric: a comparison toggle, not a narrative control — raw
+	// citation count structurally favors older papers (more time to
+	// accumulate citations), so field/year-normalized alternatives are
+	// offered side by side rather than picking one.
+	const SIZE_METRICS = [
+		{ id: 'citations', label: 'Citations' },
+		{ id: 'percentile', label: 'Percentile' },
+		{ id: 'yearPercentile', label: 'Year %ile' }
+	];
+	let sizeMetric = $state('percentile');
+</script>
+
+<svelte:head>
+	<title>Beyond Mathematics</title>
+</svelte:head>
+
+<main class="layout">
+	<div class="text-panel">
+		<Scrolly bind:active={activeIndex}>
+			{#each groups as group}
+				<div class="topic-group">
+					{#if group.kicker}
+						<div class="topic-header">{group.kicker}</div>
+					{/if}
+					{#each group.items as { step, index }}
+						<ScrollyStep index={index} active={index === activeIndex}>
+							<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
+						</ScrollyStep>
+					{/each}
+				</div>
+			{/each}
+		</Scrolly>
+	</div>
+
+	<div class="graph-panel">
+		<div class="controls">
+			{#if showCustomParams}
+				<div class="size-toggle" role="group" aria-label="Node size metric">
+					{#each SIZE_METRICS as m}
+						<button class:active={sizeMetric === m.id} onclick={() => (sizeMetric = m.id)}>
+							{m.label}
+						</button>
+					{/each}
+				</div>
+				<button class="theme-toggle" onclick={cycleTheme} title="Toggle light/dark (currently: {theme})">
+					{theme === 'auto' ? '◐ Auto' : theme === 'light' ? '☀ Light' : '☾ Dark'}
+				</button>
+				<button
+					class="theme-toggle"
+					class:active={highlightMissingPercentile}
+					onclick={() => (highlightMissingPercentile = !highlightMissingPercentile)}
+				>
+					⚠ Missing %ile ({missingPercentileIds.length})
+				</button>
+			{/if}
+			{#if activeIndex >= freeExplorationIndex}
+				<button
+					class="filters-toggle"
+					class:active={filtersOpen}
+					onclick={() => (filtersOpen = !filtersOpen)}
+				>
+					{filtersOpen ? '✕ Close' : '⚲ Filters'}
+				</button>
+			{/if}
+		</div>
+		{#if activeIndex >= freeExplorationIndex}
+			<div class="filter-overlay" class:hidden={!filtersOpen}>
+				<FilterPanel nodes={citerNodes} onFilterChange={(ids) => (filteredIds = ids)} onClose={() => (filtersOpen = false)} />
+			</div>
+		{/if}
+		<CitationGraph
+			nodes={data.nodes}
+			curated={data.curated}
+			timeDomain={data.timeDomain}
+			viewSpec={activeView}
+			{theme}
+			{sizeMetric}
+			onSelectNode={(node) => (selectedId = node?.id ?? null)}
+		/>
+	</div>
+</main>
+
+{#if selectedNode}
+	<PaperDetail node={selectedNode} curatedEntry={selectedCurated} onClose={() => (selectedId = null)} />
+{/if}
+
+<style>
+	.layout {
+		display: flex;
+		align-items: flex-start;
+	}
+	.text-panel {
+		width: min(28vw, 24rem);
+		flex-shrink: 0;
+		padding: 0 2.5rem;
+		border-right: 1px solid var(--surface-2);
+	}
+	.topic-group {
+		position: relative;
+	}
+	.topic-header {
+		position: sticky;
+		top: 0;
+		z-index: 5;
+		background: var(--surface-1);
+		padding: 0.85rem 0;
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--accent);
+		border-bottom: 1px solid var(--surface-2);
+	}
+	.graph-panel {
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		flex: 1;
+		min-width: 0;
+	}
+	.controls {
+		position: absolute;
+		top: 1.25rem;
+		right: 1.25rem;
+		z-index: 20;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	.size-toggle {
+		display: flex;
+		background: var(--surface-2);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+		border-radius: 999px;
+		padding: 0.2rem;
+		gap: 0.15rem;
+	}
+	.size-toggle button {
+		background: none;
+		border: none;
+		color: var(--text-secondary);
+		border-radius: 999px;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+	.size-toggle button.active {
+		background: var(--accent);
+		color: var(--surface-1);
+	}
+	.theme-toggle {
+		background: var(--surface-2);
+		color: var(--text-secondary);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+		border-radius: 999px;
+		padding: 0.35rem 0.85rem;
+		font-size: 0.78rem;
+		cursor: pointer;
+	}
+	.theme-toggle:hover {
+		color: var(--text-primary);
+	}
+	.theme-toggle.active {
+		background: var(--accent);
+		color: var(--surface-1);
+		border-color: var(--accent);
+	}
+	.filters-toggle {
+		background: var(--surface-2);
+		color: var(--text-secondary);
+		border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+		border-radius: 999px;
+		padding: 0.35rem 0.85rem;
+		font-size: 0.78rem;
+		cursor: pointer;
+	}
+	.filters-toggle:hover {
+		color: var(--text-primary);
+	}
+	.filters-toggle.active {
+		background: var(--accent);
+		color: var(--surface-1);
+		border-color: var(--accent);
+	}
+	.filter-overlay {
+		position: absolute;
+		top: 4.5rem;
+		right: 1.25rem;
+		z-index: 20;
+		width: min(30rem, calc(100% - 2.5rem));
+		max-height: calc(100vh - 6rem);
+		overflow-y: auto;
+		/* Belt-and-suspenders alongside the body scroll lock: stops scroll
+		   input from chaining to the page once this panel's own content hits
+		   its scroll boundary. */
+		overscroll-behavior: contain;
+	}
+	/* display:none (not #if) when closed, so FilterPanel stays mounted and
+	   its selections survive close/reopen instead of resetting each time. */
+	.filter-overlay.hidden {
+		display: none;
+	}
+
+	@media (max-width: 900px) {
+		.layout {
+			flex-direction: column;
+		}
+		.text-panel {
+			width: auto;
+			border-right: none;
+		}
+		.graph-panel {
+			position: static;
+			height: 60vh;
+		}
+	}
+</style>

@@ -1,18 +1,22 @@
 <script>
-	// Small "ⓘ" hover/focus-triggered tooltip. Custom rather than a native
-	// title="" attribute — title is unreliable to notice (no visual affordance
-	// beyond the cursor, slow OS-controlled delay) and impossible to verify
-	// in an automated screenshot pass.
+	// Small hover/focus-triggered tooltip, default trigger glyph "ⓘ". Custom
+	// rather than a native title="" attribute — title is unreliable to
+	// notice (no visual affordance beyond the cursor, slow OS-controlled
+	// delay) and impossible to verify in an automated screenshot pass.
 	// placement 'top' (default) opens upward from the icon; 'bottom' opens
 	// downward — needed wherever the icon sits close to the top edge of its
 	// scroll container (e.g. the graph caption), where an upward tooltip has
 	// nowhere to go and clips off-screen.
-	let { message, label = 'More information', placement = 'top' } = $props();
+	// `symbol` overrides the trigger glyph — e.g. a superscript footnote
+	// number ("1", "2") for running prose, instead of the default "ⓘ" used
+	// everywhere else. `superscript` raises it and shrinks it accordingly,
+	// matching how footnote markers read in text rather than a standalone icon.
+	let { message, label = 'More information', placement = 'top', symbol = 'ⓘ', superscript = false } = $props();
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<span class="info-icon" tabindex="0" role="button" aria-label={label}>
-	ⓘ
+<span class="info-icon" class:superscript tabindex="0" role="button" aria-label={label}>
+	{symbol}
 	<span class="info-tooltip placement-{placement}" role="tooltip">{message}</span>
 </span>
 
@@ -24,6 +28,12 @@
 		color: var(--text-muted);
 		font-size: 0.85rem;
 		outline: none;
+	}
+	.info-icon.superscript {
+		font-size: 0.7em;
+		vertical-align: super;
+		font-weight: 700;
+		color: var(--accent);
 	}
 	.info-tooltip {
 		position: absolute;
