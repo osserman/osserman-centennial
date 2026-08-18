@@ -727,15 +727,34 @@
 		};
 	});
 
-	// --- on-canvas captions for the parallel-lines beat -- a pattern
-	// being tried out here: once the animation is doing something specific
-	// (the explain diagram, each meeting/crossing), the blow-by-blow text
-	// sits directly over the scene, timed tightly to the geometry, instead
-	// of living in the left panel. The left panel keeps only the quieter
-	// framing text (see nonEuclideanGeometry.js's last 'sphere' stage). ---
+	// --- on-canvas captions for the whole scene -- once the animation is
+	// doing something specific (each leg of the triangle walk, the explain
+	// diagram, each meeting/crossing), the blow-by-blow text sits directly
+	// over the scene, timed tightly to the geometry, instead of living in
+	// the left panel. The left panel now keeps only a single sticky
+	// subtitle (see nonEuclideanGeometry.js's 'sphere' slide) -- same
+	// pattern as ParallelPostulateScene. Each entry's optional `bottom`
+	// (a CSS length/percent, e.g. '12%') repositions just that one
+	// caption -- omit it to use CAPTION_DEFAULT_BOTTOM.
+	const CAPTION_DEFAULT_BOTTOM = '12%';
+	// BEAT_END..EXPLAIN_HOLD_END carries two captions (the "furthermore"
+	// transition, then the 180-deg explanation) -- split the shared window
+	// rather than giving them the same start/end, same technique as
+	// ParallelPostulateScene's ROTATE_CAPTION_SPLIT.
+	const INTRO_EXPLAIN_SPLIT = lerp(BEAT_END, EXPLAIN_HOLD_END, 0.35);
 	const CAPTIONS = [
+		{ start: 0, end: WALK_START, text: 'Start at the equator of a sphere.' },
+		{ start: WALK_START, end: EDGE1_END, text: 'Take the shortest path to the north pole by heading due north.' },
+		{ start: EDGE1_END, end: EDGE2_END, text: 'Turn right 90° and take the shortest path back to the equator.' },
+		{ start: EDGE2_END, end: EDGE3_END, text: 'Turn right 90° again until you arrive back where you started.' },
 		{
-			start: BEAT_END,
+			start: EDGE3_END,
+			end: BEAT_END,
+			text: 'Here you have a spherical equilateral triangle, whose angles add up to 270°. In fact, if you take any triangle along the surface of a sphere, the angles will always add up to more than 180°.'
+		},
+		{ start: BEAT_END, end: INTRO_EXPLAIN_SPLIT, text: 'Furthermore, parallel lines themselves behave differently.' },
+		{
+			start: INTRO_EXPLAIN_SPLIT,
 			end: EXPLAIN_HOLD_END,
 			text: 'Draw two lines perpendicular to the equator. Their base angles add up to 180° — on a flat surface, that guarantees they never meet.'
 		},
@@ -757,7 +776,7 @@
 <div class="caption-overlay">
 	{#each CAPTIONS as c, i}
 		{#if captionOpacities[i] > 0.01}
-			<p class="caption" style="opacity: {captionOpacities[i]}">{c.text}</p>
+			<p class="caption" style="opacity: {captionOpacities[i]}; bottom: {c.bottom ?? CAPTION_DEFAULT_BOTTOM};">{c.text}</p>
 		{/if}
 	{/each}
 </div>
@@ -775,10 +794,10 @@
 		display: block;
 	}
 	.caption-overlay {
+		/* No bottom here -- each .caption sets its own `bottom` (see
+		   CAPTIONS' per-entry `bottom` field / CAPTION_DEFAULT_BOTTOM). */
 		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 12%;
+		inset: 0;
 		display: flex;
 		justify-content: center;
 		padding: 0 8%;

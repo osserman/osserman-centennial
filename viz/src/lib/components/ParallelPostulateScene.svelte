@@ -68,8 +68,8 @@
 	// Swapped from an earlier version so the sweep starts on the right
 	// (sum < 180) and moves through parallel to the left (sum > 180) —
 	// was the other way around.
-	const TOP_ANGLE_START = -15; // deg, tilted down-right initially
-	const TOP_ANGLE_OVERSHOOT = 25; // deg, swept past parallel to show the flip
+	const TOP_ANGLE_START = -10; // deg, tilted down-right initially
+	const TOP_ANGLE_OVERSHOOT = 10; // deg, swept past parallel to show the flip
 	// Wide gap — the two transversals need real room to visibly slide
 	// together into a triangle, not just nudge inward.
 	const TRANSVERSAL1_X = 140; // where it crosses the bottom line
@@ -357,7 +357,24 @@
 			apexWedgeOwn: wedgePath(currentApex1, currentB1, currentB2, WEDGE_R_SMALL),
 			// Above the top line (not inside the triangle, where it used to
 			// overlap the gold wedge) — a fixed offset above the apex.
-			labelApex: [currentApex1[0], currentApex1[1] - 26]
+			labelApex: [currentApex1[0], currentApex1[1] - 26],
+			// Degree labels for the four alternate-angle wedges above —
+			// wedgeB1Base pairs with apexWedgeLeft (both wedge-a), wedgeB2Base
+			// with apexWedgeRight (both wedge-b): same color, same numeric
+			// value, which *is* the "alternate interior angles are equal"
+			// claim made visible rather than just stated. Faded out as the
+			// triangle forms (altLabelOpacity below) rather than left on --
+			// once the two vertices converge these four numbers would stack
+			// on top of each other and the single 180° proof label.
+			angleB1OwnDeg: angleBetween(currentB1, currentB2, currentApex1),
+			angleB2OwnDeg: angleBetween(currentB2, currentB1, currentApex2),
+			angleApexLeftDeg: angleBetween(currentApex1, topP1, currentB1),
+			angleApexRightDeg: angleBetween(currentApex2, currentB2, topP2),
+			labelB1Own: bisectorPoint(currentB1, currentB2, currentApex1, WEDGE_R_SMALL + LABEL_PAD),
+			labelB2Own: bisectorPoint(currentB2, currentB1, currentApex2, WEDGE_R_SMALL + LABEL_PAD),
+			labelApexLeft: bisectorPoint(currentApex1, topP1, currentB1, WEDGE_R_SMALL + LABEL_PAD),
+			labelApexRight: bisectorPoint(currentApex2, currentB2, topP2, WEDGE_R_SMALL + LABEL_PAD),
+			altLabelOpacity: newFadeT * (1 - triT)
 		};
 	});
 
@@ -375,6 +392,52 @@
 		if (Math.abs(diff) < 1) return { text: "won't intersect", side: null };
 		return { text: 'will intersect', side: diff > 0 ? 'left' : 'right' };
 	});
+
+	// --- on-canvas captions -- same pattern tried out in SphereGeometryScene:
+	// once the animation is doing something specific, the explanatory text
+	// sits directly over the scene, timed to the same progress boundaries
+	// that drive the geometry, instead of living as scrolling left-panel
+	// prompts. The left panel now keeps only the quiet opening setup (see
+	// nonEuclideanGeometry.js's single 'parallel-postulate' stage) -- these
+	// four carry forward its old stages 2-5. Each entry's optional `top`
+	// (a CSS length/percent, e.g. '6%' or '80%') repositions just that one
+	// caption within the scene panel -- omit it to use CAPTION_DEFAULT_TOP.
+	const CAPTION_DEFAULT_TOP = '16%';
+	// Two captions sharing the rotate beat's own window -- split the window
+	// in two (rather than giving them the same start/end, which would just
+	// overlap them) so the second only takes over once the first has had
+	// its own dedicated stretch. Same `lerp` already used for the geometry
+	// above; adjust the 0.5 to give one half more time than the other.
+	const ROTATE_CAPTION_SPLIT = lerp(TRANSVERSAL_END, ALT_HOLD_END, 0.5);
+	const CAPTIONS = [
+		{
+			start: TRANSVERSAL_END,
+			end: ROTATE_CAPTION_SPLIT,
+			text: "Euclid reasoned that if two interior angles on one side add up to less than 180°, the lines will eventually meet on that side."
+		},
+		{
+			start: ROTATE_CAPTION_SPLIT,
+			end: ALT_HOLD_END,
+			text: "At exactly 180°, they'll never meet — they're parallel."
+		},
+		{
+			start: ALT_FADEOUT_END,
+			end: ALTERNATE_END,
+			text: 'He showed that any line crossing two parallel lines creates alternate interior angles that are equal.'
+		},
+		{ start: ALTERNATE_END, end: TRIANGLE_END, text: 'And from here, he showed...' },
+		{
+			start: TRIANGLE_END,
+			end: 1,
+			text: "...any triangle's angles always add up to 180°."
+		}
+	];
+	function captionOpacity(start, end, prog) {
+		if (prog < start || prog > end) return 0;
+		const fade = Math.min(0.15, (end - start) * 0.25) || 0.001;
+		return Math.min(remap(prog, start, start + fade), 1 - remap(prog, end - fade, end));
+	}
+	let captionOpacities = $derived(CAPTIONS.map((c) => captionOpacity(c.start, c.end, progress)));
 </script>
 
 <svg
@@ -441,6 +504,22 @@
 		<path d={scene.wedgeB2Base} class="wedge wedge-b" style="opacity:{scene.newFadeT}" />
 	{/if}
 
+	<!-- degree labels for the four alternate-angle wedges above -- same
+	     color pairing as the wedges (wedge-a/label-a at B1 and apex-left,
+	     wedge-b/label-b at B2 and apex-right) so the equal numbers read as
+	     the same claim the color-matching already makes. Fades out as the
+	     triangle forms (see altLabelOpacity) rather than persisting through
+	     the proof, where the apex pair would otherwise stack on the 180°
+	     label. -->
+	{#if scene.altLabelOpacity > 0}
+		<g style="opacity:{scene.altLabelOpacity}">
+			<text x={scene.labelB1Own[0]} y={scene.labelB1Own[1]} class="label label-a">{Math.round(scene.angleB1OwnDeg)}°</text>
+			<text x={scene.labelB2Own[0]} y={scene.labelB2Own[1]} class="label label-b">{Math.round(scene.angleB2OwnDeg)}°</text>
+			<text x={scene.labelApexLeft[0]} y={scene.labelApexLeft[1]} class="label label-a">{Math.round(scene.angleApexLeftDeg)}°</text>
+			<text x={scene.labelApexRight[0]} y={scene.labelApexRight[1]} class="label label-b">{Math.round(scene.angleApexRightDeg)}°</text>
+		</g>
+	{/if}
+
 	<!-- the straight-line proof's middle wedge — appears only once the two
 	     transversals have fully met (not progressively during the slide),
 	     and stays visible through dragging: the construction (base
@@ -483,11 +562,60 @@
 	{/if}
 </svg>
 
+<div class="caption-overlay">
+	{#each CAPTIONS as c, i}
+		{#if captionOpacities[i] > 0.01}
+			<p class="caption" style="opacity: {captionOpacities[i]}; top: {c.top ?? CAPTION_DEFAULT_TOP};">{c.text}</p>
+		{/if}
+	{/each}
+</div>
+
+{#if dragEnabled}
+	<p class="drag-hint">Drag the corners.</p>
+{/if}
+
 <style>
 	.scene {
 		width: 100%;
 		height: 100%;
 		touch-action: none;
+	}
+	.caption-overlay {
+		/* No top/bottom here -- each .caption sets its own `top` (see
+		   CAPTIONS' per-entry `top` field / CAPTION_DEFAULT_TOP), since
+		   different captions may want different vertical spots. Default
+		   is near the top: this scene's own SVG content (equation,
+		   verdict, wedge labels) is concentrated in the lower-middle of
+		   the frame, so a bottom-anchored caption collided with it. */
+		position: absolute;
+		inset: 0;
+		display: flex;
+		justify-content: center;
+		padding: 0 8%;
+		pointer-events: none;
+	}
+	.caption {
+		position: absolute;
+		max-width: 30rem;
+		margin: 0;
+		padding: 0.85rem 1.25rem;
+		border-radius: 10px;
+		background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+		backdrop-filter: blur(6px);
+		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+		font-size: 1.05rem;
+		line-height: 1.5;
+		text-align: center;
+		color: var(--text-primary);
+	}
+	.drag-hint {
+		position: absolute;
+		top: 1.5rem;
+		left: 1.5rem;
+		margin: 0;
+		font-size: 0.9rem;
+		font-style: italic;
+		color: var(--text-secondary);
 	}
 	.line {
 		stroke: var(--text-primary);
@@ -522,6 +650,9 @@
 	}
 	.label-a {
 		fill: var(--accent);
+	}
+	.label-b {
+		fill: var(--swatch-violet);
 	}
 	.label-c {
 		fill: var(--swatch-yellow);

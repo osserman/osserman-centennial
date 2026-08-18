@@ -22,11 +22,14 @@ export const slides = [
 		id: 'intro',
 		title: 'Non-Euclidean Geometry',
 		body: [
+			"Alexandria, established by Greeks on the coast of Egypt, was one of the ancient world's great centers of learning. There, drawing on centuries of mathematical developments from around the region, Euclid produced The Elements.",
+			'> "Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences."[cite Poetry of the Universe]',
+			"Of the handful of axioms and postulates Euclid offered, the parallel postulate was the least obvious, and the one mathematicians wrestled with most over the subsequent 2000 years."
 			// "Alexandria sat at the crossroads of civilizations."
-			"Ancient Egyptians spent centuries honing their understanding of shapes and developing an approach to mathematical reasoning, culminating in Euclid's *The Elements* around 300 BCE.",
-			"For 2000 years, the work would provide the mathematic foundations of geometry.",
-			'> Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences.',
-			'Only in the 19th century did mathematicians formalize the geometry of curved surfaces.'
+			//"Ancient Egyptians spent centuries honing their understanding of shapes and developing an approach to mathematical reasoning, culminating in Euclid's *The Elements* around 300 BCE.",
+			//"For 2000 years, the work would provide the mathematic foundations of geometry.",
+			//'> Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences.',
+			//'Only in the 19th century did mathematicians formalize the geometry of curved surfaces.'
 
 			//'This stanza introduces Euclidean and non-Euclidean geometry — the interplay of imagination and ground truth, the introduction of imaginary numbers, and hyperbolic geometry.'
 		]
@@ -44,61 +47,27 @@ export const slides = [
 	{
 		id: 'parallel-postulate',
 		title: 'The Parallel Postulate and Its Implications',
-		// `stages` scroll-scrubs ParallelPostulateScene's construction
-		// (see its own exported LINES_END/ROTATE_END/ALTERNATE_END/
-		// TRIANGLE_END boundaries and non-euclidean-geometry/+page.svelte),
-		// same shape as minimal-surfaces' defining-property slide: prompts
-		// physically scroll up from underneath the sticky title, one per
-		// animation beat, rather than sitting as one static block.
-		stages: [
-			{
-				prompt:
-					"One of Euclid's 5 axioms - the least intuitive - he called the **parallel postulate**. It doesn't actually start with parallel lines. It started with any two lines — and another line that intersects them."
-			},
-			{
-				prompt:
-					'In it, Euclid reasoned that if two interior angles on one side add up to less than 180°, the lines will eventually meet on that side. At exactly 180°, they never meet — they\'re parallel.'
-			},
-			{
-				prompt: 'From there, he showed that any line crossing two parallel lines creates alternate interior angles that are equal.'
-			},
-			{
-				prompt: 'And from here, he showed...'
-			},
-			{
-				prompt:
-					'...a triangle\'s angles always add up to 180°.'
-			}
-		],
-		dragCaption: 'Drag the corners.',
+		// `subtitle` sits sticky under the title (see .intro-sticky in
+		// +page.svelte) for the whole scene -- no more scrolling stage
+		// prompts here. Every other beat of this scene's narration (what
+		// the live rotating equation means, the alternate-angle claim, the
+		// triangle forming, the 180 proof) is carried by on-canvas
+		// captions in ParallelPostulateScene itself, timed tightly to the
+		// animation -- see that component's CAPTIONS array (and its
+		// drag-hint, which used to be this slide's separate `dragCaption`
+		// field, now folded in there too).
+		subtitle: "The **parallel postulate doesn't actually start with parallel lines**. It starts with any two lines — and another line that intersects them.",
 		visualLabel: 'Parallel-postulate / triangle-angle-sum animation'
 	},
 	{
 		id: 'sphere',
 		title: 'Living on the Surface of a Sphere',
-		// `stages` scroll-scrubs SphereGeometryScene's own construction (see
-		// its exported WALK_START/EDGE1_END/EDGE2_END/EDGE3_END/SUM_END/
-		// PARALLEL_START boundaries), same shape as the parallel-postulate
-		// slide before it.
-		stages: [
-			{ prompt: "On surfaces that aren't flat, this foundational geometry doesn't quite work out. Start at the equator of a sphere." },
-			{ prompt: 'Take the shortest path to the north pole by heading due north.' },
-			{ prompt: 'Turn right 90° and take the shortest path back to the equator.' },
-			{ prompt: 'Turn right 90° again until you arrive back where you started.' },
-			{
-				prompt:
-					'Here you have a spherical equilateral triangle, whose angles add up to 270°. In fact, if you take any triangle along the surface of a sphere, the angles will always add up to more than 180°.'
-			},
-			{
-				prompt: 'Furthermore, parallel lines themselves behave differently.'
-			}
-		],
-		// The rest of this beat's narration (the flat-geometry "should never
-		// meet" reasoning, then each meeting/crossing) is carried by
-		// on-canvas captions in SphereGeometryScene itself, timed tightly to
-		// the animation -- see that component's CAPTIONS array -- rather
-		// than more left-panel prompts here. A pattern being tried out on
-		// this beat specifically before adopting it more broadly.
+		// Same pattern as parallel-postulate above: a sticky subtitle, no
+		// scrolling stage prompts. Every beat's narration -- "start at the
+		// equator", each leg of the triangle walk, the 270 sum, and the
+		// whole parallel-lines beat -- is carried by on-canvas captions in
+		// SphereGeometryScene itself; see that component's CAPTIONS array.
+		subtitle: "On surfaces that aren't flat, this foundational geometry doesn't quite work out.",
 		visualLabel: 'Spherical-triangle / parallel-lines-meet-twice animation'
 		// Closing paragraph from the source doc, not yet placed as a stage —
 		// reads more like a wrap-up than something the scene has a beat for:

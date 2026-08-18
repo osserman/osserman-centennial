@@ -31,7 +31,6 @@
 
 	let activeIndex = $state(0);
 	const parallelIndex = scrollySlides.findIndex((s) => s.id === 'parallel-postulate');
-	const parallelSlide = scrollySlides[parallelIndex];
 	const sphereIndex = scrollySlides.findIndex((s) => s.id === 'sphere');
 
 	// Minimal inline-markdown support, same convention as minimal-surfaces'
@@ -51,13 +50,12 @@
 	const STICKY_TOP_PX = 0;
 	let parallelProgress = $state(0);
 	let parallelTextEl = $state();
-	// Roughly matches the 5 ScrollyStep prompts' own scroll budget
-	// (90+70+70+70+90 = 390vh) so progress finishes right around when the
-	// last prompt has scrolled through — tuned visually, same approach used
-	// throughout minimal-surfaces.
+	// Tuned visually against the animation itself (most of this beat's
+	// narration is on-canvas captions now, not scrolling prompts -- see
+	// ParallelPostulateScene's CAPTIONS array -- so this no longer tracks
+	// a left-panel prompt budget).
 	const PARALLEL_SPAN_VH = 2.6;
 	let parallelSettleScrollY = null;
-	let parallelStageIndex = $state(0);
 
 	function PARALLEL_SPAN_PX() {
 		return PARALLEL_SPAN_VH * window.innerHeight;
@@ -82,7 +80,6 @@
 	let sphereTextEl = $state();
 	const SPHERE_SPAN_VH = 5.6;
 	let sphereSettleScrollY = null;
-	let sphereStageIndex = $state(0);
 
 	function SPHERE_SPAN_PX() {
 		return SPHERE_SPAN_VH * window.innerHeight;
@@ -138,26 +135,18 @@
 			{#each scrollySlides as slide, i}
 				<ScrollyStep index={i} active={i === activeIndex}>
 					{#if slide.id === 'parallel-postulate'}
-						<!-- Same shape as minimal-surfaces' defining-property slide:
-						     sticky title, then a nested <Scrolly> of per-stage prompts
-						     that physically scroll up from underneath it, paced
-						     independently from (but roughly alongside) the continuous
-						     parallelProgress driving ParallelPostulateScene itself. -->
+						<!-- Sticky title + subtitle, no scrolling stage prompts --
+						     this whole scene's narration is on-canvas captions (see
+						     ParallelPostulateScene's CAPTIONS array) now, so the left
+						     panel just states the setup once and stays put while the
+						     reader scrolls through the animation. -->
 						<div class="euler-flow">
 							<div class="intro-spacer-lead"></div>
 							<div class="intro-sticky" bind:this={parallelTextEl}>
 								<h2>{slide.title}</h2>
+								<p class="subtitle">{@html renderInline(slide.subtitle)}</p>
 							</div>
-							<div class="stage-steps">
-								<Scrolly bind:active={parallelStageIndex}>
-									{#each slide.stages as s, j}
-										<ScrollyStep index={j} active={parallelStageIndex === j}>
-											<p class="prompt">{@html renderInline(s.prompt)}</p>
-										</ScrollyStep>
-									{/each}
-								</Scrolly>
-							</div>
-							<div class="trailing-spacer"></div>
+							<div class="trailing-spacer trailing-spacer-parallel"></div>
 						</div>
 					{:else if slide.id === 'sphere'}
 						<!-- Same shape as parallel-postulate above. -->
@@ -165,17 +154,9 @@
 							<div class="intro-spacer-lead"></div>
 							<div class="intro-sticky" bind:this={sphereTextEl}>
 								<h2>{slide.title}</h2>
+								<p class="subtitle">{@html renderInline(slide.subtitle)}</p>
 							</div>
-							<div class="stage-steps">
-								<Scrolly bind:active={sphereStageIndex}>
-									{#each slide.stages as s, j}
-										<ScrollyStep index={j} active={sphereStageIndex === j}>
-											<p class="prompt">{@html renderInline(s.prompt)}</p>
-										</ScrollyStep>
-									{/each}
-								</Scrolly>
-							</div>
-							<div class="trailing-spacer"></div>
+							<div class="trailing-spacer trailing-spacer-sphere"></div>
 						</div>
 					{:else}
 						<div class="slide-text">
@@ -197,11 +178,6 @@
 	<div class="scene-panel">
 		{#if activeIndex === parallelIndex}
 			<ParallelPostulateScene progress={parallelProgress} dragEnabled={parallelProgress >= 1} />
-			{#if parallelProgress >= 1 && parallelSlide.dragCaption}
-				<div class="editor-overlay">
-					<p class="drag-caption">{parallelSlide.dragCaption}</p>
-				</div>
-			{/if}
 		{:else if activeIndex === sphereIndex}
 			<SphereGeometryScene progress={sphereProgress} debug={debugSphere} />
 		{:else}
@@ -305,7 +281,7 @@
 		color: var(--text-secondary);
 		margin: 0;
 	}
-	.prompt {
+	.subtitle {
 		color: var(--text-secondary);
 	}
 	blockquote {
@@ -345,15 +321,20 @@
 		padding: 2rem 0 1.25rem;
 		border-bottom: 1px solid var(--surface-2);
 	}
-	.stage-steps {
-		width: 100%;
-	}
-	/* Slack after the stage-steps' own ~390vh so the outer Scrolly (whose
+	/* Slack after the sticky title+subtitle so the outer Scrolly (whose
 	   trigger band sits at viewport center) doesn't move on to the next
-	   slide before parallelProgress can reach 1 and unlock dragging — same
-	   reasoning as minimal-surfaces' own trailing spacers. */
-	.trailing-spacer {
-		height: 100vh;
+	   slide before parallelProgress/sphereProgress can reach 1 — same
+	   reasoning as minimal-surfaces' own trailing spacers. There are no
+	   scrolling stage prompts anymore (both scenes carry their narration
+	   as on-canvas captions instead — see each component's CAPTIONS
+	   array), so this spacer is the *only* source of scroll height behind
+	   each slide, sized per slide against its own SPAN_VH (sphere's is
+	   more than double parallel's, so needs proportionally more). */
+	.trailing-spacer-parallel {
+		height: 380vh;
+	}
+	.trailing-spacer-sphere {
+		height: 720vh;
 	}
 	.scene-panel {
 		flex: 1;
@@ -361,18 +342,6 @@
 		position: sticky;
 		top: 0;
 		height: 100vh;
-	}
-	.editor-overlay {
-		position: absolute;
-		top: 1.5rem;
-		left: 1.5rem;
-		z-index: 5;
-	}
-	.drag-caption {
-		margin: 0;
-		font-size: 0.9rem;
-		font-style: italic;
-		color: var(--text-secondary);
 	}
 	@media (max-width: 900px) {
 		.layout {
