@@ -22,10 +22,16 @@ export const slides = [
 		id: 'intro',
 		title: 'Non-Euclidean Geometry',
 		body: [
-			'This stanza introduces Euclidean and non-Euclidean geometry — the interplay of imagination and ground truth, the introduction of imaginary numbers, and hyperbolic geometry.'
+			// "Alexandria sat at the crossroads of civilizations."
+			"Ancient Egyptians spent centuries honing their understanding of shapes and developing an approach to mathematical reasoning, culminating in Euclid's *The Elements* around 300 BCE.",
+			"For 2000 years, the work would provide the mathematic foundations of geometry.",
+			'> Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences.',
+			'Only in the 19th century did mathematicians formalize the geometry of curved surfaces.'
+
+			//'This stanza introduces Euclidean and non-Euclidean geometry — the interplay of imagination and ground truth, the introduction of imaginary numbers, and hyperbolic geometry.'
 		]
 	},
-	{
+/*	{
 		id: 'euclid',
 		title: "Euclid's Geometry",
 		body: [
@@ -34,6 +40,7 @@ export const slides = [
 		],
 		visualLabel: 'Euclid / The Elements motif'
 	},
+	*/
 	{
 		id: 'parallel-postulate',
 		title: 'The Parallel Postulate and Its Implications',
@@ -46,21 +53,21 @@ export const slides = [
 		stages: [
 			{
 				prompt:
-					"One of these few assumptions was the **parallel postulate**, though it doesn't actually start with parallel lines. It started with any two lines — and another line that intersects them."
+					"One of Euclid's 5 axioms - the least intuitive - he called the **parallel postulate**. It doesn't actually start with parallel lines. It started with any two lines — and another line that intersects them."
 			},
 			{
 				prompt:
-					'If the two interior angles on one side add up to less than 180°, Euclid reasoned the lines will eventually meet on that side. At exactly 180°, they never meet — they\'re parallel.'
+					'In it, Euclid reasoned that if two interior angles on one side add up to less than 180°, the lines will eventually meet on that side. At exactly 180°, they never meet — they\'re parallel.'
 			},
 			{
-				prompt: 'Any line crossing two parallel lines creates alternate interior angles that are equal.'
+				prompt: 'From there, he showed that any line crossing two parallel lines creates alternate interior angles that are equal.'
 			},
 			{
-				prompt: 'Slide two such crossing lines together until they meet at a point...'
+				prompt: 'And from here, he showed...'
 			},
 			{
 				prompt:
-					'...and the angles carried up to that point form a straight line. A triangle\'s angles always add up to 180°.'
+					'...a triangle\'s angles always add up to 180°.'
 			}
 		],
 		dragCaption: 'Drag the corners.',
@@ -69,22 +76,37 @@ export const slides = [
 	{
 		id: 'sphere',
 		title: 'Living on the Surface of a Sphere',
-		body: [
-			"On surfaces that aren't flat, this foundational geometry doesn't quite work out.",
-			'Start at the equator of a sphere.',
-			'Take the shortest path to the north pole by heading due north.',
-			'Turn right 90° and take the shortest path back to the equator.',
-			'Turn right 90° again until you arrive back where you started.',
-			'Here you have a spherical equilateral triangle, whose angles add up to 270°. In fact, if you take any triangle along the surface of a sphere, the angles will always add up to more than 180°.',
-			'Furthermore, parallel lines themselves behave differently. Start from a line segment on the equator and draw parallel lines at right angles from it. They not only intersect, but they intersect twice — once at the north pole and again at the south pole. On a sphere, all lines that would be parallel on a flat surface intersect exactly twice.',
-			'These characteristics of spherical geometry were known, living alongside Euclid\'s geometry, for centuries. But the mathematics of it took over a thousand years to develop fully.'
+		// `stages` scroll-scrubs SphereGeometryScene's own construction (see
+		// its exported WALK_START/EDGE1_END/EDGE2_END/EDGE3_END/SUM_END/
+		// PARALLEL_START boundaries), same shape as the parallel-postulate
+		// slide before it.
+		stages: [
+			{ prompt: "On surfaces that aren't flat, this foundational geometry doesn't quite work out. Start at the equator of a sphere." },
+			{ prompt: 'Take the shortest path to the north pole by heading due north.' },
+			{ prompt: 'Turn right 90° and take the shortest path back to the equator.' },
+			{ prompt: 'Turn right 90° again until you arrive back where you started.' },
+			{
+				prompt:
+					'Here you have a spherical equilateral triangle, whose angles add up to 270°. In fact, if you take any triangle along the surface of a sphere, the angles will always add up to more than 180°.'
+			},
+			{
+				prompt: 'Furthermore, parallel lines themselves behave differently.'
+			}
 		],
+		// The rest of this beat's narration (the flat-geometry "should never
+		// meet" reasoning, then each meeting/crossing) is carried by
+		// on-canvas captions in SphereGeometryScene itself, timed tightly to
+		// the animation -- see that component's CAPTIONS array -- rather
+		// than more left-panel prompts here. A pattern being tried out on
+		// this beat specifically before adopting it more broadly.
 		visualLabel: 'Spherical-triangle / parallel-lines-meet-twice animation'
-		// Animation (from the source doc): show the traversal described
-		// (equator -> north pole -> back to equator -> back to start) on a
-		// sphere. Then zoom into a line segment on the equator with parallel
-		// lines drawn up from it; zoom back out as those lines meet at the
-		// north pole, then again at the south pole.
+		// Closing paragraph from the source doc, not yet placed as a stage —
+		// reads more like a wrap-up than something the scene has a beat for:
+		// "On a sphere, all lines that would be parallel on a flat surface
+		// intersect exactly twice. These characteristics of spherical
+		// geometry were known, living alongside Euclid's geometry, for
+		// centuries. But the mathematics of it took over a thousand years to
+		// develop fully."
 		//
 		// Possible addition (source doc, unresolved): historical examples
 		// from Poetry of the Universe — maybe the Egyptians' use of geometry

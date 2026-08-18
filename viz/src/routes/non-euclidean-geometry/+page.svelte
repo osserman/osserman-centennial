@@ -7,11 +7,19 @@
 	// grew CatenoidScene/CatenaryUnrollScene/MeanCurvatureScene out of
 	// VisualPlaceholder one slide at a time.
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
+	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
+
+	// Camera debugging aid for SphereGeometryScene -- visit this page with
+	// ?debug=sphere to get free-fly OrbitControls and an on-screen readout
+	// of camera position/target, instead of editing the component to flip
+	// a hardcoded flag every time. See that component's own `debug` prop.
+	const debugSphere = $derived(page.url.searchParams.get('debug') === 'sphere');
 
 	// Same split as minimal-surfaces: first/last slides are standalone
 	// full-viewport cover screens (see .cover-section below), not part of
@@ -24,6 +32,7 @@
 	let activeIndex = $state(0);
 	const parallelIndex = scrollySlides.findIndex((s) => s.id === 'parallel-postulate');
 	const parallelSlide = scrollySlides[parallelIndex];
+	const sphereIndex = scrollySlides.findIndex((s) => s.id === 'sphere');
 
 	// Minimal inline-markdown support, same convention as minimal-surfaces'
 	// own renderInline — **bold** only, plus *italic* (used for book titles).
@@ -67,13 +76,43 @@
 		parallelProgress = Math.max(0, Math.min(1, traveled / PARALLEL_SPAN_PX()));
 	}
 
+	// Second, independent instance of the same arrival/settle pattern above,
+	// driving SphereGeometryScene instead of ParallelPostulateScene.
+	let sphereProgress = $state(0);
+	let sphereTextEl = $state();
+	const SPHERE_SPAN_VH = 5.6;
+	let sphereSettleScrollY = null;
+	let sphereStageIndex = $state(0);
+
+	function SPHERE_SPAN_PX() {
+		return SPHERE_SPAN_VH * window.innerHeight;
+	}
+
+	function updateSphereProgress() {
+		if (!sphereTextEl) return;
+		const rect = sphereTextEl.getBoundingClientRect();
+		if (rect.top > STICKY_TOP_PX) {
+			sphereProgress = 0;
+			sphereSettleScrollY = null;
+			return;
+		}
+		if (sphereSettleScrollY === null) sphereSettleScrollY = window.scrollY;
+		const traveled = window.scrollY - sphereSettleScrollY;
+		sphereProgress = Math.max(0, Math.min(1, traveled / SPHERE_SPAN_PX()));
+	}
+
 	onMount(() => {
 		updateParallelProgress();
+		updateSphereProgress();
 		window.addEventListener('scroll', updateParallelProgress, { passive: true });
+		window.addEventListener('scroll', updateSphereProgress, { passive: true });
 		window.addEventListener('resize', updateParallelProgress);
+		window.addEventListener('resize', updateSphereProgress);
 		return () => {
 			window.removeEventListener('scroll', updateParallelProgress);
+			window.removeEventListener('scroll', updateSphereProgress);
 			window.removeEventListener('resize', updateParallelProgress);
+			window.removeEventListener('resize', updateSphereProgress);
 		};
 	});
 </script>
@@ -120,6 +159,24 @@
 							</div>
 							<div class="trailing-spacer"></div>
 						</div>
+					{:else if slide.id === 'sphere'}
+						<!-- Same shape as parallel-postulate above. -->
+						<div class="euler-flow">
+							<div class="intro-spacer-lead"></div>
+							<div class="intro-sticky" bind:this={sphereTextEl}>
+								<h2>{slide.title}</h2>
+							</div>
+							<div class="stage-steps">
+								<Scrolly bind:active={sphereStageIndex}>
+									{#each slide.stages as s, j}
+										<ScrollyStep index={j} active={sphereStageIndex === j}>
+											<p class="prompt">{@html renderInline(s.prompt)}</p>
+										</ScrollyStep>
+									{/each}
+								</Scrolly>
+							</div>
+							<div class="trailing-spacer"></div>
+						</div>
 					{:else}
 						<div class="slide-text">
 							<h2>{slide.title}</h2>
@@ -145,6 +202,8 @@
 					<p class="drag-caption">{parallelSlide.dragCaption}</p>
 				</div>
 			{/if}
+		{:else if activeIndex === sphereIndex}
+			<SphereGeometryScene progress={sphereProgress} debug={debugSphere} />
 		{:else}
 			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
 		{/if}

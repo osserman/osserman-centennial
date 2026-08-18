@@ -82,23 +82,37 @@ export const slides = [
 			{ prompt: 'Around the point on top of the catenoid, there are two curves that reveal how the surface bends -- one bends along the **catenary curve**, and the other around the **rotational curve**.' },
 			{ prompt: 'Isolated from the surface, we can see two curves bend in opposite directions.' },
 			{ prompt: 'Rotating the curves lets us see that these principal curves on the surface around this point...' },
-			{ prompt: '... have the exact same amount of curvature, but in opposite directions. This feature, defined as a **mean curvature of zero** is true not just at this point, but at all points on the surface of the catenoid... And more strikingly at all points of every smooth minimal surface.' }
+			{ prompt: '... have the exact same amount of curvature, but in opposite directions. This feature, defined as a **mean curvature of zero** is true not just at this point, but at all points on the surface of the catenoid... And more strikingly **at all points of every smooth minimal surface**.' }
 		]
 		// Visual: MeanCurvatureScene, rendered directly by this page (see
 		// the scene-panel branch for curvatureIndex in +page.svelte).
 	},
 	{
 		id: 'soap-film',
-		title: 'Nature mimics maths mimics nature',
+		title: 'Nature mimics math mimics nature',
 		body: [
-			'Minimal surfaces are mathematical objects.',
-			"But researching them has often involved natural models, specifically soal films.", 
-			"In the 1770's ___ showed that the physics of soap films, following the laws of surface tensions, should form minimal surfaces.",
-			"But it wasn't until the 1840s, a hundred years after Euler's proof, that Plateau developed a stable enough soap film mixture to systematically reseaarch them, starting decades of experiments into surfaces formed around __.",
-			'By pulling apart two rings dipped in soap, he made the catenoid Euler described..',
+			//////////// CHECK FOR EDITS IN CHATGPT CHAT ////////////////
+			'Minimal surfaces are **mathematical objects**.',
+			"But researchers has often used **natural models**, specifically soal films, to explore them.", 
+			"It was known in the 1700's that soap films, following the laws of surface tension, created minimal surfaces. But it wasn't until the 1840's, a hundred years after Euler's proof, that physicist Joseph Plateau developed a stable enough soap film mixture to systematically reseaarch how they form around wire frames.",
+			'By pulling apart two rings dipped in soap, he made the first known stable catenoid Euler described a century before.',
 		],
 		visualLabel: 'Soap-film visualization'
 	},
+	{
+		id: 'field-grows',
+		title: 'An explosion of surfaces',
+		body: [
+			//////////// CHECK FOR EDITS IN CHATGPT CHAT ////////////////
+			'While the stabilization of the catenoid took material inventiveness, mathematical ingenuity was required in the hundred year path towards describing an infinite range of surfaces.' ,
+			"In the 1760's Joseph-Louis de Lagrange provided the exact equation that any 2 dimensional minimal surface must... Unfortunately the equations were essentially unsolvable.",
+			"It wasn't until 1860's that Weierstrass, Enneper and Riemann derived a simplification that changed that. Using complex numbers (the sum of a real and imaginary number) they developed a way to define an infinite family of minimal surfaces.",
+			'This new approach helped transform isolated examples into a coherent field of geometry.',
+			'Choose a minimal surface family, and tweak the parameters of the functions to see the minimal surfaces they describe.'
+		],
+		visualLabel: 'Gallery of minimal surfaces (Riemann’s family)'
+	}, 
+	/*
 	{
 		id: 'field-grows',
 		title: 'An explosion of surfaces',
@@ -108,7 +122,7 @@ export const slides = [
 			'This new approach helped transform isolated examples into a coherent field of geometry.'
 		],
 		visualLabel: 'Gallery of minimal surfaces (Riemann’s family)'
-	},
+	},*/ 
 	{
 		id: 'two-centuries',
 		title: 'The Field Keeps Growing',
