@@ -46,7 +46,7 @@
 	// (90+70+70+70+90 = 390vh) so progress finishes right around when the
 	// last prompt has scrolled through — tuned visually, same approach used
 	// throughout minimal-surfaces.
-	const PARALLEL_SPAN_VH = 3.6;
+	const PARALLEL_SPAN_VH = 2.6;
 	let parallelSettleScrollY = null;
 	let parallelStageIndex = $state(0);
 
