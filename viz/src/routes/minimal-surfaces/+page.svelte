@@ -6,6 +6,7 @@
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import CatenaryUnrollScene from '$lib/components/CatenaryUnrollScene.svelte';
 	import MeanCurvatureScene from '$lib/components/MeanCurvatureScene.svelte';
+	import MinimalSurfaceExplorer from '$lib/components/MinimalSurfaceExplorer.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import SurfaceAreaBars from '$lib/components/SurfaceAreaBars.svelte';
 	import {
@@ -33,6 +34,7 @@
 	const eulerIndex = scrollySlides.findIndex((s) => s.id === 'euler-question');
 	const catenaryAnswerIndex = scrollySlides.findIndex((s) => s.id === 'euler-answer');
 	const curvatureIndex = scrollySlides.findIndex((s) => s.id === 'defining-property');
+	const explorerIndex = scrollySlides.findIndex((s) => s.id === 'surface-explorer');
 	// The euler-question slide's copy has two extra fields (`stages`) the
 	// generic slides don't — see the comment on it in minimalSurfaces.js.
 	// Pulled out here since the scene-panel section below needs it too, but
@@ -574,6 +576,8 @@
 			/>
 		{:else if activeIndex === curvatureIndex}
 			<MeanCurvatureScene R={ringR} L={ringL} progress={curvatureProgress} />
+		{:else if activeIndex === explorerIndex}
+			<MinimalSurfaceExplorer />
 		{:else}
 			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
 		{/if}

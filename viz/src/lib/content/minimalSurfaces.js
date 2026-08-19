@@ -93,9 +93,11 @@ export const slides = [
 		body: [
 			//////////// CHECK FOR EDITS IN CHATGPT CHAT ////////////////
 			'Minimal surfaces are **mathematical objects**.',
-			"But researchers has often used **natural models**, specifically soal films, to explore them.", 
+			"But researchers have often used **natural models**, specifically soal films, to understand them.", 
+			"It was already known in the eighteenth century that soap films naturally minimize their area. But producing stable, repeatable experiments was much harder than making bubbles for amusement.",
+			"In the 1840s, the Belgian physicist Joseph Plateau developed techniques for systematically studying soap films stretched across wire frames.",
 			"It was known in the 1700's that soap films, following the laws of surface tension, created minimal surfaces. But it wasn't until the 1840's, a hundred years after Euler's proof, that physicist Joseph Plateau developed a stable enough soap film mixture to systematically reseaarch how they form around wire frames.",
-			'By pulling apart two rings dipped in soap, he made the first known stable catenoid Euler described a century before.',
+			'By pulling apart two rings dipped in soap, he made the first known stable catenoid Euler described a century before. Observation had caught up with theory.',
 		],
 		visualLabel: 'Soap-film visualization'
 	},
@@ -104,6 +106,20 @@ export const slides = [
 		title: 'An explosion of surfaces',
 		body: [
 			//////////// CHECK FOR EDITS IN CHATGPT CHAT ////////////////
+			/* Euler had solved one remarkable optimization problem.
+
+The next challenge was to understand all minimal surfaces.
+
+In the 1760s, Joseph-Louis Lagrange derived the differential equation that every minimal surface must satisfy. The result was elegant—but almost impossible to solve.
+
+A century later, Karl Weierstrass, Alfred Enneper, and Bernhard Riemann transformed the field.
+
+Using the mathematics of complex numbers, they developed a remarkably powerful way to generate entire families of minimal surfaces.
+
+Instead of discovering one new example at a time, mathematicians could now explore an infinite landscape of them.
+
+Choose a family below, and vary its parameters to see how these mathematical surfaces change.
+*/
 			'While the stabilization of the catenoid took material inventiveness, mathematical ingenuity was required in the hundred year path towards describing an infinite range of surfaces.' ,
 			"In the 1760's Joseph-Louis de Lagrange provided the exact equation that any 2 dimensional minimal surface must... Unfortunately the equations were essentially unsolvable.",
 			"It wasn't until 1860's that Weierstrass, Enneper and Riemann derived a simplification that changed that. Using complex numbers (the sum of a real and imaginary number) they developed a way to define an infinite family of minimal surfaces.",
@@ -111,7 +127,22 @@ export const slides = [
 			'Choose a minimal surface family, and tweak the parameters of the functions to see the minimal surfaces they describe.'
 		],
 		visualLabel: 'Gallery of minimal surfaces (Riemann’s family)'
-	}, 
+	},
+	{
+		id: 'surface-explorer',
+		title: 'One equation, many surfaces',
+		// A subsequent slide for now, not a replacement for 'field-grows'
+		// above -- see MinimalSurfaceExplorer.svelte for the interactive
+		// itself (family dropdown + parameter slider, user-driven via
+		// OrbitControls rather than scroll-scrubbed). Once this pattern is
+		// confirmed to work well, 'field-grows' above is the likely home
+		// for it long-term.
+		body: [
+			'Choose a family below, and drag the slider to see how a single mathematical description can describe many different-looking surfaces.',
+			'The catenoid and the helicoid — two shapes that look nothing alike — turn out to be the same family, just viewed at a different angle in the underlying description.'
+		],
+		visualLabel: 'Minimal surface family explorer'
+	},
 	/*
 	{
 		id: 'field-grows',
