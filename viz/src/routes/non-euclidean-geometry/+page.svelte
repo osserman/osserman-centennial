@@ -24,10 +24,17 @@
 	// Same split as minimal-surfaces: first/last slides are standalone
 	// full-viewport cover screens (see .cover-section below), not part of
 	// the two-column flow — everything in between shares the
-	// text-panel/scene-panel layout.
+	// text-panel/scene-panel layout. gauss-survey is a *third* kind: it has
+	// no scene-panel visual yet, so rather than sitting in the two-column
+	// flow next to an empty VisualPlaceholder, it gets the same full-bleed
+	// cover-card treatment as the intro/outro (see the standalone
+	// <section> for it below) -- which is why it's excluded from
+	// scrollySlides and the two-column <main> is split around it.
 	const introSlide = slides[0];
 	const outroSlide = slides[slides.length - 1];
-	const scrollySlides = slides.slice(1, -1);
+	const gaussSlide = slides.find((s) => s.id === 'gauss-survey');
+	const imaginarySlide = slides.find((s) => s.id === 'imaginary-curvature');
+	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
 
 	let activeIndex = $state(0);
 	const parallelIndex = scrollySlides.findIndex((s) => s.id === 'parallel-postulate');
@@ -158,17 +165,6 @@
 							</div>
 							<div class="trailing-spacer trailing-spacer-sphere"></div>
 						</div>
-					{:else}
-						<div class="slide-text">
-							<h2>{slide.title}</h2>
-							{#each slide.body as para}
-								{#if para.startsWith('> ')}
-									<blockquote>{@html renderInline(para.slice(2))}</blockquote>
-								{:else}
-									<p>{@html renderInline(para)}</p>
-								{/if}
-							{/each}
-						</div>
 					{/if}
 				</ScrollyStep>
 			{/each}
@@ -180,9 +176,43 @@
 			<ParallelPostulateScene progress={parallelProgress} dragEnabled={parallelProgress >= 1} />
 		{:else if activeIndex === sphereIndex}
 			<SphereGeometryScene progress={sphereProgress} debug={debugSphere} />
-		{:else}
-			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
 		{/if}
+	</div>
+</main>
+
+<!-- gauss-survey has no scene-panel visual yet, so it's a standalone
+     full-bleed card (same shape as the intro/outro screens) rather than
+     sitting in the two-column flow above next to an empty
+     VisualPlaceholder. Once it gets a real visual, move it back into
+     scrollySlides above instead. -->
+<section class="cover-section">
+	<div class="cover-card">
+		<h1>{gaussSlide.title}</h1>
+		{#each gaussSlide.body as para}
+			<p>{@html renderInline(para)}</p>
+		{/each}
+	</div>
+</section>
+
+<!-- imaginary-curvature also has no scene-panel visual, but (unlike
+     gauss-survey) keeps the two-column shell for now since a visual is
+     more clearly planned for it -- just without Scrolly/ScrollyStep,
+     since there's only one slide here and nothing to switch between. -->
+<main class="layout">
+	<div class="text-panel">
+		<div class="slide-text solo-slide">
+			<h2>{imaginarySlide.title}</h2>
+			{#each imaginarySlide.body as para}
+				{#if para.startsWith('> ')}
+					<blockquote>{@html renderInline(para.slice(2))}</blockquote>
+				{:else}
+					<p>{@html renderInline(para)}</p>
+				{/if}
+			{/each}
+		</div>
+	</div>
+	<div class="scene-panel">
+		<VisualPlaceholder label={imaginarySlide.visualLabel ?? ''} />
 	</div>
 </main>
 
@@ -266,6 +296,17 @@
 		flex-direction: column;
 		gap: 1rem;
 		width: 100%;
+	}
+	/* Same min-height/centering ScrollyStep normally provides -- needed
+	   here since imaginary-curvature's block isn't wrapped in one (it's
+	   alone, no Scrolly/active-index switching to do), but the sticky
+	   .scene-panel alongside it still needs the text column to be at
+	   least a viewport tall to hold properly while scrolling past. */
+	.solo-slide {
+		min-height: 90vh;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
 	}
 	h2 {
 		font-size: 1.7rem;

@@ -643,7 +643,7 @@
 		const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false });
 		const sprite = new THREE.Sprite(spriteMat);
 		sprite.scale.set(0.9, 0.34, 1);
-		sprite.position.set(0.55, 0.75, 0.55);
+		sprite.position.set(1, 0.75, .3);
 		sumLabelGroup.add(sprite);
 		sumLabelGroup.visible = false;
 		scene.add(sumLabelGroup);

@@ -234,6 +234,20 @@
 			dragB1 = B1_POST_SLIDE;
 			dragB2 = B2_POST_SLIDE;
 			dragApex = APEX_FIXED;
+		} else if (!dragEnabled && seeded) {
+			// Scrolling back up re-locks dragging (dragEnabled goes false
+			// again) -- without this, currentB1/currentB2/currentApex below
+			// (which fall back to the *scripted* points only when the drag
+			// ones are null) would stay frozen on wherever dragging last
+			// left the triangle forever after, instead of resuming the
+			// scripted construction as progress decreases. Clearing these
+			// lets the scene scrub backward correctly; scrolling forward
+			// past the unlock point again reseeds fresh from the scripted
+			// end state, same as the first time.
+			seeded = false;
+			dragB1 = null;
+			dragB2 = null;
+			dragApex = null;
 		}
 	});
 

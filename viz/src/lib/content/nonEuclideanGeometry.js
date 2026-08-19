@@ -22,9 +22,9 @@ export const slides = [
 		id: 'intro',
 		title: 'Non-Euclidean Geometry',
 		body: [
-			"Alexandria, established by Greeks on the coast of Egypt, was one of the ancient world's great centers of learning. There, drawing on centuries of mathematical developments from around the region, Euclid produced The Elements.",
-			'> "Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences."[cite Poetry of the Universe]',
-			"Of the handful of axioms and postulates Euclid offered, the parallel postulate was the least obvious, and the one mathematicians wrestled with most over the subsequent 2000 years."
+			"Alexandria, founded by the Greeks on the coast of Egypt, was one of the ancient world's great centers of learning. There, drawing on centuries of mathematical developments from around the region, Euclid produced *The Elements*. ",
+			'> "Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences." - Robert Osserman, *Poetry of the Universe*',
+			"Of the handful of axioms and postulates Euclid offered, the parallel postulate was the least self-evident, and the one mathematicians wrestled with most over the next two thousand years."
 			// "Alexandria sat at the crossroads of civilizations."
 			//"Ancient Egyptians spent centuries honing their understanding of shapes and developing an approach to mathematical reasoning, culminating in Euclid's *The Elements* around 300 BCE.",
 			//"For 2000 years, the work would provide the mathematic foundations of geometry.",
@@ -61,13 +61,13 @@ export const slides = [
 	},
 	{
 		id: 'sphere',
-		title: 'Living on the Surface of a Sphere',
+		title: 'Life on the Surface of a Sphere',
 		// Same pattern as parallel-postulate above: a sticky subtitle, no
 		// scrolling stage prompts. Every beat's narration -- "start at the
 		// equator", each leg of the triangle walk, the 270 sum, and the
 		// whole parallel-lines beat -- is carried by on-canvas captions in
 		// SphereGeometryScene itself; see that component's CAPTIONS array.
-		subtitle: "On surfaces that aren't flat, this foundational geometry doesn't quite work out.",
+		subtitle: "While geometry on a flat plane could largely be derived from Euclid, developing an similarly robust geometry of curved surfaces took decidedly longer. On surfaces that aren't flat, Euclidian geometry doesn't quite work out.",
 		visualLabel: 'Spherical-triangle / parallel-lines-meet-twice animation'
 		// Closing paragraph from the source doc, not yet placed as a stage —
 		// reads more like a wrap-up than something the scene has a beat for:
@@ -86,7 +86,7 @@ export const slides = [
 		title: "Gauss' Survey of a Curved Planet",
 		body: [
 			'Advances in math require immense imagination and ingenuity, but they are not immaculately born in the head of a mathematician. They can be seeded by forebears and contemporaries, by keen observation, and sometimes by trying to find a more elegant way through a practical problem.',
-			'One such problem arrived in 1818, when Carl Friedrich Gauss, a famed mathematician, physicist, and astronomer, was given the task of surveying the relatively new Kingdom of Hanover. While no new math was needed to complete this task, he took the opportunity to look deeper, in the process making a great advance in the study of curved surfaces.',
+			'One such problem arrived in 1818, when Carl Friedrich Gauss, a famed mathematician, physicist, and astronomer, was given the task of surveying the Kingdom of Hannover. While no new math was needed to complete this task, the he brought a new perspective to the job, in the process making a great advance in the study of curved surfaces.',
 			'For centuries, triangles had been tools for surveying, for mapping the world. But he developed the math to understand the relationship between distances and angles and the curvature of the surfaces they are measured on. It enabled people, for the first time, to deduce the precise qualities of a surface\'s curvature from measurements taken on its surface.',
 			"While this could be used to confirm theories about how the earth deviates from a sphere — bulged at the equator, flattened at the poles — it could also be used to explore and explain much more theoretical surfaces."
 		],
