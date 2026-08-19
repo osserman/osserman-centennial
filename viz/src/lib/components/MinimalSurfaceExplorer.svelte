@@ -18,14 +18,16 @@
 	// Scherk (singly periodic) is the third family, and it IS the real
 	// numerical-Weierstrass-integration case flagged as separate-scale work
 	// when this file was first built -- see gallery_implementation_notes.md
-	// for the full spec this follows. Scoped down for this pass: renders
-	// one fundamental saddle piece (the inner disk |z|<1-eps in the
-	// Weierstrass domain), not the full multi-period tiled surface --
-	// the inner disk is simply connected (encloses none of the four
-	// puncture points), so the path integral below is single-valued with
-	// no monodromy/period-tracking to get right. A full tiling would need
-	// that period computed and verified first; deliberately not attempted
-	// here. The formula itself was checked the same way as the other two
+	// for the full spec this follows. Each "story" renders one fundamental
+	// saddle piece (the inner disk |z|<1-eps in the Weierstrass domain,
+	// simply connected -- it encloses none of the four puncture points, so
+	// the path integral below is single-valued with no monodromy/period-
+	// tracking needed for a single piece). Multiple stories are rigid
+	// copies of that same piece, rotated and stacked (see
+	// buildScherkGeometry) -- not a second surface derivation, since the
+	// true analytic continuation across a puncture into the next period is
+	// a genuine monodromy computation this file doesn't attempt. The
+	// formula itself was checked the same way as the other two families
 	// (finite-difference mean curvature at several (u,v,theta) samples) --
 	// see the verification note by SCHERK_QUADRATURE_N below for why that
 	// check needed much higher numerical precision than the closed-form
@@ -178,7 +180,36 @@
 	const SCHERK_CLIP_RADIUS = 3.2; // world-space clip -- the ends blow up approaching the punctures; cut them off rather than render arbitrarily close
 	const SCHERK_R_STEPS = 28;
 	const SCHERK_PHI_STEPS = 64;
-	function buildScherkGeometry(theta) {
+
+	// One saddle piece's own two asymptotic "floors": as |z| -> 1, the
+	// height (the "axis" coordinate) converges to exactly pi-2*theta along
+	// two of the four ends and -2*theta along the other two -- a fact
+	// checked numerically at several theta values (pi/6, pi/3, 0.4*pi), not
+	// just the orthogonal case. The gap between those two floors, pi, is
+	// therefore theta-independent: it's the fixed rise of one "story."
+	const SCHERK_STORY_HEIGHT = Math.PI;
+	// Stacking stories is a rigid rotate-then-translate of copies of the
+	// SAME piece -- rigid motions trivially preserve minimality, so every
+	// story is still an exact minimal surface no matter what theta is used.
+	// What's only *verified* at theta = pi/4 is that the seam looks right:
+	// the domain's own 90-degree self-map (z -> iz) leaves the denominator
+	// of dh invariant only when cos(2*theta) = 0, and even then it negates
+	// dh itself (a quick Weierstrass-data check: dh has "degree 2," so a
+	// quarter turn contributes a phase of e^{i*pi} = -1) -- so the two
+	// floors of a single piece are related by a *height-preserving*
+	// 180-degree symmetry, not a 90-degree one, and the true analytic
+	// continuation across a puncture into the next story is a genuine
+	// monodromy computation this file doesn't attempt (see the file header
+	// re: full tiling). What IS confirmed numerically: at theta = pi/4 the
+	// two floors are mirror images of each other (the x-extent of the
+	// angle=0 end exactly equals the y-extent of the angle=pi/2 end), so a
+	// rigid 90-degree-about-Y rotation of one story lands its own pair of
+	// ends exactly on the same shared asymptotic plane the story below
+	// already approaches from its own two ends -- a clean seam. Off that
+	// angle the two floors' extents don't match, so multi-story stacking is
+	// locked to the orthogonal angle (see FAMILIES/paramValue handling
+	// below) rather than shown as an approximation.
+	function buildScherkStoryGrid(theta) {
 		const grid = [];
 		for (let i = 0; i <= SCHERK_R_STEPS; i++) {
 			const r = (i / SCHERK_R_STEPS) * SCHERK_R_MAX;
@@ -189,26 +220,49 @@
 			}
 			grid.push(row);
 		}
-		const positions = [];
-		for (const row of grid) for (const p of row) positions.push(p[0], p[1], p[2]);
+		return grid;
+	}
+	function buildScherkGeometry(theta, stories = 1) {
+		const grid = buildScherkStoryGrid(theta);
 		const withinClip = (p) => Math.hypot(p[0], p[1], p[2]) <= SCHERK_CLIP_RADIUS;
 		const cols = SCHERK_PHI_STEPS + 1;
+		const rowsPerStory = SCHERK_R_STEPS + 1;
+		const vertsPerStory = rowsPerStory * cols;
+		const positions = [];
 		const indices = [];
-		for (let i = 0; i < SCHERK_R_STEPS; i++) {
-			for (let j = 0; j < SCHERK_PHI_STEPS; j++) {
-				const a = grid[i][j],
-					b = grid[i + 1][j],
-					c = grid[i + 1][j + 1],
-					d = grid[i][j + 1];
-				const ai = i * cols + j,
-					bi = (i + 1) * cols + j,
-					ci = (i + 1) * cols + j + 1,
-					di = i * cols + j + 1;
-				// Discard (not clamp, not fade) any triangle reaching past the
-				// clip radius -- per spec, this is "a finite window into an
-				// infinite surface," not the surface actually shrinking.
-				if (withinClip(a) && withinClip(b) && withinClip(c)) indices.push(ai, bi, ci);
-				if (withinClip(a) && withinClip(c) && withinClip(d)) indices.push(ai, ci, di);
+		for (let k = 0; k < stories; k++) {
+			// Rigid rotate-then-translate of the same local grid -- see the
+			// comment above for why this is a clean seam only at theta = pi/4.
+			const rotAngle = k * (Math.PI / 2);
+			const cosR = Math.cos(rotAngle);
+			const sinR = Math.sin(rotAngle);
+			const riseY = k * SCHERK_STORY_HEIGHT;
+			const vertexOffset = k * vertsPerStory;
+			for (const row of grid) {
+				for (const p of row) {
+					const x = cosR * p[0] + sinR * p[2];
+					const z = -sinR * p[0] + cosR * p[2];
+					positions.push(x, p[1] + riseY, z);
+				}
+			}
+			for (let i = 0; i < SCHERK_R_STEPS; i++) {
+				for (let j = 0; j < SCHERK_PHI_STEPS; j++) {
+					const a = grid[i][j],
+						b = grid[i + 1][j],
+						c = grid[i + 1][j + 1],
+						d = grid[i][j + 1];
+					const ai = vertexOffset + i * cols + j,
+						bi = vertexOffset + (i + 1) * cols + j,
+						ci = vertexOffset + (i + 1) * cols + j + 1,
+						di = vertexOffset + i * cols + j + 1;
+					// Discard (not clamp, not fade) any triangle reaching past
+					// the clip radius -- per spec, this is "a finite window
+					// into an infinite surface," not the surface actually
+					// shrinking. Clip test uses the pre-transform (local)
+					// point, same radius per story, centered on that story.
+					if (withinClip(a) && withinClip(b) && withinClip(c)) indices.push(ai, bi, ci);
+					if (withinClip(a) && withinClip(c) && withinClip(d)) indices.push(ai, ci, di);
+				}
 			}
 		}
 		const geometry = new THREE.BufferGeometry();
@@ -276,8 +330,10 @@
 				'dh = 4sin(2θ)·z dz / (z⁴ − 2cos(2θ)z² + 1)\n' +
 				'X(z) = Re ∫ (½(1/g−g), i/2(1/g+g), 1) dh\n\n' +
 				'Four ends, at z = ±e^{±iθ} — θ sets the angle between them.\n' +
-				'Shown here: one saddle piece, clipped before the ends\n' +
-				'diverge to infinity, not the full singly-periodic tiling.'
+				'One saddle piece, clipped before the ends diverge to\n' +
+				'infinity. "Stories" stacks rigid copies of that piece —\n' +
+				'the surface is singly periodic in the vertical direction,\n' +
+				'with a fixed rise of π between floors, independent of θ.'
 		}
 	];
 
@@ -295,12 +351,26 @@
 		if (selectedFamilyId !== lastFamilyId) {
 			lastFamilyId = selectedFamilyId;
 			paramValue = currentFamily.default;
+			scherkStories = 1;
+		}
+	});
+
+	// Scherk-only: number of stacked stories. Locked to 1 for every other
+	// family. Stacking beyond one story is only a verified clean seam at
+	// the orthogonal angle (see buildScherkGeometry's comment), so
+	// selecting stories > 1 pins the angle slider there rather than
+	// showing an unverified seam at whatever angle was last picked.
+	let scherkStories = $state(1);
+	$effect(() => {
+		if (selectedFamilyId === 'scherk' && scherkStories > 1) {
+			paramValue = Math.PI / 4;
 		}
 	});
 
 	let container;
 	let renderer, scene, camera, controls, mesh, resizeObserver, animFrame;
 	let isRotating = $state(false);
+	const lastFitCenter = new THREE.Vector3(); // tracks rebuildMesh's own framing target before `controls` exists yet (see onMount)
 
 	// distance = fitRadius * FIT_MULTIPLIER approximates "just fits the
 	// 45deg-FOV frame with a little margin" (1/sin(22.5deg) ~ 2.6, plus
@@ -317,7 +387,7 @@
 		// grid-with-no-holes can't do that), everything else uses the
 		// generic closed-form point() + ParametricGeometry path.
 		const geometry = family.buildGeometry
-			? family.buildGeometry(param)
+			? family.buildGeometry(param, family.id === 'scherk' ? scherkStories : 1)
 			: new ParametricGeometry((u, v, target) => family.point(param, u, v, target), RESOLUTION, RESOLUTION);
 		if (!family.buildGeometry) geometry.computeVertexNormals();
 		if (mesh) {
@@ -331,12 +401,24 @@
 		// preserved, so the reader's current rotation isn't disturbed) --
 		// without this, extending a family's range (e.g. Enneper's R) just
 		// pushes the new, larger parts of the surface off-screen instead of
-		// actually revealing them.
+		// actually revealing them. Framed around the mesh's own bounding-box
+		// center rather than the world origin, since a multi-story Scherk
+		// stack is centered on its bottom story's origin, not its own middle.
 		if (camera) {
 			geometry.computeBoundingSphere();
+			geometry.computeBoundingBox();
+			const center = new THREE.Vector3();
+			geometry.boundingBox.getCenter(center);
+			const priorTarget = controls ? controls.target.clone() : lastFitCenter;
 			const distance = Math.max(geometry.boundingSphere.radius * FIT_MULTIPLIER, FIT_MIN_DISTANCE);
-			const dir = camera.position.lengthSq() > 1e-6 ? camera.position.clone().normalize() : new THREE.Vector3(0.6, 0.4, 0.7).normalize();
-			camera.position.copy(dir.multiplyScalar(distance));
+			const dir =
+				camera.position.clone().sub(priorTarget).lengthSq() > 1e-6
+					? camera.position.clone().sub(priorTarget).normalize()
+					: new THREE.Vector3(0.6, 0.4, 0.7).normalize();
+			camera.position.copy(center.clone().add(dir.multiplyScalar(distance)));
+			if (controls) controls.target.copy(center);
+			else camera.lookAt(center);
+			lastFitCenter.copy(center);
 		}
 	}
 
@@ -360,6 +442,7 @@
 	$effect(() => {
 		const _f = selectedFamilyId;
 		const _p = paramValue;
+		const _s = scherkStories;
 		if (scene) rebuildMesh();
 	});
 
@@ -388,10 +471,10 @@
 
 		controls = new OrbitControls(camera, renderer.domElement);
 		controls.enableDamping = true;
-		controls.target.set(0, 0, 0);
+		controls.target.copy(lastFitCenter); // matches the just-built mesh's own framing, not always the world origin (see rebuildMesh)
 		controls.autoRotate = false; // toggled from the "Rotate" button below
 		controls.autoRotateSpeed = 1.4; // gentle -- a slow, readable spin, not a spectacle
-		camera.lookAt(0, 0, 0);
+		camera.lookAt(lastFitCenter);
 
 		resizeObserver = new ResizeObserver((entries) => {
 			const { width, height } = entries[0].contentRect;
@@ -434,12 +517,35 @@
 
 	<label class="control-row">
 		<span class="control-label">{currentFamily.paramLabel}</span>
-		<input type="range" min={currentFamily.min} max={currentFamily.max} step={currentFamily.step} bind:value={paramValue} />
+		<input
+			type="range"
+			min={currentFamily.min}
+			max={currentFamily.max}
+			step={currentFamily.step}
+			bind:value={paramValue}
+			disabled={selectedFamilyId === 'scherk' && scherkStories > 1}
+		/>
 	</label>
 	<div class="control-endpoints">
 		<span>{currentFamily.minLabel}</span>
 		<span>{currentFamily.maxLabel}</span>
 	</div>
+
+	{#if selectedFamilyId === 'scherk'}
+		<div class="control-row">
+			<span class="control-label">Stories</span>
+			<div class="stories-group">
+				{#each [1, 2, 3] as n (n)}
+					<button class="stories-button" class:active={scherkStories === n} onclick={() => (scherkStories = n)}>
+						{n}
+					</button>
+				{/each}
+			</div>
+			{#if scherkStories > 1}
+				<span class="control-note">Angle locked to orthogonal — the only angle with a verified seam between stories.</span>
+			{/if}
+		</div>
+	{/if}
 
 	<button
 		class="rotate-toggle"
@@ -509,6 +615,33 @@
 		margin-top: -0.4rem;
 		font-size: 0.75rem;
 		color: var(--text-muted);
+	}
+	.stories-group {
+		display: flex;
+		gap: 0.4rem;
+	}
+	.stories-button {
+		flex: 1;
+		padding: 0.3rem 0;
+		border-radius: 6px;
+		border: 1px solid var(--surface-2);
+		background: transparent;
+		color: var(--text-secondary);
+		font-size: 0.85rem;
+		cursor: pointer;
+	}
+	.stories-button:hover {
+		background: var(--surface-2);
+	}
+	.stories-button.active {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--surface-1);
+	}
+	.control-note {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		line-height: 1.3;
 	}
 	.rotate-toggle,
 	.definition-toggle {
