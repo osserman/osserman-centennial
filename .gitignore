@@ -12,9 +12,11 @@ dist/
 .vscode/
 .idea/
 
-# NOTE: data/ and reports/ are deliberately committed.
-# The SQLite database is the project's raw-evidence record; OpenAlex data
-# drifts over time, so the committed harvest is what makes analyses reproducible.
+# NOTE: reports/ is deliberately committed.
+# data/lineages.db is excluded from this public repo (too large for GitHub,
+# and unneeded here — the viz layer reads only the precomputed JSON exports
+# under viz/static/data). It stays committed in the private working copy.
+data/lineages.db
 
 # SQLite scratch files (transient; the .db itself IS committed)
 *.db-journal
