@@ -24,7 +24,7 @@ export const slides = [
 		body: [
 			"Alexandria, founded by the Greeks on the coast of Egypt, was one of the ancient world's great centers of learning. There, drawing on centuries of mathematical developments from around the region, Euclid produced *The Elements*. ",
 			'> "Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences." - Robert Osserman, *Poetry of the Universe*',
-			"Of the handful of axioms and postulates Euclid offered, the parallel postulate was the least self-evident, and the one mathematicians wrestled with most over the next two thousand years."
+			"The assumptions Euclid offered take the form of five axioms and five postulates. Of them,		 the parallel postulate was the least self-evident, and is the one mathematicians wrestled with most over the next two thousand years."
 			// "Alexandria sat at the crossroads of civilizations."
 			//"Ancient Egyptians spent centuries honing their understanding of shapes and developing an approach to mathematical reasoning, culminating in Euclid's *The Elements* around 300 BCE.",
 			//"For 2000 years, the work would provide the mathematic foundations of geometry.",

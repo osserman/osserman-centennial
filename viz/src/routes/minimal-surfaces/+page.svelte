@@ -1,7 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import { fly } from 'svelte/transition';
-	import { quintOut } from 'svelte/easing';
 	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
@@ -365,27 +363,42 @@
 	// "eyeball and tune" approach used for eulerSlide's own two mechanisms.
 	let curvatureStageIndex = $state(0);
 
-	// Which of surface-explorer's 3 per-family sentences is the furthest
-	// one reached so far -- same nested-<Scrolly> mechanism as
-	// curvatureStageIndex above, but the template renders every sentence up
-	// to and including this index (not just this one), so each stays
-	// visible ("sticks") once its own trigger has been scrolled past
-	// instead of being replaced by the next. Order matches
-	// MinimalSurfaceExplorer's own FAMILIES array (catenoid-helicoid,
-	// enneper, scherk) and slide.body's own [intro, catenoid, enneper,
-	// scherk] order (index i here <-> slide.body[i + 1]) -- both need to
-	// stay in that order for EXPLORER_FAMILY_ORDER below to line up.
-	let explorerFamilyIndex = $state(0);
+	// surface-explorer's own family picker lives in this left panel now (see
+	// the template's .family-tabs), right next to the three descriptions --
+	// not a dropdown buried in the 3D controls-panel, which read as
+	// unconnected to this text. All three sentences are visible from the
+	// start (dimmed except the active one), rather than accumulating one at
+	// a time, so a reader who skims straight past can still see at a glance
+	// that there's more than one family here.
+	//
+	// Order matches MinimalSurfaceExplorer's own FAMILIES array
+	// (catenoid-helicoid, enneper, scherk) and slide.body's own [intro,
+	// catenoid, enneper, scherk] order (index i here <-> slide.body[i + 1]).
 	const EXPLORER_FAMILY_ORDER = ['catenoid-helicoid', 'enneper', 'scherk'];
-	// Two-way bound into MinimalSurfaceExplorer's own selectedFamilyId --
-	// scrolling past a sentence's trigger sets it (via the effect below),
-	// and picking the dropdown inside the explorer sets it right back, so
-	// either input works without the two fighting (whichever happens most
-	// recently just wins, same as any two-way binding).
+	const EXPLORER_FAMILY_LABELS = ['Catenoid ↔ Helicoid', 'Enneper', 'Scherk'];
+	// Scroll position via the nested <Scrolly> below (same mechanism as
+	// curvatureStageIndex above) -- still drives the highlight for a reader
+	// who just keeps scrolling and never touches a tab.
+	let explorerFamilyIndex = $state(0);
+	// Set the instant a tab is clicked, and never cleared again for the rest
+	// of the visit -- once a reader has told us which family they want by
+	// clicking, further scrolling (e.g. just passing through on the way to
+	// the rest of the page) shouldn't yank the selection back to whatever
+	// this section's own scroll trigger happens to be sitting on. This is
+	// the whole point of separating explorerFamilyIndex (raw scroll
+	// position) from explorerFamilyId (the actual selection) below, rather
+	// than using the scroll index directly everywhere.
+	let explorerManualOverride = $state(false);
+	// Two-way bound into MinimalSurfaceExplorer's own selectedFamilyId.
 	let explorerFamilyId = $state(EXPLORER_FAMILY_ORDER[0]);
 	$effect(() => {
-		explorerFamilyId = EXPLORER_FAMILY_ORDER[explorerFamilyIndex];
+		if (!explorerManualOverride) explorerFamilyId = EXPLORER_FAMILY_ORDER[explorerFamilyIndex];
 	});
+	let explorerActiveIndex = $derived(EXPLORER_FAMILY_ORDER.indexOf(explorerFamilyId));
+	function selectExplorerFamily(id) {
+		explorerManualOverride = true;
+		explorerFamilyId = id;
+	}
 
 	onMount(() => {
 		updateScrollProgress();
@@ -561,27 +574,37 @@
 						</div>
 					{:else if slide.id === 'surface-explorer'}
 						<!-- Same shape as defining-property above (sticky intro, then a
-						     nested <Scrolly> of per-stage triggers), but the sticky
-						     panel accumulates every sentence reached so far instead of
-						     swapping to just the current one — each family's sentence
-						     scrolls in and then stays put ("sticks"), building a list,
-						     rather than replacing the one before it. explorerFamilyIndex
-						     (this nested Scrolly's own bound index) both decides how
-						     many sentences show and, via the $effect near its
-						     declaration, drives which family MinimalSurfaceExplorer has
-						     selected -- so scrolling through these sentences and using
-						     the explorer's own dropdown are two inputs to the same
-						     state, matching how curvatureStageIndex/curvatureProgress
-						     are two loosely-paced mechanisms for defining-property. -->
+						     nested <Scrolly> of per-stage triggers), but all three
+						     sentences are visible from the start (dimmed except the
+						     active one) instead of accumulating one at a time -- a
+						     skimming reader sees at a glance that there's more than one
+						     family here, rather than that only becoming visible after
+						     they've scrolled through the whole section. The tabs are the
+						     primary way to switch (and, once clicked, stop the scroll
+						     trigger below from re-driving the selection -- see
+						     explorerManualOverride's own comment); scrolling still
+						     advances the highlight on its own for a reader who never
+						     touches a tab. -->
 						<div class="euler-flow">
 							<div class="intro-spacer-lead"></div>
 							<div class="intro-sticky">
 								<h2>{slide.title}</h2>
 								<p>{@html renderInline(slide.body[0])}</p>
+								<div class="family-tabs" role="tablist" aria-label="Minimal surface family">
+									{#each EXPLORER_FAMILY_ORDER as id, i (id)}
+										<button
+											class="family-tab"
+											class:active={explorerActiveIndex === i}
+											role="tab"
+											aria-selected={explorerActiveIndex === i}
+											onclick={() => selectExplorerFamily(id)}
+										>
+											{EXPLORER_FAMILY_LABELS[i]}
+										</button>
+									{/each}
+								</div>
 								{#each slide.body.slice(1) as para, i}
-									{#if i <= explorerFamilyIndex}
-										<p class="family-line" in:fly={{ y: 28, duration: 550, easing: quintOut }}>{@html renderInline(para)}</p>
-									{/if}
+									<p class="family-line" class:active={explorerActiveIndex === i}>{@html renderInline(para)}</p>
 								{/each}
 							</div>
 							<div class="stage-steps">
@@ -589,8 +612,8 @@
 									{#each slide.body.slice(1) as para, i}
 										<ScrollyStep index={i} active={explorerFamilyIndex === i}>
 											<!-- Blank on purpose -- this trigger's job is purely
-											     to mark where its sentence should "land" in the
-											     sticky panel above, not to show its own copy of
+											     to advance the highlight above (until a tab
+											     override kicks in), not to show its own copy of
 											     the text. ScrollyStep still needs *some* child
 											     content to render, hence the empty div. -->
 											<div class="explorer-trigger"></div>
@@ -893,8 +916,45 @@
 	.explorer-trigger {
 		height: 1px;
 	}
+	.family-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin: 0.2rem 0 0.4rem;
+	}
+	.family-tab {
+		padding: 0.35rem 0.7rem;
+		border-radius: 999px;
+		border: 1px solid var(--surface-2);
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 0.78rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			color 0.2s ease,
+			border-color 0.2s ease,
+			background 0.2s ease;
+	}
+	.family-tab:hover {
+		border-color: var(--accent);
+		color: var(--text-primary);
+	}
+	.family-tab.active {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: white;
+	}
 	.family-line {
+		color: var(--text-muted);
+		opacity: 0.45;
+		transition:
+			color 0.25s ease,
+			opacity 0.25s ease;
+	}
+	.family-line.active {
 		color: var(--text-secondary);
+		opacity: 1;
 	}
 	.scene-panel {
 		flex: 1;

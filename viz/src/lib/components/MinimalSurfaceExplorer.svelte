@@ -819,14 +819,13 @@
 <div class="scene-container" bind:this={container}></div>
 
 <div class="controls-panel">
-	<label class="control-row">
-		<span class="control-label">Family</span>
-		<select bind:value={selectedFamilyId}>
-			{#each FAMILIES as f (f.id)}
-				<option value={f.id}>{f.label}</option>
-			{/each}
-		</select>
-	</label>
+	<!-- No family picker here anymore -- the host page (minimal-surfaces'
+	     surface-explorer slide) owns family selection via tabs next to the
+	     descriptive text, and drives selectedFamilyId externally through the
+	     bindable prop. This label is just a read-only reminder of which
+	     family is currently showing, for anyone looking at this panel in
+	     isolation without the tabs in view. -->
+	<p class="control-current-family">{currentFamily.label}</p>
 
 	<label class="control-row">
 		<span class="control-label">{currentFamily.paramLabel}</span>
@@ -938,6 +937,12 @@
 		background: color-mix(in srgb, var(--surface-1) 88%, transparent);
 		backdrop-filter: blur(6px);
 		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+	}
+	.control-current-family {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+		color: var(--text-primary);
 	}
 	.control-row {
 		display: flex;
