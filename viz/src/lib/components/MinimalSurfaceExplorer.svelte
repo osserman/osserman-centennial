@@ -153,25 +153,25 @@
 	// N up in the hundreds to converge cleanly -- second derivatives
 	// amplify quadrature noise much more than the positions themselves do.
 	const SCHERK_QUADRATURE_N = 20;
-	function scherkIntegrate(phiFn, theta, ztarget) {
-		const h = 1 / SCHERK_QUADRATURE_N;
+	function scherkIntegrate(phiFn, theta, ztarget, N) {
+		const h = 1 / N;
 		let total = [0, 0];
-		for (let i = 0; i <= SCHERK_QUADRATURE_N; i++) {
+		for (let i = 0; i <= N; i++) {
 			const t = i * h;
 			if (t === 0) continue;
 			const w = cscale(ztarget, t);
 			const val = cmul(phiFn(w, theta), ztarget);
-			const coeff = i === SCHERK_QUADRATURE_N ? 1 : i % 2 === 1 ? 4 : 2;
+			const coeff = i === N ? 1 : i % 2 === 1 ? 4 : 2;
 			total = cadd(total, cscale(val, coeff));
 		}
 		return cscale(total, h / 3);
 	}
-	function scherkPoint3(theta, u, v) {
+	function scherkPoint3(theta, u, v, N = SCHERK_QUADRATURE_N) {
 		if (u * u + v * v < 1e-8) return [0, 0, 0];
 		const z = [u, v];
-		const x = scherkIntegrate(scherkPhi1, theta, z)[0];
-		const axis = scherkIntegrate(scherkPhi3, theta, z)[0]; // the periodic direction -> world Y, same up-is-Y convention as the other two families
-		const y = scherkIntegrate(scherkPhi2, theta, z)[0];
+		const x = scherkIntegrate(scherkPhi1, theta, z, N)[0];
+		const axis = scherkIntegrate(scherkPhi3, theta, z, N)[0]; // the periodic direction -> world Y, same up-is-Y convention as the other two families
+		const y = scherkIntegrate(scherkPhi2, theta, z, N)[0];
 		return [x, axis, y];
 	}
 
@@ -180,59 +180,195 @@
 	const SCHERK_CLIP_RADIUS = 3.2; // world-space clip -- the ends blow up approaching the punctures; cut them off rather than render arbitrarily close
 	const SCHERK_R_STEPS = 28;
 	const SCHERK_PHI_STEPS = 64;
-
-	// One saddle piece's own two asymptotic "floors": as |z| -> 1, the
-	// height (the "axis" coordinate) converges to exactly pi-2*theta along
-	// two of the four ends and -2*theta along the other two -- a fact
-	// checked numerically at several theta values (pi/6, pi/3, 0.4*pi), not
-	// just the orthogonal case. The gap between those two floors, pi, is
-	// therefore theta-independent: it's the fixed rise of one "story."
-	const SCHERK_STORY_HEIGHT = Math.PI;
-	// Stacking stories is a rigid rotate-then-translate of copies of the
-	// SAME piece -- rigid motions trivially preserve minimality, so every
-	// story is still an exact minimal surface no matter what theta is used.
-	// What's only *verified* at theta = pi/4 is that the seam looks right:
-	// the domain's own 90-degree self-map (z -> iz) leaves the denominator
-	// of dh invariant only when cos(2*theta) = 0, and even then it negates
-	// dh itself (a quick Weierstrass-data check: dh has "degree 2," so a
-	// quarter turn contributes a phase of e^{i*pi} = -1) -- so the two
-	// floors of a single piece are related by a *height-preserving*
-	// 180-degree symmetry, not a 90-degree one, and the true analytic
-	// continuation across a puncture into the next story is a genuine
-	// monodromy computation this file doesn't attempt (see the file header
-	// re: full tiling). What IS confirmed numerically: at theta = pi/4 the
-	// two floors are mirror images of each other (the x-extent of the
-	// angle=0 end exactly equals the y-extent of the angle=pi/2 end), so a
-	// rigid 90-degree-about-Y rotation of one story lands its own pair of
-	// ends exactly on the same shared asymptotic plane the story below
-	// already approaches from its own two ends -- a clean seam. Off that
-	// angle the two floors' extents don't match, so multi-story stacking is
-	// locked to the orthogonal angle (see FAMILIES/paramValue handling
-	// below) rather than shown as an approximation.
-	function buildScherkStoryGrid(theta) {
+	// A single piece's ends only need to look like they're heading off the
+	// edge of the frame (SCHERK_CLIP_RADIUS above is plenty). But two
+	// *stacked* stories need their ends to actually reach each other:
+	// each end only approaches its shared asymptotic plane in the limit
+	// r -> 1, growing in (x,z) the whole way there, so a story's ends stop
+	// noticeably short of its neighbor's unless the mesh is both let closer
+	// to the puncture and given the clip radius to still render what
+	// that produces (checked numerically -- at r=0.9 an end's x,z sits
+	// around 2, nowhere near a neighboring floor's own footprint; at
+	// r=0.975 with N bumped for the tighter quadrature it's already past
+	// 3, enough to visibly overlap the next story's own fan-out).
+	// --- The tower (stories > 1) uses a different, EXACT parametrization of
+	// the same surface, not the numerical integration above.
+	//
+	// Why: the Weierstrass domain used above is the disk |z| <= 1-eps, whose
+	// four punctures sit ON its boundary circle. That disk only ever grazes
+	// each puncture at a single boundary point, so the mesh it produces
+	// captures the four ends as four thin radial *slivers* rather than as
+	// the flat half-planes they actually are. That's fine for one isolated
+	// saddle (nothing is meant to meet anything), but it's exactly wrong for
+	// a tower -- and no amount of extra numerical precision fixes it, since
+	// it's the shape of the domain, not the accuracy of the integration.
+	//
+	// The orthogonal saddle tower has a closed form (Wikipedia's Scherk
+	// article; r in (0,1), phi in [0,2pi)) that has no such problem:
+	//   x = ln[(1+r^2+2r.cos phi)/(1+r^2-2r.cos phi)]
+	//   y = ln[(1+r^2-2r.sin phi)/(1+r^2+2r.sin phi)]
+	//   z = 2.arctan[2r^2.sin(2phi)/(r^4-1)]
+	// Its four ends (phi = 0, pi/2, pi, 3pi/2) are genuine half-planes: two
+	// in the plane y=0, two in x=0, each spanning the full height of one
+	// period -- i.e. two orthogonal planes joined by tunnels, which is what
+	// the reference picture shows. It also grows only *logarithmically*
+	// approaching an end, so a modest r_max already reaches a useful extent.
+	//
+	// Verified numerically before being used here: mean curvature ~1e-7 at
+	// several (r, phi); height converging to the same +-pi/2 floors the
+	// integrated version has; and the gluing below reproducing the adjoining
+	// story to within the (shrinking) finite-r gap. Note arctan, NOT atan2 --
+	// atan2 introduces spurious +-pi branch jumps mid-surface.
+	const SCHERK_TOWER_SCALE = 0.5; // this form runs 2x the integrated one; rescaled so 1 story and 2+ stories are the same size
+	const SCHERK_TOWER_ROTATE = Math.PI / 4; // ...and 45deg off it, so switching stories doesn't visibly spin the shape
+	// Close to 1 on purpose: a story's boundary only reaches its exact
+	// +-pi/2 floor (where it meets its neighbour) in the limit r -> 1, so
+	// r_max is what actually sets how tight the seam is. Cheap to push here
+	// -- unlike the integrated version, this is a handful of logs per
+	// vertex, and the ends grow only logarithmically, so most of what the
+	// extra reach buys gets clipped away anyway.
+	const SCHERK_TOWER_R_MAX = 0.999995;
+	const SCHERK_TOWER_R_STEPS = 64;
+	const SCHERK_TOWER_PHI_STEPS = 96;
+	// z's height plateaus at +pi/2 for one full quadrant of phi and -pi/2
+	// for the next (verified numerically: constant to 4 decimal places
+	// across an entire 0-90deg sweep), but AT phi = 0, 90, 180, 270deg
+	// exactly -- precisely the four points a step count divisible by 4
+	// would otherwise sample -- sin(2*phi) is exactly 0, making z's
+	// defining ratio a genuine 0/0 that evaluates to 0 rather than to
+	// either neighboring plateau. Left alone, every story would carry a
+	// sharp notch to +-0 right where the two floors actually need to meet.
+	// A half-step phase offset keeps every sample off that exact angle.
+	const SCHERK_TOWER_PHI_OFFSET = Math.PI / SCHERK_TOWER_PHI_STEPS;
+	const SCHERK_CLIP_RADIUS_STACKED = 4.6;
+	function scherkTowerPoint(r, phi) {
+		const r2 = r * r;
+		const c = Math.cos(phi);
+		const s = Math.sin(phi);
+		const x = Math.log((1 + r2 + 2 * r * c) / (1 + r2 - 2 * r * c));
+		const y = Math.log((1 + r2 - 2 * r * s) / (1 + r2 + 2 * r * s));
+		const z = 2 * Math.atan((2 * r2 * Math.sin(2 * phi)) / (r2 * r2 - 1));
+		const xs = x * SCHERK_TOWER_SCALE;
+		const ys = y * SCHERK_TOWER_SCALE;
+		const ca = Math.cos(SCHERK_TOWER_ROTATE);
+		const sa = Math.sin(SCHERK_TOWER_ROTATE);
+		// formula's own z is the periodic direction -> world Y, same
+		// up-is-Y convention as everything else in this file
+		return [ca * xs - sa * ys, z * SCHERK_TOWER_SCALE, sa * xs + ca * ys];
+	}
+	function buildScherkTowerGrid() {
 		const grid = [];
-		for (let i = 0; i <= SCHERK_R_STEPS; i++) {
-			const r = (i / SCHERK_R_STEPS) * SCHERK_R_MAX;
+		for (let i = 0; i <= SCHERK_TOWER_R_STEPS; i++) {
+			const t = i / SCHERK_TOWER_R_STEPS;
+			// biased toward r_max -- the surface does nearly all of its
+			// stretching in the last sliver of the domain, near the ends
+			const r = SCHERK_TOWER_R_MAX * (1 - (1 - t) * (1 - t));
 			const row = [];
-			for (let j = 0; j <= SCHERK_PHI_STEPS; j++) {
-				const phi = (j / SCHERK_PHI_STEPS) * Math.PI * 2;
-				row.push(scherkPoint3(theta, r * Math.cos(phi), r * Math.sin(phi)));
+			for (let j = 0; j <= SCHERK_TOWER_PHI_STEPS; j++) {
+				row.push(scherkTowerPoint(r, (j / SCHERK_TOWER_PHI_STEPS) * Math.PI * 2 + SCHERK_TOWER_PHI_OFFSET));
 			}
 			grid.push(row);
 		}
 		return grid;
 	}
-	function buildScherkGeometry(theta, stories = 1) {
-		const grid = buildScherkStoryGrid(theta);
-		const withinClip = (p) => Math.hypot(p[0], p[1], p[2]) <= SCHERK_CLIP_RADIUS;
-		const cols = SCHERK_PHI_STEPS + 1;
-		const rowsPerStory = SCHERK_R_STEPS + 1;
-		const vertsPerStory = rowsPerStory * cols;
+
+	// The rise of one story. As r -> 1 a story's height converges to one of
+	// two asymptotic "floors" (+-pi/2 in the scaling used here), and the gap
+	// between them is the period. Cross-checked both ways: the integrated
+	// version above lands on floors pi apart at every theta sampled (pi/6,
+	// pi/3, 0.4*pi, not just the orthogonal case), and the closed form's own
+	// single period spans exactly the same distance once SCHERK_TOWER_SCALE
+	// is applied -- which is how that scale factor was pinned down.
+	const SCHERK_STORY_HEIGHT = Math.PI;
+	// Consecutive stories are glued by a quarter turn about the vertical
+	// axis plus a rise of SCHERK_STORY_HEIGHT -- NOT by translation alone.
+	// The reason is visible in the closed form: a story's top boundary
+	// occupies the two diagonal quadrants {x>0,y>0} and {x<0,y<0}, while its
+	// bottom boundary occupies the *other* two, so the two only line up
+	// after a 90-degree turn. Confirmed both analytically (the boundary
+	// curves match exactly under phi -> phi - pi/2) and numerically (the
+	// transformed neighbour reproduces the boundary to within the finite-r
+	// gap, which shrinks as SCHERK_TOWER_R_MAX -> 1). The quarter turn is
+	// also what makes each floor's tunnel run crosswise to the one below,
+	// which is the surface's most recognizable feature.
+	//
+	// Rigid motions preserve minimality, so a tower is still exactly
+	// minimal. Stacking is nonetheless offered only at the orthogonal angle
+	// (see FAMILIES/paramValue below): the closed form this uses has no free
+	// angle parameter, and continuing the angle-parametrized family across a
+	// puncture into the next period is a genuine monodromy computation this
+	// file doesn't attempt.
+	function buildScherkStoryGrid(theta, rMax, quadratureN) {
+		const grid = [];
+		for (let i = 0; i <= SCHERK_R_STEPS; i++) {
+			const r = (i / SCHERK_R_STEPS) * rMax;
+			const row = [];
+			for (let j = 0; j <= SCHERK_PHI_STEPS; j++) {
+				const phi = (j / SCHERK_PHI_STEPS) * Math.PI * 2;
+				row.push(scherkPoint3(theta, r * Math.cos(phi), r * Math.sin(phi), quadratureN));
+			}
+			grid.push(row);
+		}
+		return grid;
+	}
+	// The tower's closed form (scherkTowerPoint) is cheap logs/atan, so
+	// curvature can be computed the same direct way as the two closed-form
+	// families -- unlike the angle-parametrized single saddle above, which
+	// is a numerical path integral and stays excluded (see CURVATURE_H's
+	// note). Computed once per distinct (r, phi) grid vertex and reused for
+	// every story, since Gaussian curvature is invariant under the rigid
+	// rotate-and-rise each story is placed with.
+	function computeTowerVertexColors(grid) {
+		const cols = grid[0].length;
+		const rows = grid.length;
+		const pointFn = (u, v, target) => target.set(...scherkTowerPoint(v, u));
+		const logK = new Float64Array(cols * rows);
+		let minLog = Infinity;
+		let maxLog = -Infinity;
+		for (let i = 0; i < rows; i++) {
+			const t = i / SCHERK_TOWER_R_STEPS;
+			const r = SCHERK_TOWER_R_MAX * (1 - (1 - t) * (1 - t));
+			for (let j = 0; j < cols; j++) {
+				const phi = (j / SCHERK_TOWER_PHI_STEPS) * Math.PI * 2 + SCHERK_TOWER_PHI_OFFSET;
+				const K = gaussianCurvatureAt(pointFn, phi, r);
+				const lk = Math.log1p(Math.abs(K));
+				logK[i * cols + j] = lk;
+				if (lk < minLog) minLog = lk;
+				if (lk > maxLog) maxLog = lk;
+			}
+		}
+		const range = maxLog - minLog;
+		const colors = new Float32Array(cols * rows * 3);
+		for (let idx = 0; idx < cols * rows; idx++) {
+			const t = range > 1e-9 ? (logK[idx] - minLog) / range : 0;
+			const [r, g, b] = curvatureColor(t);
+			colors[idx * 3] = r;
+			colors[idx * 3 + 1] = g;
+			colors[idx * 3 + 2] = b;
+		}
+		return colors;
+	}
+	function buildScherkGeometry(theta, stories = 1, withCurvature = false) {
+		const stacked = stories > 1;
+		// A tower is built from the exact closed form (see the block above
+		// for why the integrated disk-domain piece can't tile); a lone
+		// saddle still comes from the angle-parametrized integration, which
+		// is the whole point of the angle slider.
+		const grid = stacked
+			? buildScherkTowerGrid()
+			: buildScherkStoryGrid(theta, SCHERK_R_MAX, SCHERK_QUADRATURE_N);
+		const clipRadius = stacked ? SCHERK_CLIP_RADIUS_STACKED : SCHERK_CLIP_RADIUS;
+		const withinClip = (p) => Math.hypot(p[0], p[1], p[2]) <= clipRadius;
+		const cols = grid[0].length;
+		const phiSteps = cols - 1;
+		const rRows = grid.length - 1;
+		const vertsPerStory = grid.length * cols;
 		const positions = [];
 		const indices = [];
+		const storyColors = stacked && withCurvature ? computeTowerVertexColors(grid) : null;
+		const colors = storyColors ? [] : null;
 		for (let k = 0; k < stories; k++) {
-			// Rigid rotate-then-translate of the same local grid -- see the
-			// comment above for why this is a clean seam only at theta = pi/4.
+			// Quarter turn + rise, per SCHERK_STORY_HEIGHT's comment above.
 			const rotAngle = k * (Math.PI / 2);
 			const cosR = Math.cos(rotAngle);
 			const sinR = Math.sin(rotAngle);
@@ -245,8 +381,9 @@
 					positions.push(x, p[1] + riseY, z);
 				}
 			}
-			for (let i = 0; i < SCHERK_R_STEPS; i++) {
-				for (let j = 0; j < SCHERK_PHI_STEPS; j++) {
+			if (colors) for (let n = 0; n < storyColors.length; n++) colors.push(storyColors[n]);
+			for (let i = 0; i < rRows; i++) {
+				for (let j = 0; j < phiSteps; j++) {
 					const a = grid[i][j],
 						b = grid[i + 1][j],
 						c = grid[i + 1][j + 1],
@@ -267,6 +404,7 @@
 		}
 		const geometry = new THREE.BufferGeometry();
 		geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+		if (colors) geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 		geometry.setIndex(indices);
 		geometry.computeVertexNormals();
 		return geometry;
@@ -330,14 +468,22 @@
 				'dh = 4sin(2θ)·z dz / (z⁴ − 2cos(2θ)z² + 1)\n' +
 				'X(z) = Re ∫ (½(1/g−g), i/2(1/g+g), 1) dh\n\n' +
 				'Four ends, at z = ±e^{±iθ} — θ sets the angle between them.\n' +
-				'One saddle piece, clipped before the ends diverge to\n' +
-				'infinity. "Stories" stacks rigid copies of that piece —\n' +
-				'the surface is singly periodic in the vertical direction,\n' +
-				'with a fixed rise of π between floors, independent of θ.'
+				'One saddle piece, clipped before the ends run off to infinity.\n\n' +
+				'"Stories" switches to the exact closed form of the orthogonal\n' +
+				'member (Scherk\'s saddle tower), whose four ends are flat\n' +
+				'half-planes rather than the slivers the disk domain above\n' +
+				'produces. It is singly periodic: each floor is the one below\n' +
+				'given a quarter turn and raised by π.'
 		}
 	];
 
-	let selectedFamilyId = $state(FAMILIES[0].id);
+	// Bindable (not a plain $state) so a host page can drive family choice
+	// externally -- e.g. minimal-surfaces/+page.svelte syncing it to a
+	// scroll position -- while the dropdown below keeps working exactly as
+	// before via its own bind:value into the same variable. Either side can
+	// set it; whichever changed most recently wins, same as any two-way
+	// binding.
+	let { selectedFamilyId = $bindable(FAMILIES[0].id) } = $props();
 	let currentFamily = $derived(FAMILIES.find((f) => f.id === selectedFamilyId));
 	let paramValue = $state(FAMILIES[0].default);
 	let showDefinition = $state(false);
@@ -356,10 +502,13 @@
 	});
 
 	// Scherk-only: number of stacked stories. Locked to 1 for every other
-	// family. Stacking beyond one story is only a verified clean seam at
-	// the orthogonal angle (see buildScherkGeometry's comment), so
-	// selecting stories > 1 pins the angle slider there rather than
-	// showing an unverified seam at whatever angle was last picked.
+	// family. Stacking beyond one story switches to the exact closed form
+	// (see buildScherkGeometry's comment), which has no angle parameter --
+	// so selecting stories > 1 pins the angle slider at orthogonal rather
+	// than showing a value that no longer does anything. The closed form is
+	// a handful of logs/atan per vertex (no numerical integration), so
+	// going up to 10 stories costs nothing worth guarding against.
+	const SCHERK_MAX_STORIES = 10;
 	let scherkStories = $state(1);
 	$effect(() => {
 		if (selectedFamilyId === 'scherk' && scherkStories > 1) {
@@ -370,6 +519,7 @@
 	let container;
 	let renderer, scene, camera, controls, mesh, resizeObserver, animFrame;
 	let isRotating = $state(false);
+	let showCurvature = $state(false);
 	const lastFitCenter = new THREE.Vector3(); // tracks rebuildMesh's own framing target before `controls` exists yet (see onMount)
 
 	// distance = fitRadius * FIT_MULTIPLIER approximates "just fits the
@@ -379,22 +529,184 @@
 	const FIT_MULTIPLIER = 2.9;
 	const FIT_MIN_DISTANCE = 3.2;
 
+	// --- Gaussian curvature coloring (Catenoid<->Helicoid and Enneper
+	// only -- see the note on CURVATURE_H below for why Scherk is
+	// excluded). On a minimal surface the two principal curvatures are
+	// equal and opposite (mean curvature zero, the fact the
+	// "defining-property" slide earlier in this chapter demonstrates), so
+	// Gaussian curvature K = kappa1*kappa2 = -kappa^2 is always <= 0, and
+	// its magnitude is exactly how sharply the surface bends at that
+	// point -- this is what the Wikipedia associate-family animation
+	// colors, and what "Show curvature" below reproduces.
+	//
+	// Uses the standard first/second fundamental form formula
+	// K = (LN-M^2)/(EG-F^2) with all six coefficients from finite
+	// differences -- the same technique this file's own verification
+	// scripts used to confirm each family's mean curvature is ~0, just
+	// evaluated at every mesh vertex instead of a few spot-checks. Small
+	// h steps in the *reparametrized* (u01, v01) domain used by
+	// family.point are valid here (not just at the family's own u,v
+	// scale) because Gaussian curvature is intrinsic -- invariant under
+	// any regular reparametrization, so K comes out the same either way.
+	const CURVATURE_H = 1e-3; // cheap for closed-form point() calls -- Scherk's point() is a numerical path integral instead, and would need a much finer quadrature (SCHERK_QUADRATURE_N in the hundreds, per the note by that constant above) to get a clean, non-grainy second derivative here, at real performance cost -- not attempted this pass, see the "Show curvature" toggle being disabled for Scherk below.
+	function evalPoint(pointFn, u, v) {
+		const p = new THREE.Vector3();
+		pointFn(u, v, p);
+		return p;
+	}
+	function gaussianCurvatureAt(pointFn, u, v) {
+		const h = CURVATURE_H;
+		const p = evalPoint(pointFn, u, v);
+		const pu1 = evalPoint(pointFn, u + h, v);
+		const pu0 = evalPoint(pointFn, u - h, v);
+		const pv1 = evalPoint(pointFn, u, v + h);
+		const pv0 = evalPoint(pointFn, u, v - h);
+		const puvA = evalPoint(pointFn, u + h, v + h);
+		const puvB = evalPoint(pointFn, u + h, v - h);
+		const puvC = evalPoint(pointFn, u - h, v + h);
+		const puvD = evalPoint(pointFn, u - h, v - h);
+
+		const Xu = pu1.clone().sub(pu0).multiplyScalar(1 / (2 * h));
+		const Xv = pv1.clone().sub(pv0).multiplyScalar(1 / (2 * h));
+		const Xuu = pu1
+			.clone()
+			.add(pu0)
+			.sub(p.clone().multiplyScalar(2))
+			.multiplyScalar(1 / (h * h));
+		const Xvv = pv1
+			.clone()
+			.add(pv0)
+			.sub(p.clone().multiplyScalar(2))
+			.multiplyScalar(1 / (h * h));
+		const Xuv = puvA
+			.clone()
+			.sub(puvB)
+			.sub(puvC)
+			.add(puvD)
+			.multiplyScalar(1 / (4 * h * h));
+
+		const E = Xu.dot(Xu);
+		const F = Xu.dot(Xv);
+		const G = Xv.dot(Xv);
+		const normal = Xu.clone().cross(Xv);
+		const normalLenSq = normal.lengthSq();
+		if (normalLenSq < 1e-12) return 0; // degenerate point (e.g. Enneper's own center) -- not curvature-undefined in principle, just not worth dividing by ~0 here
+		normal.multiplyScalar(1 / Math.sqrt(normalLenSq));
+		const L = Xuu.dot(normal);
+		const M = Xuv.dot(normal);
+		const N = Xvv.dot(normal);
+		const denom = E * G - F * F;
+		if (Math.abs(denom) < 1e-12) return 0;
+		return (L * N - M * M) / denom;
+	}
+	// Blue = least curved, red = most curved -- the standard jet/turbo
+	// heatmap sense (cool = low magnitude, hot = high), not the reverse
+	// scheme the original Wikipedia reference image happened to use.
+	// t=0..1 walks the ramp. Blended 25% toward mid-gray -- lit and shaded
+	// on the actual mesh, the raw (unblended) stops read more vivid than
+	// they do rendered, so the ramp itself is toned down rather than only
+	// the flat legend swatches, keeping the two matched.
+	const CURVATURE_COLOR_STOPS = [
+		[0.25, 0.4, 0.775],
+		[0.3625, 0.6625, 0.4],
+		[0.85, 0.775, 0.325],
+		[0.85, 0.55, 0.25],
+		[0.6775, 0.2575, 0.2125]
+	];
+	function curvatureColor(t) {
+		const stops = CURVATURE_COLOR_STOPS;
+		const n = stops.length - 1;
+		const s = Math.min(Math.max(t, 0), 1) * n;
+		const idx = Math.min(Math.floor(s), n - 1);
+		const frac = s - idx;
+		const a = stops[idx];
+		const b = stops[idx + 1];
+		return [a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac, a[2] + (b[2] - a[2]) * frac];
+	}
+	// CSS-string form of the same ramp, for the legend bar/icons below --
+	// deriving both from curvatureColor() rather than a separately
+	// hand-copied hex list keeps them from silently drifting out of sync
+	// with the actual mesh ramp.
+	function curvatureColorCss(t) {
+		const [r, g, b] = curvatureColor(t);
+		return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+	}
+	// Colors every vertex of a family.point()-built ParametricGeometry by
+	// |K|, log-compressed and normalized to *this mesh's own* min/max --
+	// rather than a fixed reference constant -- so the full red-to-blue
+	// range is always used, whether the surface is Enneper at its
+	// smallest R (modest curvature range) or its largest (huge one).
+	function applyCurvatureColors(geometry, pointFn, uSteps, vSteps) {
+		const cols = uSteps + 1;
+		const rows = vSteps + 1;
+		const logK = new Float64Array(cols * rows);
+		let minLog = Infinity;
+		let maxLog = -Infinity;
+		for (let i = 0; i < rows; i++) {
+			const v = i / vSteps;
+			for (let j = 0; j < cols; j++) {
+				const u = j / uSteps;
+				const K = gaussianCurvatureAt(pointFn, u, v);
+				const lk = Math.log1p(Math.abs(K));
+				logK[i * cols + j] = lk;
+				if (lk < minLog) minLog = lk;
+				if (lk > maxLog) maxLog = lk;
+			}
+		}
+		const range = maxLog - minLog;
+		const colors = new Float32Array(cols * rows * 3);
+		for (let idx = 0; idx < cols * rows; idx++) {
+			const t = range > 1e-9 ? (logK[idx] - minLog) / range : 0;
+			const [r, g, b] = curvatureColor(t);
+			colors[idx * 3] = r;
+			colors[idx * 3 + 1] = g;
+			colors[idx * 3 + 2] = b;
+		}
+		geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+	}
+
 	function rebuildMesh() {
 		const family = currentFamily;
 		const param = paramValue;
+		const isScherk = family.id === 'scherk';
 		// Scherk needs a custom builder (world-space clipping discards
 		// individual triangles near the ends -- ParametricGeometry's regular
 		// grid-with-no-holes can't do that), everything else uses the
-		// generic closed-form point() + ParametricGeometry path.
+		// generic closed-form point() + ParametricGeometry path. Scherk's own
+		// curvature coloring (tower case only) is computed inside its
+		// builder, not via applyCurvatureColors below -- see
+		// computeTowerVertexColors's comment for why.
 		const geometry = family.buildGeometry
-			? family.buildGeometry(param, family.id === 'scherk' ? scherkStories : 1)
+			? family.buildGeometry(param, isScherk ? scherkStories : 1, showCurvature)
 			: new ParametricGeometry((u, v, target) => family.point(param, u, v, target), RESOLUTION, RESOLUTION);
 		if (!family.buildGeometry) geometry.computeVertexNormals();
+		// Curvature coloring needs a closed form to stay cheap and clean --
+		// available for the two always-closed-form families, and for Scherk
+		// only in tower mode (which also switched to a closed form; the
+		// angle-parametrized single saddle is still a numerical path
+		// integral, excluded per CURVATURE_H's note).
+		const curvatureAvailable = !family.buildGeometry || (isScherk && scherkStories > 1);
+		if (showCurvature && curvatureAvailable && !family.buildGeometry) {
+			applyCurvatureColors(geometry, (u, v, target) => family.point(param, u, v, target), RESOLUTION, RESOLUTION);
+		}
 		if (mesh) {
 			scene.remove(mesh);
 			mesh.geometry.dispose();
 		}
-		mesh = new THREE.Mesh(geometry, mesh ? mesh.material : buildMaterial());
+		const material = mesh ? mesh.material : buildMaterial();
+		const useVertexColors = showCurvature && curvatureAvailable;
+		if (material.vertexColors !== useVertexColors) {
+			material.vertexColors = useVertexColors;
+			material.needsUpdate = true;
+		}
+		material.color.set(useVertexColors ? 0xffffff : activePalette().blue);
+		// Duller finish while colored -- the sharp clearcoat highlight (tuned
+		// for a single flat blue) reads as a bright white blob on top of the
+		// curvature ramp otherwise, easy to mistake for part of the color
+		// scale itself rather than just a light reflection.
+		material.roughness = useVertexColors ? 0.75 : 0.35;
+		material.clearcoat = useVertexColors ? 0 : 0.3;
+		mesh = new THREE.Mesh(geometry, material);
 		scene.add(mesh);
 
 		// Auto-fit camera distance to the mesh's own extent (direction
@@ -443,6 +755,7 @@
 		const _f = selectedFamilyId;
 		const _p = paramValue;
 		const _s = scherkStories;
+		const _c = showCurvature;
 		if (scene) rebuildMesh();
 	});
 
@@ -532,18 +845,57 @@
 	</div>
 
 	{#if selectedFamilyId === 'scherk'}
-		<div class="control-row">
-			<span class="control-label">Stories</span>
-			<div class="stories-group">
-				{#each [1, 2, 3] as n (n)}
-					<button class="stories-button" class:active={scherkStories === n} onclick={() => (scherkStories = n)}>
-						{n}
-					</button>
+		<label class="control-row">
+			<span class="control-label">Stories ({scherkStories})</span>
+			<input type="range" min="1" max={SCHERK_MAX_STORIES} step="1" bind:value={scherkStories} />
+		</label>
+		<div class="control-endpoints">
+			<span>1 (single saddle)</span>
+			<span>{SCHERK_MAX_STORIES} (tower)</span>
+		</div>
+		{#if scherkStories > 1}
+			<span class="control-note">Angle locked to orthogonal — the closed form the tower is built from (see file notes) has no free angle parameter.</span>
+		{/if}
+	{/if}
+
+	<button
+		class="curvature-toggle"
+		disabled={selectedFamilyId === 'scherk' && scherkStories === 1}
+		onclick={() => (showCurvature = !showCurvature)}
+	>
+		{showCurvature ? 'Hide curvature' : 'Color by curvature'}
+	</button>
+	{#if selectedFamilyId === 'scherk' && scherkStories === 1}
+		<span class="control-note">Curvature coloring isn't available for the single saddle — it's a numerical path integral, and needs far more precision than the live slider can afford (see file notes). It IS available for the tower above (stories > 1), which uses a closed form instead.</span>
+	{/if}
+	{#if showCurvature && !(selectedFamilyId === 'scherk' && scherkStories === 1)}
+		<div class="curvature-legend">
+			<div
+				class="legend-bar"
+				style="background: linear-gradient(90deg, {curvatureColorCss(0)} 0%, {curvatureColorCss(
+					0.25
+				)} 25%, {curvatureColorCss(0.5)} 50%, {curvatureColorCss(0.75)} 75%, {curvatureColorCss(1)} 100%)"
+			></div>
+			<div class="legend-endpoints">
+				{#each [{ label: 'Nearly flat', t: 0, depth: 1 }, { label: 'Somewhat curved', t: 0.5, depth: 7 }, { label: 'Sharply curved', t: 1, depth: 16 }] as tier (tier.label)}
+					<div class="legend-item">
+						<svg class="legend-icon" viewBox="0 0 44 28" aria-hidden="true">
+							<!-- Wide apart at the ends, control point pulled past the
+							     midline so each curve's own true midpoint (not the SVG
+							     control point, which a quadratic Bezier only pulls
+							     toward) lands exactly on the shared axis -- the two
+							     curves touch at that single center point and bend away
+							     from each other everywhere else. -->
+							<path d="M4 {14 - tier.depth} Q22 {14 + tier.depth} 40 {14 - tier.depth}" fill="none" stroke={curvatureColorCss(tier.t)} stroke-width="2.5" />
+							<path d="M4 {14 + tier.depth} Q22 {14 - tier.depth} 40 {14 + tier.depth}" fill="none" stroke={curvatureColorCss(tier.t)} stroke-width="2.5" />
+						</svg>
+						<span>{tier.label}</span>
+					</div>
 				{/each}
 			</div>
-			{#if scherkStories > 1}
-				<span class="control-note">Angle locked to orthogonal — the only angle with a verified seam between stories.</span>
-			{/if}
+			<p class="legend-caption">
+				Color tracks how sharply the surface's two principal curves — the same pair shown earlier, always equal and opposite at every point — bend at that point (technically, their product), not the surface's height.
+			</p>
 		</div>
 	{/if}
 
@@ -616,32 +968,68 @@
 		font-size: 0.75rem;
 		color: var(--text-muted);
 	}
-	.stories-group {
-		display: flex;
-		gap: 0.4rem;
-	}
-	.stories-button {
-		flex: 1;
-		padding: 0.3rem 0;
-		border-radius: 6px;
-		border: 1px solid var(--surface-2);
-		background: transparent;
-		color: var(--text-secondary);
-		font-size: 0.85rem;
-		cursor: pointer;
-	}
-	.stories-button:hover {
-		background: var(--surface-2);
-	}
-	.stories-button.active {
-		background: var(--accent);
-		border-color: var(--accent);
-		color: var(--surface-1);
-	}
 	.control-note {
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		line-height: 1.3;
+	}
+	.curvature-toggle {
+		margin-top: 0.3rem;
+		padding: 0.4rem 0.6rem;
+		border-radius: 6px;
+		border: 1px solid var(--surface-2);
+		background: transparent;
+		color: var(--text-secondary);
+		font-size: 0.8rem;
+		cursor: pointer;
+		text-align: left;
+	}
+	.curvature-toggle:hover:not(:disabled) {
+		background: var(--surface-2);
+	}
+	.curvature-toggle:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.curvature-legend {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		padding: 0.6rem 0.7rem;
+		border-radius: 6px;
+		background: var(--surface-2);
+	}
+	.legend-bar {
+		height: 0.5rem;
+		border-radius: 4px;
+		/* background set inline from curvatureColorCss() -- see the template */
+	}
+	.legend-endpoints {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	.legend-item {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.15rem;
+	}
+	.legend-icon {
+		width: 2.75rem;
+		height: 1.75rem;
+	}
+	.legend-item span {
+		font-size: 0.68rem;
+		color: var(--text-muted);
+		text-align: center;
+	}
+	.legend-caption {
+		margin: 0;
+		font-size: 0.7rem;
+		line-height: 1.4;
+		color: var(--text-muted);
 	}
 	.rotate-toggle,
 	.definition-toggle {

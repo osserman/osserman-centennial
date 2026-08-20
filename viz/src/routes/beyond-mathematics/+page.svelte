@@ -6,6 +6,7 @@
 	import CitationGraph from '$lib/components/CitationGraph.svelte';
 	import PaperDetail from '$lib/components/PaperDetail.svelte';
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
+	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { steps } from '$lib/content/narrative.js';
 
 	let { data } = $props();
@@ -158,6 +159,7 @@
 				</div>
 			{/each}
 		</Scrolly>
+		<StanzaNav current="III" next={{ title: 'Coda', disabled: true }} />
 	</div>
 
 	<div class="graph-panel">
@@ -220,7 +222,7 @@
 	.text-panel {
 		width: min(28vw, 24rem);
 		flex-shrink: 0;
-		padding: 0 2.5rem;
+		padding: 0 2.5rem 3rem;
 		border-right: 1px solid var(--surface-2);
 	}
 	.topic-group {

@@ -38,6 +38,7 @@ export const steps = [
 		body: [
 			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>, a graduate-level textbook that became the standard introduction to this rapidly growing area of geometry.',
 			'More than fifty years later, the book has been cited by over **1,000** scholarly publications.',
+			'Within these citations we can see an continually-evolving range of fields where the mathematics of minimal surfaces have proved relevant.',
 			"Scroll down to learn more."
 		],
 		openQuestion: null,
@@ -73,7 +74,7 @@ export const steps = [
 		heading: 'Citations Beyond Mathematics',
 		body: [
 			'But minimal surface mathematics has also been applied to a surprising range of other disciplines.',
-			"Many of these pathways are visible with the 300+ works from outside mathematics citing Osserman's textbook." ,
+			"Many of these pathways are visible with the 300+ works from outside mathematics citing Osserman's textbook. [Caveat OpenAlex's unreliable field classification]" ,
 			'Here are a few examples...'
 		],
 		openQuestion: null,

@@ -6,11 +6,12 @@
 	// label + bar + range sit on one line each and are easy to scan
 	// top-to-bottom rather than compared side-by-side.
 	//
-	// For V-shape/Smooth curve, the *range* explored so far (min-max) is
-	// the headline number, not the current live value — a single point
-	// number understates what dragging has already ruled out. Cylinder and
-	// Catenary have no range (nothing to explore), so they just show their
-	// one fixed value.
+	// For V-shape/Smooth curve, whichever stage is still being dragged shows
+	// its live current value; once that stage is behind you, its bar
+	// switches to the range you explored (min-max) instead — a single point
+	// number would understate what dragging already ruled out. Cylinder and
+	// Catenary never have a range (nothing to explore), so they just show
+	// their one fixed value.
 	let { bars = [], maxVal = 1 } = $props(); // [{ label, value, min?, max?, isStatic?, isAnswer? }]
 
 	function pct(v) {

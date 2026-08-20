@@ -1,5 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
+	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
@@ -9,6 +12,7 @@
 	import MinimalSurfaceExplorer from '$lib/components/MinimalSurfaceExplorer.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import SurfaceAreaBars from '$lib/components/SurfaceAreaBars.svelte';
+	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import {
 		DEFAULT_R,
 		DEFAULT_L,
@@ -174,10 +178,16 @@
 	// forever after you scroll on to a later step — no separate frozen
 	// "best" snapshot needed, and no explicit hand-off moment required
 	// (unlike the old Continue-button version) to capture it.
+	// The *active* stage's own bar always shows its current live value, full
+	// stop -- a range there would mean "here's what dragging has achieved so
+	// far," competing with the number actually moving under your thumb.
+	// Once a stage is behind you, its bar switches to the min-max range you
+	// explored while it was active (via SurfaceAreaBars' hasRange check) --
+	// nothing to drag anymore, so the range *is* the useful summary.
 	let bars = $derived.by(() => {
 		const list = [{ label: 'Cylinder', value: cylinderArea, isStatic: true }];
 		if (stage === 'cinch') {
-			list.push({ label: 'V-shape', value: area, min: finite(cinchRange.min), max: finite(cinchRange.max) });
+			list.push({ label: 'V-shape', value: area });
 		} else if (stage === 'curve') {
 			list.push({
 				label: 'V-shape',
@@ -185,10 +195,20 @@
 				min: finite(cinchRange.min),
 				max: finite(cinchRange.max)
 			});
-			list.push({ label: 'Smooth curve', value: area, min: finite(curveRange.min), max: finite(curveRange.max) });
+			list.push({ label: 'Smooth curve', value: area });
 		} else if (stage === 'catenary') {
-			list.push({ label: 'V-shape', value: finite(cinchRange.min) ?? cylinderArea });
-			list.push({ label: 'Smooth curve', value: finite(curveRange.min) ?? cylinderArea });
+			list.push({
+				label: 'V-shape',
+				value: finite(cinchRange.min) ?? cylinderArea,
+				min: finite(cinchRange.min),
+				max: finite(cinchRange.max)
+			});
+			list.push({
+				label: 'Smooth curve',
+				value: finite(curveRange.min) ?? cylinderArea,
+				min: finite(curveRange.min),
+				max: finite(curveRange.max)
+			});
 			if (catenaryArea != null) list.push({ label: 'Catenary', value: catenaryArea, isAnswer: true });
 		}
 		return list;
@@ -344,6 +364,28 @@
 	// this slide's total scroll height against CURVATURE_SPAN_VH, the same
 	// "eyeball and tune" approach used for eulerSlide's own two mechanisms.
 	let curvatureStageIndex = $state(0);
+
+	// Which of surface-explorer's 3 per-family sentences is the furthest
+	// one reached so far -- same nested-<Scrolly> mechanism as
+	// curvatureStageIndex above, but the template renders every sentence up
+	// to and including this index (not just this one), so each stays
+	// visible ("sticks") once its own trigger has been scrolled past
+	// instead of being replaced by the next. Order matches
+	// MinimalSurfaceExplorer's own FAMILIES array (catenoid-helicoid,
+	// enneper, scherk) and slide.body's own [intro, catenoid, enneper,
+	// scherk] order (index i here <-> slide.body[i + 1]) -- both need to
+	// stay in that order for EXPLORER_FAMILY_ORDER below to line up.
+	let explorerFamilyIndex = $state(0);
+	const EXPLORER_FAMILY_ORDER = ['catenoid-helicoid', 'enneper', 'scherk'];
+	// Two-way bound into MinimalSurfaceExplorer's own selectedFamilyId --
+	// scrolling past a sentence's trigger sets it (via the effect below),
+	// and picking the dropdown inside the explorer sets it right back, so
+	// either input works without the two fighting (whichever happens most
+	// recently just wins, same as any two-way binding).
+	let explorerFamilyId = $state(EXPLORER_FAMILY_ORDER[0]);
+	$effect(() => {
+		explorerFamilyId = EXPLORER_FAMILY_ORDER[explorerFamilyIndex];
+	});
 
 	onMount(() => {
 		updateScrollProgress();
@@ -517,6 +559,47 @@
 							</div>
 							<div class="curvature-spacer-trail"></div>
 						</div>
+					{:else if slide.id === 'surface-explorer'}
+						<!-- Same shape as defining-property above (sticky intro, then a
+						     nested <Scrolly> of per-stage triggers), but the sticky
+						     panel accumulates every sentence reached so far instead of
+						     swapping to just the current one — each family's sentence
+						     scrolls in and then stays put ("sticks"), building a list,
+						     rather than replacing the one before it. explorerFamilyIndex
+						     (this nested Scrolly's own bound index) both decides how
+						     many sentences show and, via the $effect near its
+						     declaration, drives which family MinimalSurfaceExplorer has
+						     selected -- so scrolling through these sentences and using
+						     the explorer's own dropdown are two inputs to the same
+						     state, matching how curvatureStageIndex/curvatureProgress
+						     are two loosely-paced mechanisms for defining-property. -->
+						<div class="euler-flow">
+							<div class="intro-spacer-lead"></div>
+							<div class="intro-sticky">
+								<h2>{slide.title}</h2>
+								<p>{@html renderInline(slide.body[0])}</p>
+								{#each slide.body.slice(1) as para, i}
+									{#if i <= explorerFamilyIndex}
+										<p class="family-line" in:fly={{ y: 28, duration: 550, easing: quintOut }}>{@html renderInline(para)}</p>
+									{/if}
+								{/each}
+							</div>
+							<div class="stage-steps">
+								<Scrolly bind:active={explorerFamilyIndex}>
+									{#each slide.body.slice(1) as para, i}
+										<ScrollyStep index={i} active={explorerFamilyIndex === i}>
+											<!-- Blank on purpose -- this trigger's job is purely
+											     to mark where its sentence should "land" in the
+											     sticky panel above, not to show its own copy of
+											     the text. ScrollyStep still needs *some* child
+											     content to render, hence the empty div. -->
+											<div class="explorer-trigger"></div>
+										</ScrollyStep>
+									{/each}
+								</Scrolly>
+							</div>
+							<div class="explorer-spacer-trail"></div>
+						</div>
 					{:else}
 						<div class="slide-text">
 							<h2>{slide.title}</h2>
@@ -577,7 +660,7 @@
 		{:else if activeIndex === curvatureIndex}
 			<MeanCurvatureScene R={ringR} L={ringL} progress={curvatureProgress} />
 		{:else if activeIndex === explorerIndex}
-			<MinimalSurfaceExplorer />
+			<MinimalSurfaceExplorer bind:selectedFamilyId={explorerFamilyId} />
 		{:else}
 			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
 		{/if}
@@ -586,11 +669,11 @@
 
 <section class="cover-section">
 	<div class="cover-card">
-		<p class="kicker">End of Stanza II</p>
 		<h1>{outroSlide.title}</h1>
 		{#each outroSlide.body as para}
 			<p>{@html renderInline(para)}</p>
 		{/each}
+		<StanzaNav current="II" next={{ href: `${base}/beyond-mathematics`, title: 'Stanza III — Beyond Mathematics' }} />
 	</div>
 </section>
 
@@ -798,6 +881,20 @@
 	   height) since the 5 ScrollyStep prompts already carry most of the load. */
 	.curvature-spacer-trail {
 		height: 100vh;
+	}
+	/* Same "outer Scrolly's trigger line sits at viewport center" slack
+	   reasoning as .curvature-spacer-trail above -- 3 ScrollyStep triggers
+	   carry the scroll budget here, this is just the tail end of it. */
+	.explorer-spacer-trail {
+		height: 100vh;
+	}
+	/* Purely a scroll target -- see the template comment on the empty
+	   <ScrollyStep> content above. */
+	.explorer-trigger {
+		height: 1px;
+	}
+	.family-line {
+		color: var(--text-secondary);
 	}
 	.scene-panel {
 		flex: 1;

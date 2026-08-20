@@ -31,7 +31,7 @@
 		},
 		{
 			kicker: 'Stanza III',
-			title: 'Beyond Mathematics: The Expansion of Minimal Surfaces Beyond Mathematics',
+			title: 'Beyond Mathematics: The Expansion of Minimal Surfaces',
 			href: `${base}/beyond-mathematics`
 		},
 		{ kicker: 'Coda', title: 'Coda', href: null }
@@ -44,7 +44,7 @@
 
 <main class="page">
 	<article class="essay">
-		<p class="kicker">A mathematical ode to my father</p>
+		<!--<p class="kicker">A mathematical ode to my father</p>-->
 		<h1>A Mathematical Ode to My Father</h1>
 		<p class="byline">Written for the centennial of Robert Osserman</p>
 

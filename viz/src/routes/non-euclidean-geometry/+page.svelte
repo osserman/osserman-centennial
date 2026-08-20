@@ -8,11 +8,13 @@
 	// VisualPlaceholder one slide at a time.
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
 	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
+	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
 
 	// Camera debugging aid for SphereGeometryScene -- visit this page with
@@ -46,6 +48,15 @@
 		return text
 			.replace(/\*\*(.+?)\*\*/g, '<strong class="stat">$1</strong>')
 			.replace(/\*(.+?)\*/g, '<em>$1</em>');
+	}
+
+	// The opening epigraph is one plain string ('"quote" - attribution') --
+	// split at the dash right after the closing quote mark so the quote and
+	// its attribution can get their own distinct styling below, rather than
+	// running together as one italic block.
+	function splitQuote(text) {
+		const m = text.match(/^(.*?")\s*-\s*(.+)$/s);
+		return m ? { quote: m[1], attribution: m[2] } : { quote: text, attribution: '' };
 	}
 
 	// Arrival/settle scroll-progress pattern, same shape (and same caveats)
@@ -130,7 +141,15 @@
 		<p class="kicker">Stanza I</p>
 		<h1>{introSlide.title}</h1>
 		{#each introSlide.body as para}
-			<p>{@html renderInline(para)}</p>
+			{#if para.startsWith('> ')}
+				{@const { quote, attribution } = splitQuote(para.slice(2))}
+				<blockquote class="epigraph">
+					<p>{@html renderInline(quote)}</p>
+					{#if attribution}<footer>{@html renderInline(attribution)}</footer>{/if}
+				</blockquote>
+			{:else}
+				<p>{@html renderInline(para)}</p>
+			{/if}
 		{/each}
 		<div class="scroll-cue">Scroll to begin ↓</div>
 	</div>
@@ -218,11 +237,11 @@
 
 <section class="cover-section">
 	<div class="cover-card">
-		<p class="kicker">End of Stanza I</p>
 		<h1>{outroSlide.title}</h1>
 		{#each outroSlide.body as para}
 			<p>{@html renderInline(para)}</p>
 		{/each}
+		<StanzaNav current="I" next={{ href: `${base}/minimal-surfaces`, title: 'Stanza II — Minimal Surfaces' }} />
 	</div>
 </section>
 
@@ -274,6 +293,39 @@
 		font-size: 1.05rem;
 		line-height: 1.6;
 		color: var(--text-secondary);
+	}
+	.epigraph {
+		position: relative;
+		margin: 0.3rem 0;
+		padding: 0.2rem 1.8rem;
+	}
+	.epigraph::before {
+		content: '“';
+		position: absolute;
+		top: -1.6rem;
+		left: -0.2rem;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 4.5rem;
+		line-height: 1;
+		color: var(--accent);
+		opacity: 0.25;
+	}
+	.epigraph p {
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 1.3rem;
+		font-style: italic;
+		line-height: 1.45;
+		color: var(--text-primary);
+	}
+	.epigraph footer {
+		margin-top: 0.6rem;
+		font-size: 0.8rem;
+		font-style: normal;
+		letter-spacing: 0.03em;
+		color: var(--text-muted);
+	}
+	.epigraph footer::before {
+		content: '— ';
 	}
 	.scroll-cue {
 		margin-top: 0.75rem;

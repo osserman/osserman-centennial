@@ -27,10 +27,13 @@ export const slides = [
 	{
 		id: 'intro',
 		title: 'Minimal Surfaces',
-		body: [
-			'Our last stanza ended with hyperbolic geometry -- a field foundational for understanding what is meant by curved space.',
+		body: [/*
+			'During the same period hyperbolic geometry was being imagined and defined, a set of surfaces were being explored  developed Our last stanza ended with hyperbolic geometry -- a field foundational for understanding what is meant by curved space.',
 			'This geometry also underpins the branch of mathematics that Osserman dedicated his career to: **minimal surfaces**.',
 			'Echoing the stories told in his book, this field grew through a dialogue between physical observation and mathematical imagination.'
+			*/
+			"Around the same time mathematicians were imagining entirely new kinds of geometry, they were also discovering a remarkable new class of surfaces: minimal surfaces.",
+			"This became the field Robert Osserman devoted much of his career to. And like the stories in *The Poetry of the Universe*, this field's history unfolded through a dialogue between physical observation and mathematical imagination.",
 		],
 		visualLabel: 'Transition motif from Stanza I'
 	},
@@ -39,7 +42,7 @@ export const slides = [
 		title: 'Connecting two rings',
 		body: [
 			"In the 1740's, Leonhard Euler worked on a deceptively simple question:",
-			'> What surface of revolution connects two rings using the least possible area?',
+			'> What surface connects two rings using the least possible area?',
 			'A natural starting point would be rotating a straight line around the rings to make a cylinder.'
 		],
 		stages: [
@@ -124,9 +127,9 @@ Choose a family below, and vary its parameters to see how these mathematical sur
 			"In the 1760's Joseph-Louis de Lagrange provided the exact equation that any 2 dimensional minimal surface must... Unfortunately the equations were essentially unsolvable.",
 			"It wasn't until 1860's that Weierstrass, Enneper and Riemann derived a simplification that changed that. Using complex numbers (the sum of a real and imaginary number) they developed a way to define an infinite family of minimal surfaces.",
 			'This new approach helped transform isolated examples into a coherent field of geometry.',
-			'Choose a minimal surface family, and tweak the parameters of the functions to see the minimal surfaces they describe.'
+			//'Choose a minimal surface family, and tweak the parameters of the functions to see the minimal surfaces they describe.'
 		],
-		visualLabel: 'Gallery of minimal surfaces (Riemann’s family)'
+		visualLabel: 'Gallery of minimal surfaces (first draft on next screen for now)'
 	},
 	{
 		id: 'surface-explorer',
@@ -138,8 +141,10 @@ Choose a family below, and vary its parameters to see how these mathematical sur
 		// confirmed to work well, 'field-grows' above is the likely home
 		// for it long-term.
 		body: [
-			'Choose a family below, and drag the slider to see how a single mathematical description can describe many different-looking surfaces.',
-			'The catenoid and the helicoid — two shapes that look nothing alike — turn out to be the same family, just viewed at a different angle in the underlying description.'
+			'Choose a family from the dropdown, and drag the slider to see how a single mathematical description can describe many different-looking surfaces.',
+			'The **catenoid and the helicoid** (a spiral shape) are two shapes that do not look alike — but they turn out to be the same family, with a single parameter to transition between them.',
+			"The **Enneper surface** is a single surface, but takes on surprisingly different character dependning on how much of it you view. It also shows how these surfaces can intersect themselves.",
+			'And the **Scherk surface** shows a first family of "periodic" - or endlessly repeating surfaces.',
 		],
 		visualLabel: 'Minimal surface family explorer'
 	},
@@ -161,7 +166,7 @@ Choose a family below, and vary its parameters to see how these mathematical sur
 			'Throughout the nineteenth and twentieth centuries, mathematicians discovered new minimal surfaces, developed general methods for constructing and classifying them, and explored when they exist and when they remain stable.',
 			'By 1969, enough of that work had accumulated for Robert Osserman to bring much of the subject together in a graduate-level textbook: *A Survey of Minimal Surfaces*.',
 			'Just one year later, NASA researcher Alan Schoen described a remarkable new family of **triply periodic minimal surfaces**, including the **gyroid**. Developed within an engineering research environment, these surfaces would later become some of the most influential geometries outside mathematics.',
-			'Using the citations of this textbook, the next stanza follows that journey of minimal surfaces from 200 years of theoretical math to applications in fields ranging from materials science and biology to computer graphics, computer vision and theoretical physics.'
+			"Using the citations of Osserman's textbook, the next section follows the journey of minimal surfaces -- from 200 years of theoretical math to applications in fields ranging from materials science and biology to computer graphics, computer vision and theoretical physics."
 		]
 		// This is now the outro (see .cover-section in +page.svelte) — no
 		// visualLabel, it doesn't sit in the scene-panel flow the slides

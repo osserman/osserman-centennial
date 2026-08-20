@@ -740,8 +740,10 @@
 	// BEAT_END..EXPLAIN_HOLD_END carries two captions (the "furthermore"
 	// transition, then the 180-deg explanation) -- split the shared window
 	// rather than giving them the same start/end, same technique as
-	// ParallelPostulateScene's ROTATE_CAPTION_SPLIT.
-	const INTRO_EXPLAIN_SPLIT = lerp(BEAT_END, EXPLAIN_HOLD_END, 0.35);
+	// ParallelPostulateScene's ROTATE_CAPTION_SPLIT. Given more than half
+	// (was 0.35) since the short "furthermore" transition line was easy to
+	// scroll past without registering it.
+	const INTRO_EXPLAIN_SPLIT = lerp(BEAT_END, EXPLAIN_HOLD_END, 0.58);
 	const CAPTIONS = [
 		{ start: 0, end: WALK_START, text: 'Start at the equator of a sphere.' },
 		{ start: WALK_START, end: EDGE1_END, text: 'Take the shortest path to the north pole by heading due north.' },
