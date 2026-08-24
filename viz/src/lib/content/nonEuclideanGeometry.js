@@ -93,6 +93,22 @@ export const slides = [
 		visualLabel: 'Gauss survey-triangle / curvature-from-measurement visual'
 	},
 	{
+		id: 'azimuthal-projection',
+		title: 'Mapping a Curved World',
+		// Same pattern as parallel-postulate/sphere above: a sticky subtitle,
+		// no scrolling stage prompts -- every beat (the globe, the peel into
+		// a flat map, the distortion coloring, the great circles, the
+		// drag-to-recenter interaction) is carried by on-canvas captions in
+		// AzimuthalProjectionScene itself; see that component's CAPTIONS
+		// array. Experimental first pass at the Azimuthal Equidistant ->
+		// Poincare disk sequence -- this slide covers only the projection
+		// side (how flattening a sphere distorts it); the hyperbolic-disk
+		// connection is a deliberately separate follow-up, not yet built.
+		subtitle:
+			"The same curvature that makes a triangle's angles misbehave on a sphere also means a sphere can never be flattened without distortion. Every world map is lying to you somehow — the only choice is which lie.",
+		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
+	},
+	{
 		id: 'imaginary-curvature',
 		title: 'Measuring Negative Curvature with Imaginary Numbers',
 		// This slide's copy is the least settled of the six (per the source

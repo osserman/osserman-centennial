@@ -8,20 +8,30 @@
 	// VisualPlaceholder one slide at a time.
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
 	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
+	import AzimuthalProjectionScene from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
 
-	// Camera debugging aid for SphereGeometryScene -- visit this page with
-	// ?debug=sphere to get free-fly OrbitControls and an on-screen readout
-	// of camera position/target, instead of editing the component to flip
-	// a hardcoded flag every time. See that component's own `debug` prop.
-	const debugSphere = $derived(page.url.searchParams.get('debug') === 'sphere');
+	// Camera debugging aid for SphereGeometryScene/AzimuthalProjectionScene --
+	// visit this page with ?debug=sphere or ?debug=azimuthal to get free-fly
+	// OrbitControls and an on-screen readout of camera position/target,
+	// instead of editing the component to flip a hardcoded flag every time.
+	// See each component's own `debug` prop. `browser &&` short-circuits
+	// before touching page.url.searchParams during prerendering (SvelteKit
+	// disallows reading it then) -- debugSphere got away without this
+	// before only because it happened to sit behind a branch SSR never
+	// actually took (activeIndex starts on parallel-postulate, not sphere);
+	// debugAzimuthal is read unconditionally (its scene isn't behind an
+	// activeIndex branch at all), which is what surfaced this.
+	const debugSphere = $derived(browser && page.url.searchParams.get('debug') === 'sphere');
+	const debugAzimuthal = $derived(browser && page.url.searchParams.get('debug') === 'azimuthal');
 
 	// Same split as minimal-surfaces: first/last slides are standalone
 	// full-viewport cover screens (see .cover-section below), not part of
@@ -32,9 +42,16 @@
 	// cover-card treatment as the intro/outro (see the standalone
 	// <section> for it below) -- which is why it's excluded from
 	// scrollySlides and the two-column <main> is split around it.
+	// azimuthal-projection is a *fourth* kind: it has a real scene-panel
+	// visual, but it's the only slide in its own section (not sharing a
+	// <Scrolly> with siblings the way parallel-postulate/sphere do), so it
+	// gets its own dedicated <main> below with the same sticky-text +
+	// trailing-spacer mechanism but no <Scrolly>/<ScrollyStep> wrapper --
+	// same reasoning imaginary-curvature already uses for skipping Scrolly.
 	const introSlide = slides[0];
 	const outroSlide = slides[slides.length - 1];
 	const gaussSlide = slides.find((s) => s.id === 'gauss-survey');
+	const azimuthalSlide = slides.find((s) => s.id === 'azimuthal-projection');
 	const imaginarySlide = slides.find((s) => s.id === 'imaginary-curvature');
 	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
 
@@ -116,18 +133,50 @@
 		sphereProgress = Math.max(0, Math.min(1, traveled / SPHERE_SPAN_PX()));
 	}
 
+	// Third, independent instance of the same arrival/settle pattern above,
+	// driving AzimuthalProjectionScene. dragEnabled for step 5 is derived
+	// the same way ParallelPostulateScene's is: azimuthalProgress >= 1,
+	// flipped by the parent once fully scrolled through, not decided inside
+	// the scene itself.
+	let azimuthalProgress = $state(0);
+	let azimuthalTextEl = $state();
+	const AZIMUTHAL_SPAN_VH = 4.5;
+	let azimuthalSettleScrollY = null;
+
+	function AZIMUTHAL_SPAN_PX() {
+		return AZIMUTHAL_SPAN_VH * window.innerHeight;
+	}
+
+	function updateAzimuthalProgress() {
+		if (!azimuthalTextEl) return;
+		const rect = azimuthalTextEl.getBoundingClientRect();
+		if (rect.top > STICKY_TOP_PX) {
+			azimuthalProgress = 0;
+			azimuthalSettleScrollY = null;
+			return;
+		}
+		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
+		const traveled = window.scrollY - azimuthalSettleScrollY;
+		azimuthalProgress = Math.max(0, Math.min(1, traveled / AZIMUTHAL_SPAN_PX()));
+	}
+
 	onMount(() => {
 		updateParallelProgress();
 		updateSphereProgress();
+		updateAzimuthalProgress();
 		window.addEventListener('scroll', updateParallelProgress, { passive: true });
 		window.addEventListener('scroll', updateSphereProgress, { passive: true });
+		window.addEventListener('scroll', updateAzimuthalProgress, { passive: true });
 		window.addEventListener('resize', updateParallelProgress);
 		window.addEventListener('resize', updateSphereProgress);
+		window.addEventListener('resize', updateAzimuthalProgress);
 		return () => {
 			window.removeEventListener('scroll', updateParallelProgress);
 			window.removeEventListener('scroll', updateSphereProgress);
+			window.removeEventListener('scroll', updateAzimuthalProgress);
 			window.removeEventListener('resize', updateParallelProgress);
 			window.removeEventListener('resize', updateSphereProgress);
+			window.removeEventListener('resize', updateAzimuthalProgress);
 		};
 	});
 </script>
@@ -212,6 +261,29 @@
 		{/each}
 	</div>
 </section>
+
+<!-- azimuthal-projection: has a real scene-panel visual (AzimuthalProjectionScene),
+     but is the only slide in its own section, so it gets its own dedicated
+     sticky-text + trailing-spacer treatment directly rather than sharing
+     the <Scrolly>/<ScrollyStep> machinery above with parallel-postulate/
+     sphere (which exists specifically to arbitrate *between* multiple
+     slides sharing one section) -- same reasoning imaginary-curtaure below
+     already uses for skipping Scrolly entirely. -->
+<main class="layout">
+	<div class="text-panel">
+		<div class="euler-flow">
+			<div class="intro-spacer-lead"></div>
+			<div class="intro-sticky" bind:this={azimuthalTextEl}>
+				<h2>{azimuthalSlide.title}</h2>
+				<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
+			</div>
+			<div class="trailing-spacer trailing-spacer-azimuthal"></div>
+		</div>
+	</div>
+	<div class="scene-panel">
+		<AzimuthalProjectionScene progress={azimuthalProgress} dragEnabled={azimuthalProgress >= 1} debug={debugAzimuthal} />
+	</div>
+</main>
 
 <!-- imaginary-curvature also has no scene-panel visual, but (unlike
      gauss-survey) keeps the two-column shell for now since a visual is
@@ -428,6 +500,9 @@
 	}
 	.trailing-spacer-sphere {
 		height: 720vh;
+	}
+	.trailing-spacer-azimuthal {
+		height: 550vh;
 	}
 	.scene-panel {
 		flex: 1;
