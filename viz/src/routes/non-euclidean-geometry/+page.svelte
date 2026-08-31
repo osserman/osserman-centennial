@@ -15,7 +15,7 @@
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
 	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
-	import AzimuthalProjectionScene from '$lib/components/AzimuthalProjectionScene.svelte';
+	import AzimuthalProjectionScene, { DRAG_END, TESSELLATE_END } from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
 
@@ -157,7 +157,7 @@
 		}
 		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
 		const traveled = window.scrollY - azimuthalSettleScrollY;
-		azimuthalProgress = Math.max(0, Math.min(1, traveled / AZIMUTHAL_SPAN_PX()));
+		azimuthalProgress = Math.max(0, Math.min(TESSELLATE_END, traveled / AZIMUTHAL_SPAN_PX()));
 	}
 
 	onMount(() => {
@@ -281,7 +281,11 @@
 		</div>
 	</div>
 	<div class="scene-panel">
-		<AzimuthalProjectionScene progress={azimuthalProgress} dragEnabled={azimuthalProgress >= 1} debug={debugAzimuthal} />
+		<AzimuthalProjectionScene
+			progress={azimuthalProgress}
+			dragEnabled={azimuthalProgress >= 1 && azimuthalProgress < DRAG_END}
+			debug={debugAzimuthal}
+		/>
 	</div>
 </main>
 
@@ -502,7 +506,7 @@
 		height: 720vh;
 	}
 	.trailing-spacer-azimuthal {
-		height: 550vh;
+		height: 1180vh;
 	}
 	.scene-panel {
 		flex: 1;

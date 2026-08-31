@@ -24,7 +24,13 @@ export const palette = {
 		orange: '#eb6834', // slot 2
 		aqua: '#1baf7a', // slot 3
 		yellow: '#eda100', // slot 4
-		violet: '#4a3aa7' // slot 7 — work-type only, kept apart from blue/orange
+		violet: '#4a3aa7', // slot 7 — work-type only, kept apart from blue/orange
+		// Map land/water -- cartographic two-tone, not categorical slots (no
+		// CVD-distinctness requirement, just enough light/dark contrast to
+		// read as land vs. ocean), so kept separate from the validated
+		// categorical set above rather than reusing e.g. "blue" for water.
+		mapLand: '#d8d5cc',
+		mapWater: '#dce8f5'
 	},
 	dark: {
 		surface: '#1a1a19',
@@ -35,7 +41,9 @@ export const palette = {
 		orange: '#d95926',
 		aqua: '#199e70',
 		yellow: '#c98500',
-		violet: '#9085e9'
+		violet: '#9085e9',
+		mapLand: '#3a3936',
+		mapWater: '#16283a'
 	}
 };
 

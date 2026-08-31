@@ -19,6 +19,10 @@
 	},
 	"dependencies": {
 		"d3-force": "^3.0.0",
-		"three": "^0.185.1"
+		"d3-geo": "^3.1.1",
+		"d3-selection": "^3.0.0",
+		"radial-petal-projection": "github:osserman/radial-petal-projection#v0.1.0",
+		"three": "^0.185.1",
+		"versor": "^0.2.0"
 	}
 }
