@@ -15,7 +15,12 @@
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
 	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
-	import AzimuthalProjectionScene, { TOUR_END, DRAG_END, ESCHER_END } from '$lib/components/AzimuthalProjectionScene.svelte';
+	import AzimuthalProjectionScene, {
+		CAPTIONS as AZIMUTHAL_CAPTIONS,
+		TOUR_END,
+		DRAG_END,
+		ESCHER_END
+	} from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
 
@@ -134,16 +139,73 @@
 	}
 
 	// Third, independent instance of the same arrival/settle pattern above,
-	// driving AzimuthalProjectionScene, which now runs a single scripted
-	// 0..1 sequence (globe -> orange cuts -> Tissot -> pole view -> gore
-	// projection) with no interactive stage, so no dragEnabled handoff.
+	// driving AzimuthalProjectionScene, which runs one long scripted sequence
+	// from a shaded globe through the gore peel and the stereographic morph to
+	// Escher's Circle Limit tiling.
 	let azimuthalProgress = $state(0);
 	let azimuthalTextEl = $state();
-	const AZIMUTHAL_SPAN_VH = 4.5;
 	let azimuthalSettleScrollY = null;
 
-	function AZIMUTHAL_SPAN_PX() {
-		return AZIMUTHAL_SPAN_VH * window.innerHeight;
+	// Unlike the two scenes above, this one is NOT paced uniformly. Its stage
+	// boundaries were tuned for choreography (the tour is a long slow rotation;
+	// the peel is quick), while its captions vary from 51 to 389 characters --
+	// so scroll-per-progress-unit and scroll-per-word disagree by about 9x. Flat
+	// pacing either flashes the longest captions past unread or leaves the
+	// shortest ones parked on screen for hundreds of vh.
+	//
+	// So each caption gets scroll of its own: a term for its text (reading time)
+	// plus a term for its animation span (so a long dissolve is not rushed just
+	// because it is captioned briefly), normalised to a fixed total page height.
+	// Deriving this from CAPTIONS rather than hardcoding a table means editing
+	// the narrative re-paces the scroll automatically.
+	const AZIMUTHAL_TOTAL_VH = 2900;
+	const VH_PER_CHAR = 1;
+	const VH_PER_PROGRESS_UNIT = 300;
+	// The drag beat is interactive: the reader has to notice the invitation and
+	// act on it, which its 51 characters badly under-price.
+	const DRAG_FLOOR_VH = 180;
+
+	// Cumulative [progress, vh] breakpoints; scroll maps piecewise-linearly.
+	const AZIMUTHAL_PACING = (() => {
+		const weights = AZIMUTHAL_CAPTIONS.map(
+			(c) => VH_PER_CHAR * c.text.length + VH_PER_PROGRESS_UNIT * (c.end - c.start)
+		);
+		const isDrag = AZIMUTHAL_CAPTIONS.map((c) => c.start === TOUR_END);
+		const total = weights.reduce((a, b) => a + b, 0);
+		let heights = weights.map((w) => (w / total) * AZIMUTHAL_TOTAL_VH);
+
+		// Apply the drag floor in *final* vh, not to the raw weight -- raising a
+		// weight before normalising just scales the increase back out again.
+		// Whatever the floor adds is taken proportionally from the other beats so
+		// the page keeps its budgeted total height.
+		const dragIndex = isDrag.indexOf(true);
+		if (dragIndex >= 0 && heights[dragIndex] < DRAG_FLOOR_VH) {
+			const others = AZIMUTHAL_TOTAL_VH - heights[dragIndex];
+			const shrink = (AZIMUTHAL_TOTAL_VH - DRAG_FLOOR_VH) / others;
+			heights = heights.map((h, i) => (i === dragIndex ? DRAG_FLOOR_VH : h * shrink));
+		}
+
+		const stops = [{ progress: 0, vh: 0 }];
+		let cum = 0;
+		AZIMUTHAL_CAPTIONS.forEach((c, i) => {
+			cum += heights[i];
+			stops.push({ progress: c.end, vh: cum });
+		});
+		return stops;
+	})();
+
+	// Invert the table: scrolled distance -> progress.
+	function azimuthalProgressAt(traveledVh) {
+		const stops = AZIMUTHAL_PACING;
+		if (traveledVh <= 0) return 0;
+		const last = stops[stops.length - 1];
+		if (traveledVh >= last.vh) return last.progress;
+		let i = 1;
+		while (i < stops.length - 1 && stops[i].vh < traveledVh) i++;
+		const a = stops[i - 1];
+		const b = stops[i];
+		const t = b.vh === a.vh ? 0 : (traveledVh - a.vh) / (b.vh - a.vh);
+		return a.progress + t * (b.progress - a.progress);
 	}
 
 	function updateAzimuthalProgress() {
@@ -156,7 +218,8 @@
 		}
 		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
 		const traveled = window.scrollY - azimuthalSettleScrollY;
-		azimuthalProgress = Math.max(0, Math.min(ESCHER_END, traveled / AZIMUTHAL_SPAN_PX()));
+		const traveledVh = (traveled / window.innerHeight) * 100;
+		azimuthalProgress = Math.max(0, Math.min(ESCHER_END, azimuthalProgressAt(traveledVh)));
 	}
 
 	onMount(() => {
@@ -504,8 +567,11 @@
 	.trailing-spacer-sphere {
 		height: 720vh;
 	}
+	/* Matches AZIMUTHAL_TOTAL_VH (2900) plus a hold, so the completed Circle
+	   Limit tiling rests on screen instead of being scrolled off the instant
+	   its last stroke lands. */
 	.trailing-spacer-azimuthal {
-		height: 2900vh;
+		height: 3020vh;
 	}
 	.scene-panel {
 		flex: 1;

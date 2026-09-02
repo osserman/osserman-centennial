@@ -46,6 +46,58 @@
 	export const GEODESIC_END = 5.35;
 	export const SHIFT_END = 5.85;
 	export const ESCHER_END = 6.5;
+	// Exported so the narrative page can pace its scroll by how much text
+	// each beat actually carries. The animation spans were tuned for
+	// choreography, not for reading time, and the two disagree by ~9x --
+	// pacing uniformly would flash the longest captions past the reader.
+	export const CAPTIONS = [
+		{ start: 0, end: MERIDIANS_START, text: 'There are many different ways to view the surface of a sphere in 2 dimensions.' },
+		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'One starts by making twelve cuts, pole to pole — like scoring an orange before peeling it.' },
+		{ start: MERIDIANS_END, end: TISSOT_END, text: "We can also add some equally sized circles on the surface that we'll track as we look at look at different versions of our map."},
+		{ start: TISSOT_END, end: SPLIT_START, text: "Now well peel each segments up towards the north pole, and press them flat." },
+		{ start: SPLIT_START, end: SPLIT_END, text: 'With the Noth Pole in the center we can make a circular map of the world...' },
+		{ start: SPLIT_END, end: FLATTEN_END, text: 'by streching out each segment to meet eachother. Look how increasing distorted our reference circles are now.' },
+		{ start: FLATTEN_END, end: EQUATOR_END, text: 'The whole rim is the south pole. The equator (the blue circle) is spaced half way from the center of our circular map to the edge.' },
+		{
+			start: EQUATOR_END,
+			end: ANGLES_END,
+			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the South Pole.'
+		},
+		{ start: ANGLES_END, end: TOUR_END, text: 'But these lines - both the equator and "parallel lines" shift as we rotate the center of the map to some places Osserman spent time.' },
+		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either view to put yourself at the center.' },
+		{
+			start: DRAG_END,
+			end: STEREO_END,
+			text: "Now that we've explored this view of the world, lets look at a related one."
+		},
+
+		{
+			start: STEREO_END,
+			end: ZOOM_END,
+			text: "If we want to make our reference circles circular once again we can achieve that by stretch the map out in all directions. But in doing so our map is no longer finite, as the South Pole moves off the map to infinity."
+		},
+		{
+			start: ZOOM_END,
+			end: DISC_END,
+			text: 'This last view is a finite world that needs infinite paper we now turn towards a new map of a new surface. Instead of a mapping our sphere, a surface with constant positive curvature that can exist in 3-dimensional space, we turn towards a map of a surface with constant negative curvature, which would be infinite in three dimentional space. Our map of it however fits in a finite circle.'
+		},
+		{
+			start: DISC_END,
+			end: GEODESIC_END,
+			text: 'Here, instead of reference circles (all of the same size on actual surface) growing as they extend from the center, here they shrink. The outer rim of the cirle, instead of the representing a pole opposite the center, represent all points that are infinitely far away in the space.'
+		},
+		{
+			start: GEODESIC_END,
+			end: SHIFT_END,
+			text: 'Infinitely long lings in our space appear as arcs, only looking straight when they pass through they center. '
+		},
+		{
+			start: SHIFT_END,
+			end: ESCHER_END,
+			text: 'This disk - the Poincaré disk - which represents an infinite negatively curved space, become the inspriration for the endless tesselations of MC Escher in his "Circle Limit" works.'
+		}
+	];
+
 </script>
 
 <script>
@@ -1447,53 +1499,6 @@
 		};
 	});
 
-	const CAPTIONS = [
-		{ start: 0, end: MERIDIANS_START, text: 'There are many different ways to view the surface of a sphere in 2 dimensions.' },
-		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'One starts by making twelve cuts, pole to pole — like scoring an orange before peeling it.' },
-		{ start: MERIDIANS_END, end: TISSOT_END, text: "We can also add some equally sized circles on the surface that we'll track as we look at look at different versions of our map."},
-		{ start: TISSOT_END, end: SPLIT_START, text: "Now well peel each segments up towards the north pole, and press them flat." },
-		{ start: SPLIT_START, end: SPLIT_END, text: 'With the Noth Pole in the center we can make a circular map of the world...' },
-		{ start: SPLIT_END, end: FLATTEN_END, text: 'by streching out each segment to meet eachother. Look how increasing distorted our reference circles are now.' },
-		{ start: FLATTEN_END, end: EQUATOR_END, text: 'The whole rim is the south pole. The equator (the blue circle) is spaced half way from the center of our circular map to the edge.' },
-		{
-			start: EQUATOR_END,
-			end: ANGLES_END,
-			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the South Pole.'
-		},
-		{ start: ANGLES_END, end: TOUR_END, text: 'But these lines - both the equator and "parallel lines" shift as we rotate the center of the map to some places Osserman spent time.' },
-		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either view to put yourself at the center.' },
-		{
-			start: DRAG_END,
-			end: STEREO_END,
-			text: "Now that we've explored this view of the world, lets look at a related one."
-		},
-
-		{
-			start: STEREO_END,
-			end: ZOOM_END,
-			text: "If we want to make our reference circles circular once again we can achieve that by stretch the map out in all directions. But in doing so our map is no longer finite, as the South Pole moves off the map to infinity."
-		},
-		{
-			start: ZOOM_END,
-			end: DISC_END,
-			text: 'This last view is a finite world that needs infinite paper we now turn towards a new map of a new surface. Instead of a mapping our sphere, a surface with constant positive curvature that can exist in 3-dimensional space, we turn towards a map of a surface with constant negative curvature, which would be infinite in three dimentional space. Our map of it however fits in a finite circle.'
-		},
-		{
-			start: DISC_END,
-			end: GEODESIC_END,
-			text: 'Here, instead of reference circles (all of the same size on actual surface) growing as they extend from the center, here they shrink. The outer rim of the cirle, instead of the representing a pole opposite the center, represent all points that are infinitely far away in the space.'
-		},
-		{
-			start: GEODESIC_END,
-			end: SHIFT_END,
-			text: 'Infinitely long lings in our space appear as arcs, only looking straight when they pass through they center. '
-		},
-		{
-			start: SHIFT_END,
-			end: ESCHER_END,
-			text: 'This disk - the Poincaré disk - which represents an infinite negatively curved space, become the inspriration for the endless tesselations of MC Escher in his "Circle Limit" works.'
-		}
-	];
 	const captionOpacity = (start, end, prog) => {
 		if (prog < start || prog > end) return 0;
 		const fade = Math.min(0.12, (end - start) * 0.28) || 0.001;
