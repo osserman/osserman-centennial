@@ -1,158 +1,288 @@
 <script module>
-	// Stage boundaries. This is a rebuild of the first (Three.js) attempt at
-	// this scene as a native 2D scene: a d3-geo projection rendered to
-	// Canvas2D, rather than a hand-rolled 3D globe + custom projection math.
-	// That gets three things "for free" that were the hardest parts of the
-	// first version to get right: d3.geoPath's built-in antimeridian/pole
-	// clipping (no more manually detecting and dropping segments near the
-	// antipode singularity), correct rendering of great circles all the way
-	// to the projection's edge (same clipping machinery), and versor.js's
-	// quaternion-based drag-to-rotate (no gimbal-lock/pole issues, the exact
-	// technique from the reference notebook the user linked:
-	// https://observablehq.com/@vpascual/draggable-svg-world-map).
+	// Map-projection sequence.
 	//
-	// Per explicit direction, the globe-to-map transition is a *jump cut* for
-	// now, not an animated peel/stretch -- that's a separate open design
-	// question being explored elsewhere. So there are only 3 stages here,
-	// not 5.
-	export const ROTATE_END = 0.18; // idle-spinning orthographic globe
-	export const TISSOT_END = 0.52; // (post jump-cut) fixed-size distortion circles fade in, hold, fade out
-	export const CIRCLES_END = 0.9; // the equator + the two great circles draw themselves
-	// Past 1.0: dragEnabled (set by the parent once scrolled fully through,
-	// same handoff ParallelPostulateScene uses) opens the drag interaction.
+	//   1. [0 .. MERIDIANS_START]  shaded globe, side view, spinning to rest
+	//   2. [.. MERIDIANS_END]      12 orange cuts draw in, pole to pole
+	//   3. [.. TISSOT_END]         same-size circles down ONE gore's centre
+	//   4. [.. SPLIT_START]        brief hold on the finished globe
+	//   5. [.. SPLIT_END]          globe tilts to the pole view WHILE it
+	//                              shrinks left and the gore map arrives
+	//   6. [.. FLATTEN_END]        gores close into azimuthal equidistant;
+	//                              the rim becomes the south pole
+	//   7. [.. EQUATOR_END]        the equator draws in on both panels
+	//   8. [.. ANGLES_END]         all but two adjacent meridians fade;
+	//                              right-angle marks at their equator crossings
+	//   9. [.. TOUR_END]           recentres on four places Osserman lived
+	//  10. past TOUR_END           free rotation (drag either panel)
 	//
-	// A second scripted sequence picks back up once the reader is done
-	// exploring: dragging closes, the view eases back to the north pole,
-	// the great circles/equator fade out, and a spherical-triangle
-	// tessellation grows outward from the pole. DRAG_END is exported so the
-	// parent can gate dragEnabled to the [1, DRAG_END) window instead of
-	// leaving it on forever.
-	export const DRAG_END = 1.35; // free-drag exploration window closes here
-	export const RETURN_END = 1.5; // eased back to pole-centered + lines fully faded by here
-	//
-	// A third act: the Tissot circles and great circles reappear (already
-	// fully formed, not re-growing from scratch), and once they're back the
-	// projection itself morphs from azimuthal equidistant to stereographic
-	// -- same center, same angular bearings, only the radial spacing
-	// changes -- before the tessellation takes over.
-	export const MORPH_REVEAL_END = 1.65; // circles + great circles fully back by here (still equidistant)
-	export const MORPH_END = 2.05; // projection fully morphed to stereographic by here
-	export const TESSELLATE_END = 2.4; // tessellation fully grown by here -- the scene's overall max progress
+	// Both panels are driven by ONE geographic view point, so they always
+	// show the same place -- verified that the pole-native flat projection
+	// and the equator-native globe centre the same (lon,lat) given their
+	// respective rotations.
+	export const MERIDIANS_START = 0.2;
+	export const MERIDIANS_END = 0.36;
+	export const TISSOT_END = 0.52;
+	export const SPLIT_START = 0.62;
+	export const SPLIT_END = 1;
+	export const FLATTEN_END = 1.3;
+	export const EQUATOR_END = 1.45;
+	export const ANGLES_END = 1.7;
+	export const TOUR_END = 2.6;
+	//  11. [.. DRAG_END]       free rotation
+	//  12. [.. RETURN_END]     back to the pole; all twelve meridians return
+	//  13. [.. STEREO_END]     morph to stereographic -- shapes become true
+	//                          again, but the map runs off the page
+	//  14. [.. ZOOM_END]       keep zooming out; the inhabited world dwindles
+	//  15. [.. DISC_END]       cut to the Poincare disc: the mirror case --
+	//                          an infinite surface inside a finite circle
+	//  16. [.. GEODESIC_END]   its straight lines, meeting the rim at 90 deg
+	//  17. [.. SHIFT_END]      move the centre, exactly as on the map
+	//  18. [.. ESCHER_END]     the tiling construction Escher worked from
+	export const DRAG_END = 3.0;
+	export const RETURN_END = 3.25;
+	export const STEREO_END = 3.8;
+	export const ZOOM_END = 4.35;
+	export const DISC_END = 4.85;
+	export const GEODESIC_END = 5.35;
+	export const SHIFT_END = 5.85;
+	export const ESCHER_END = 6.5;
 </script>
 
 <script>
 	import { onMount } from 'svelte';
-	import { geoOrthographic, geoAzimuthalEquidistant, geoProjection, geoPath, geoCircle, geoArea, geoDistance } from 'd3-geo';
+	import {
+		geoOrthographic,
+		geoProjection,
+		geoPath,
+		geoCircle,
+		geoArea,
+		geoDistance,
+		geoClipAntimeridian
+	} from 'd3-geo';
 	import { pointer } from 'd3-selection';
 	import versor from 'versor';
+	import { geoPolarPetalPreclip } from 'radial-petal-projection';
 	import { activePalette } from '$lib/palette.js';
-	import { coastlines } from '$lib/coastlines.js';
+	import { landFeatures } from '$lib/coastlines.js';
 
-	let { progress = 0, dragEnabled = false, debug = false } = $props();
+	// The stereographic morph's framing knobs, exposed so they can be tuned
+	// live from the projection lab. Defaults are the current values.
+	let {
+		progress = 0,
+		dragEnabled = false,
+		debug = false,
+		// how far out the map is clipped once fully stereographic (deg from
+		// the centre). Lower = less of the far hemisphere, so less Antarctica.
+		// Must stay ABOVE the deepest land colatitude (175.5) or Antarctica
+		// straddles the clip circle and floods (see MIN_LAT in coastlines.js).
+		stereoClipDeg = 176,
+		// The colatitude held at a fixed place in frame. It eases from
+		// ANCHOR_START (Antarctica's coast) to this target ACROSS the morph, so
+		// the framing opens out as the shapes deform: at stereoT = 0 it still
+		// matches the equidistant stage exactly (no jump), and by the end it
+		// has swung round to frame the inhabited north, leaving Antarctica far
+		// outside the picture.
+		anchorColat = 120,
+		// where that anchor sits, as a fraction of the frame radius, during
+		// the morph and after the zoom-out. RAISE holdMorph to push Antarctica
+		// toward (or past) the rim and show more ocean.
+		// 1.10 makes the morph scale-neutral: zoomMorph lands on 1.0, matching
+		// the start, so the ride is flat-then-out. Above ~1.10 the scale rises
+		// above its starting value, giving a zoom IN before the zoom out -- a
+		// visible bounce. Antarctica clears the frame either way, because
+		// flatRadius(153.5) alone grows 2.68 -> 8.49 across the morph.
+		holdMorph = 1.1,
+		// lands the pulled-back scale on 0.22
+		holdZoom = 0.2426
+	} = $props();
 
-	function remap(t, lo, hi) {
-		return Math.max(0, Math.min(1, (t - lo) / (hi - lo)));
-	}
-	function smoothstep(t) {
+	// Where the framing starts: Antarctica's coast, at the fraction of the
+	// frame radius it already occupies on the equidistant map. Fixed, so the
+	// pre-frame begins with no jump from the stage before it.
+	const ANCHOR_START = 153.5;
+	const HOLD_START = 0.853;
+
+	const D2R = Math.PI / 180;
+
+	const remap = (t, lo, hi) => Math.max(0, Math.min(1, (t - lo) / (hi - lo)));
+	const smoothstep = (t) => {
 		const x = Math.max(0, Math.min(1, t));
 		return x * x * (3 - 2 * x);
-	}
+	};
+	const lerp = (a, b, t) => a + (b - a) * t;
 
-	// Equator fades fully in during the first third of the [TISSOT_END,
-	// CIRCLES_END] window; the meridians grow during the rest of it.
-	const EQUATOR_FADE_END = TISSOT_END + (CIRCLES_END - TISSOT_END) * 0.35;
+	const LOBES = 12;
+	const SECTOR_DEG = 360 / LOBES;
+	const SECTOR = (2 * Math.PI) / LOBES;
+	const SPIN_TOTAL_DEG = 300;
 
-	// --- morphing between azimuthal equidistant and stereographic. Both are
-	// azimuthal projections sharing the exact same angular bearing (theta)
-	// at every point -- they differ only in the *radial* profile rho(c),
-	// the on-screen distance from center as a function of true angular
-	// distance c: equidistant is rho=c (linear); stereographic is
-	// rho=2*tan(c/2) (finite everywhere except the antipode itself, where
-	// it's genuinely infinite -- the well-known reason stereographic maps
-	// can't show a full hemisphere-and-more the way equidistant can).
-	// Interpolating that one scalar function linearly between the two forms
-	// and reusing the standard "azimuthal raw" x/y formula (see d3-geo's
-	// own azimuthal.js, same pattern) gives a continuous morph between them
-	// -- verified numerically (round-trip through forward+invert) before
-	// wiring in here.
-	function rhoAt(c, morphT) {
-		return c + (2 * Math.tan(c / 2) - c) * morphT;
-	}
-	function invertRho(target, morphT) {
-		// rho(c) is monotonic increasing on [0,pi) for every morphT in
-		// [0,1], so plain bisection suffices -- no closed form exists for
-		// the linear blend of two different radial profiles.
+	// Seams sit halfway between lobe centres: 15 deg + 30k.
+	const SEAM_LONS = Array.from({ length: LOBES }, (_, k) => 15 + k * SECTOR_DEG);
+	// The two lines kept for the right-angle demonstration are full GREAT
+	// CIRCLES, not single meridians -- a meridian is only half of one, and
+	// the whole point is that each line is closed and meets its neighbour at
+	// BOTH poles. A great circle through the poles is the meridian at L plus
+	// the one at L+180, and since seams sit every 30 degrees the antipodal
+	// half is always itself a seam (15 -> 195, 45 -> 225), so no extra
+	// geometry is needed -- just keep four of the twelve.
+	const KEPT_CIRCLES = [
+		[0, 6], // longitudes 15 and 195
+		[1, 7] // longitudes 45 and 225
+	];
+	const KEPT_SEAMS = KEPT_CIRCLES.flat();
+	// Which way each circle's INSIDE lies -- toward its partner. The right
+	// angles are drawn in that quadrant so they read the way the parallel
+	// lines were introduced on the sphere earlier: the two interior angles
+	// with the equator, both square, on the side where the lines are heading
+	// before they meet. Marking the outside angles instead would be equally
+	// true and say nothing. Derived from the two circles' actual longitudes
+	// (shortest signed separation) rather than hard-coded, so it stays right
+	// if the chosen pair ever changes.
+	const CIRCLE_INWARD = (() => {
+		const a = SEAM_LONS[KEPT_CIRCLES[0][0]];
+		const b = SEAM_LONS[KEPT_CIRCLES[1][0]];
+		const d = Math.sign(((b - a + 540) % 360) - 180);
+		return [d, -d];
+	})();
+
+	// ---------------------------------------------------------------------
+	// The flat panel's projection. r = rho throughout (it is already flat);
+	// only the gore WIDTH morphs:
+	//
+	//   wT = 1  ->  w = sin(rho)/rho   the orange-peel gores
+	//   wT = 0  ->  w = 1              azimuthal equidistant (a full disc)
+	//
+	// Verified: at wT=1 this reproduces geoPolarPetal().profile('gore') to
+	// 0.00px, and the twelve gores' coverage of the bounding disc sweeps
+	// 40.5% (= 4/pi^2, the equal-area value) up to 99.9% as they close.
+	// ---------------------------------------------------------------------
+	const goreW = (rho) => (rho < 1e-9 ? 1 : Math.sin(rho) / rho);
+
+	// Radial profile. Equidistant keeps r = rho (true distance from the
+	// centre, which is the whole selling point of the map so far).
+	// Stereographic swaps it for r = 2*tan(rho/2): shapes come back true
+	// (it is conformal) at the cost of distance, and because tan runs away
+	// the picture has no outer edge at all.
+	const flatRadius = (rho, stereoT) => rho + (2 * Math.tan(rho / 2) - rho) * stereoT;
+	function invFlatRadius(target, stereoT) {
 		let lo = 0,
-			hi = Math.PI - 1e-6;
-		for (let i = 0; i < 40; i++) {
+			hi = Math.PI - 1e-7;
+		for (let i = 0; i < 60; i++) {
 			const mid = (lo + hi) / 2;
-			if (rhoAt(mid, morphT) < target) lo = mid;
+			if (flatRadius(mid, stereoT) < target) lo = mid;
 			else hi = mid;
 		}
 		return (lo + hi) / 2;
 	}
-	function azimuthalMorphRaw(morphT) {
-		const project = (lambda, phi) => {
-			const cosPhi = Math.cos(phi),
-				sinPhi = Math.sin(phi);
-			const cosLambda = Math.cos(lambda),
-				sinLambda = Math.sin(lambda);
-			const c = Math.acos(Math.max(-1, Math.min(1, cosPhi * cosLambda)));
-			const k = c > 1e-9 ? rhoAt(c, morphT) / Math.sin(c) : 1;
-			return [k * cosPhi * sinLambda, k * sinPhi];
+	function petalMorphRaw(wT, stereoT = 0) {
+		const forward = (lambda, phi) => {
+			const rho = Math.PI / 2 - phi;
+			const w = 1 + (goreW(rho) - 1) * wT;
+			const l0 = Math.round(lambda / SECTOR) * SECTOR;
+			const theta = l0 + (lambda - l0) * w;
+			const r = flatRadius(rho, stereoT);
+			return [r * Math.cos(theta), r * Math.sin(theta)];
 		};
-		// geoProjection wires up .invert() automatically when the raw
-		// project function carries one, matching d3-geo's own convention
-		// (see azimuthalInvert in its source) -- needed here only for the
-		// continent-label visibility check below, since dragging is closed
-		// by the time this stage runs.
-		project.invert = (x, y) => {
-			const z = Math.hypot(x, y);
-			const c = invertRho(z, morphT);
+		forward.invert = (x, y) => {
+			const rho = invFlatRadius(Math.hypot(x, y), stereoT);
+			const w = 1 + (goreW(rho) - 1) * wT;
+			const theta = Math.atan2(y, x);
+			const l0 = Math.round(theta / SECTOR) * SECTOR;
+			return [l0 + (w > 1e-9 ? (theta - l0) / w : 0), Math.PI / 2 - rho];
+		};
+		return forward;
+	}
+	// Stereographic must stop short of the antipode (it is at infinity).
+	// 172 deg still puts the edge ~9x beyond the framed disc, which is what
+	// sells "this keeps going".
+
+
+	// Once the gores have closed the lobe structure is irrelevant (theta =
+	// lambda everywhere), so the flat map is just an ordinary azimuthal
+	// projection -- and it can be written EQUATOR-NATIVE, in the standard d3
+	// form centred on (0,0).
+	//
+	// That matters because d3's clipAngle clips a circle around the rotated
+	// ORIGIN. Against the pole-native raw (whose centre is the rotated pole,
+	// 90 deg away) it clips the wrong region entirely -- which is what cut
+	// away the ocean and Antarctica the moment the gores finished closing.
+	// Verified this form reproduces the pole-native one to 1e-13 when paired
+	// with rotate([-lon,-lat,0]) and no angle offset.
+	function flatRawEquatorNative(stereoT) {
+		const forward = (lambda, phi) => {
+			const cy = Math.cos(phi);
+			const cosc = Math.max(-1, Math.min(1, Math.cos(lambda) * cy));
+			const c = Math.acos(cosc);
+			const k = c < 1e-9 ? 1 : flatRadius(c, stereoT) / Math.sin(c);
+			return [k * cy * Math.sin(lambda), k * Math.sin(phi)];
+		};
+		forward.invert = (x, y) => {
+			const r = Math.hypot(x, y);
+			const c = invFlatRadius(r, stereoT);
 			const sc = Math.sin(c),
 				cc = Math.cos(c);
-			return [Math.atan2(x * sc, z * cc), Math.asin(z ? (y * sc) / z : 0)];
+			return [Math.atan2(x * sc, r * cc), r === 0 ? 0 : Math.asin(Math.max(-1, Math.min(1, (y * sc) / r)))];
 		};
-		return project;
-	}
-	// Interpolated clip angle: equidistant can honestly show almost all the
-	// way to the antipode (rho stays finite, ~pi), but stereographic's rho
-	// grows without bound approaching it -- a fixed pixel scale would send
-	// the edge of the map shooting off past the canvas. Clipping earlier as
-	// morphT increases is what real stereographic maps do too (never shown
-	// anywhere near a full sphere), not a workaround for a limitation.
-	const CLIP_DEG_EQUIDISTANT = 179.8;
-	const CLIP_DEG_STEREOGRAPHIC = 150;
-	function morphClipDeg(morphT) {
-		return CLIP_DEG_EQUIDISTANT + (CLIP_DEG_STEREOGRAPHIC - CLIP_DEG_EQUIDISTANT) * morphT;
+		return forward;
 	}
 
-	// Land as closed polygons (each ring in coastlines.js is already closed,
-	// first point === last) so d3.geoPath can fill them -- solid continents
-	// read far more clearly than stroked outlines did in the first version.
-	// d3-geo's spherical clipping needs each exterior ring wound so its
-	// interior area is the *smaller* of the two regions the ring divides the
-	// sphere into; coastlines.js was never checked for this, and some rings
-	// came out backwards, which only became visually catastrophic (whole
-	// map's fill inverted -- ocean filled, land punched out) for certain
-	// rotations, since a wrongly-wound ring's effective "interior" depends
-	// on how it interacts with the clip circle at the current rotation.
-	// geoArea reports > 2*pi (more than half the sphere) exactly when a ring
-	// is wound backwards for a region that's actually small; reverse those.
-	const land = {
-		type: 'FeatureCollection',
-		features: coastlines.map((ring) => {
-			let coords = ring.map(([lat, lon]) => [lon, lat]);
-			if (geoArea({ type: 'Polygon', coordinates: [coords] }) > 2 * Math.PI) coords = coords.slice().reverse();
-			return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } };
-		})
-	};
+	// ---------------------------------------------------------------------
+	// Geometry
+	// ---------------------------------------------------------------------
+	function meridianArc(lon, grow = 1) {
+		const n = 90;
+		const steps = Math.max(1, Math.round(n * grow));
+		const coords = [];
+		for (let i = 0; i <= steps; i++) coords.push([lon, 90 - (180 * i) / n]);
+		return { type: 'LineString', coordinates: coords };
+	}
+	function parallelLine(lat) {
+		const coords = [];
+		for (let i = 0; i <= 180; i++) coords.push([-180 + i * 2, lat]);
+		return { type: 'LineString', coordinates: coords };
+	}
+	const equatorLine = parallelLine(0);
+	// The south pole, drawn just shy of it. Under this projection the pole is
+	// not a point but the outer boundary, so this renders as twelve tiny arcs
+	// at the gore tips and opens into the full rim as they close -- the same
+	// geometry doing both jobs, with no special-casing.
+	// Just inside the clip boundary. At -89.9 it sits exactly ON it and gets
+	// dropped, which is why the south-pole ring had gone missing.
+	const southRimLine = parallelLine(-89.5);
 
-	// Continent labels -- rough, hand-picked label points (not computed
-	// polygon centroids; coastlines.js isn't grouped by continent, and a
-	// true area-weighted centroid would land in odd places anyway for
-	// sprawling/concave shapes like Asia or Oceania). Good enough for "label
-	// roughly in the middle of each continent."
+	// Each seam is drawn as the two gore edges that meet there, one just
+	// inside each neighbouring lobe. Drawing it as a single meridian instead
+	// renders it on only ONE of the two gores -- round(lambda/sector) sends
+	// longitude 15 into the lobe centred on 30, leaving lobe 0's matching
+	// edge bare -- which is what made the petal outlines look two-toned.
+	const SEAM_EPS = 1e-6;
+	const seamEdges = SEAM_LONS.map((lon) => [meridianArc(lon - SEAM_EPS), meridianArc(lon + SEAM_EPS)]);
+
+	// One spherical lune per gore, for the ocean fill. Built around a lobe
+	// centre and inset inside both seams for the same rounding reason. The
+	// run of points along the bottom keeps the tip/rim well-defined as the
+	// gores close.
+	function goreLune(centreLon) {
+		const a = centreLon - SECTOR_DEG / 2 + SEAM_EPS;
+		const b = centreLon + SECTOR_DEG / 2 - SEAM_EPS;
+		const n = 60;
+		const c = [];
+		for (let i = 0; i <= n; i++) c.push([a, 90 - (180 * i) / n]);
+		for (let i = 1; i < 20; i++) c.push([a + (b - a) * (i / 20), -90 + 0.05]);
+		for (let i = 0; i <= n; i++) c.push([b, -90 + (180 * i) / n]);
+		c.push([a, 90]);
+		const g = { type: 'Polygon', coordinates: [c] };
+		return geoArea(g) > 2 * Math.PI ? { type: 'Polygon', coordinates: [c.slice().reverse()] } : g;
+	}
+	const goreLunes = Array.from({ length: LOBES }, (_, k) => goreLune(k * SECTOR_DEG));
+
+	const TISSOT_LON = SPIN_TOTAL_DEG;
+	const TISSOT_LATS = [75, 60, 45, 30, 15, 0, -15, -30, -45, -60, -75];
+	const tissotCircles = TISSOT_LATS.map((lat) => ({
+		lat,
+		feature: geoCircle().center([TISSOT_LON, lat]).radius(3.5).precision(2)()
+	}));
+
 	const CONTINENT_LABELS = [
 		{ name: 'North America', lon: -100, lat: 45 },
 		{ name: 'South America', lon: -60, lat: -15 },
@@ -160,592 +290,1229 @@
 		{ name: 'Africa', lon: 20, lat: 5 },
 		{ name: 'Asia', lon: 90, lat: 45 },
 		{ name: 'Oceania', lon: 135, lat: -25 },
-		{ name: 'Antarctica', lon: 0, lat: -83 } // near, not at, -90 -- the true pole is the antipode of the default view center, right at the map's edge singularity
+		{ name: 'Antarctica', lon: 0, lat: -83 }
 	];
 
-	// The same two great circles from SphereGeometryScene, re-expressed as
-	// meridians at the same two longitudes (PLON_A/B there, in radians,
-	// converted to degrees here). Parameterized by theta (0..2*pi) exactly as
-	// greatCirclePoint(Q,theta) there does, but carried a full loop instead
-	// of just a half: theta=0 sits at the equator on this longitude, pi/2 is
-	// the north pole (this map's center), pi is the equator on the
-	// antipodal longitude, 3*pi/2 is the *south* pole -- which, centered on
-	// the north pole, is not a point but the map's entire outer boundary
-	// circle (every bearing at c=pi is simultaneously "the south pole"; this
-	// is the projection's genuine antipodal singularity, the same one
-	// clipAngle(179.8) below stops just short of -- so the line will visibly
-	// run out to the map's edge and jump to re-enter opposite roughly
-	// itself, rather than pass through a single point, since there isn't
-	// one to pass through). 2*pi returns to the start.
-	const R2D = 180 / Math.PI;
-	const PLON_A_DEG = 0.5 * R2D;
-	const PLON_B_DEG = 0.75 * R2D;
-	function meridianLat(theta) {
-		if (theta <= Math.PI / 2) return theta * R2D;
-		if (theta <= (3 * Math.PI) / 2) return (Math.PI - theta) * R2D;
-		return (theta - 2 * Math.PI) * R2D;
-	}
-	function meridianLon(theta, lonDeg) {
-		return theta > Math.PI / 2 && theta <= (3 * Math.PI) / 2 ? lonDeg + 180 : lonDeg;
-	}
-	function meridianArc(lonDeg, thetaFraction) {
-		const n = 360;
-		const thetaMax = Math.PI * 2 * thetaFraction;
-		const steps = Math.max(1, Math.round(n * thetaFraction));
-		const coords = [];
-		for (let i = 0; i <= steps; i++) {
-			const theta = (thetaMax * i) / steps;
-			coords.push([meridianLon(theta, lonDeg), meridianLat(theta)]);
-		}
-		return { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
-	}
-	const equatorCircle = geoCircle().center([0, 90]).radius(90).precision(1)();
+	// Places Osserman lived, visited in order before free rotation opens.
+	const TOUR = [
+		{ name: 'New York', lon: -73.94, lat: 40.73 },
+		{ name: 'Berkeley, California', lon: -122.27, lat: 37.87 },
+		{ name: 'Japan', lon: 138.25, lat: 36.2 },
+		{ name: 'Rome', lon: 12.5, lat: 41.9 }
+	];
 
-	// Spherical-triangle tessellation, grown outward from the north pole in
-	// the final stage: a "polar UV" mesh -- concentric rings of constant
-	// point-count at evenly-spaced colatitudes, fanned to the pole for the
-	// innermost ring and zigzag-stitched between consecutive rings
-	// otherwise. Triangles get more tangentially elongated the further out
-	// they are (constant point count, growing circumference) rather than
-	// staying equilateral -- a deliberate simplicity tradeoff over a true
-	// geodesic (icosahedral) subdivision, acceptable since the point here is
-	// "a tessellation expanding from a point," not uniform triangle size.
-	// Built once; each triangle carries a `ring` index used to reveal the
-	// mesh outward ring-by-ring as the tessellation stage progresses.
-	const TESS_RING_COUNT = 16;
-	const TESS_MAX_C_DEG = 140; // stays inside CLIP_DEG_STEREOGRAPHIC (150deg), since the tessellation is drawn on the fully-morphed (stereographic) projection
-	const TESS_N = 20; // points per ring (constant)
-	function tessRingPoints(ringIndex) {
-		const c = (TESS_MAX_C_DEG * (ringIndex + 1)) / TESS_RING_COUNT;
-		const lat = 90 - c;
-		return Array.from({ length: TESS_N }, (_, j) => [(360 * j) / TESS_N, lat]); // [lon,lat]
-	}
-	function buildTessellation() {
-		const rings = Array.from({ length: TESS_RING_COUNT }, (_, i) => tessRingPoints(i));
-		const triangles = [];
-		const pole = [0, 90];
-		const tri = (ring, a, b, c) => triangles.push({ ring, coords: [a, b, c, a] });
-		for (let j = 0; j < TESS_N; j++) tri(0, pole, rings[0][j], rings[0][(j + 1) % TESS_N]);
-		for (let i = 0; i < TESS_RING_COUNT - 1; i++) {
-			const inner = rings[i],
-				outer = rings[i + 1];
-			for (let j = 0; j < TESS_N; j++) {
-				const a = inner[j],
-					b = inner[(j + 1) % TESS_N],
-					c = outer[j],
-					d = outer[(j + 1) % TESS_N];
-				tri(i + 1, a, c, d);
-				tri(i + 1, a, d, b);
-			}
-		}
-		return triangles;
-	}
-	const tessTriangles = buildTessellation();
-
-	// Fixed-size ("Tissot's indicatrix"-style) circles: the same true
-	// angular radius on the globe, placed every 10 degrees of latitude down
-	// a single reference meridian. Because this projection's distortion
-	// depends only on angular distance from the pole (not on longitude),
-	// one meridian's worth of circles shows the full range -- genuinely
-	// undistorted near the pole (the projection's center), progressively
-	// stretched tangentially further out, exactly the shape distortion the
-	// map itself is introducing rather than a color standing in for it.
-	const TISSOT_LON_DEG = 0;
-	const TISSOT_RADIUS_DEG = 3.5;
-	const TISSOT_LATS = [90, 80, 70, 60, 50, 40, 30, 20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80];
-	const tissotCircles = TISSOT_LATS.map((lat) => geoCircle().center([TISSOT_LON_DEG, lat]).radius(TISSOT_RADIUS_DEG).precision(2)());
-
-	// --- projection rotation, [lambda, phi, gamma] degrees. Default centers
-	// on the north pole: rotate([-lon0,-lat0]) with (lat0,lon0)=(90,0). ---
-	let rotate = $state([0, -90, 0]);
-	const SPIN_TOTAL_DEG = 200;
-
-	// Separate roll control (gamma, the third Euler angle): spins the map
-	// in-plane around whatever point drag has centered, independent of
-	// recentering itself -- e.g. drag your city to the middle, then roll
-	// until north points up for a locally-familiar view. Deliberately a
-	// plain assignment to rotate[2], not routed through versor.js at all:
-	// rolling around the already-centered point is just an in-plane
-	// rotation, none of the drag's "which point is under the cursor"
-	// machinery applies.
-	function setRoll(deg) {
-		rotate = [rotate[0], rotate[1], deg];
-	}
-
-	// --- second scripted sequence: once free-drag exploration closes
-	// (progress >= DRAG_END), ease back to the scene's home orientation
-	// (north pole centered) rather than leaving the view wherever the
-	// reader last dragged it. `rotate` itself is left alone here (it still
-	// holds "wherever the reader last dragged to"; dragging is disabled by
-	// then anyway) -- the interpolation is a pure function of progress, so
-	// scrolling back up mid-return smoothly reverses it instead of jumping.
-	const HOME_ROTATE = [0, -90, 0];
-	let returnFromRotate = $state(null);
-	$effect(() => {
-		if (progress >= DRAG_END) {
-			if (returnFromRotate === null) returnFromRotate = [...rotate];
-		} else if (returnFromRotate !== null) {
-			returnFromRotate = null;
-		}
-	});
-	function effectiveRotate(prog) {
-		if (prog < DRAG_END || returnFromRotate === null) return rotate;
-		const t = smoothstep(remap(prog, DRAG_END, RETURN_END));
-		return versor.interpolate(returnFromRotate, HOME_ROTATE)(t);
-	}
+	const LARGEST_LAND_SPHERE_FRACTION = Math.max(...landFeatures.map((f) => geoArea(f))) / (4 * Math.PI);
 
 	let container, canvas, ctx;
-	let width = 0,
-		height = 0;
-	let orthographic, azimuthal;
+	let width = $state(0),
+		height = $state(0);
+	// Set while the reader is dragging; overrides the scripted view point.
+	let freeView = $state(null);
 
-	function layoutProjections() {
-		if (!width || !height) return;
-		const cx = width / 2,
-			cy = height / 2;
-		const k = Math.min(width, height) * 0.42;
-		orthographic = geoOrthographic().translate([cx, cy]).scale(k).clipAngle(90);
-		azimuthal = geoAzimuthalEquidistant()
-			.translate([cx, cy])
-			.scale(k / Math.PI)
-			.clipAngle(179.8);
+	function stageParams(prog) {
+		const spinLon = SPIN_TOTAL_DEG * smoothstep(remap(prog, 0, MERIDIANS_START));
+		// Tilt and split share one window, so the globe swings to the pole
+		// view as it shrinks aside and the gore map comes in.
+		const splitT = smoothstep(remap(prog, SPLIT_START, SPLIT_END));
+		const tiltLat = 90 * splitT;
+		const wT = 1 - smoothstep(remap(prog, SPLIT_END, FLATTEN_END));
+		// after the tour: settle back, restore the full set of cuts, then
+		// trade equidistance for conformality and let the map run away
+		const restoreT = smoothstep(remap(prog, DRAG_END, RETURN_END));
+		const stereoT = smoothstep(remap(prog, RETURN_END, STEREO_END));
+		const zoomT = smoothstep(remap(prog, STEREO_END, ZOOM_END));
+		const discT = smoothstep(remap(prog, ZOOM_END, DISC_END));
+		// Each element clears the stage before the next arrives, so the disc is
+		// never carrying three separate ideas at once.
+		const SETTLE = 0.18;
+		// circles: in with the disc, out as the geodesics arrive
+		const circlesT =
+			smoothstep(remap(prog, ZOOM_END, DISC_END)) * (1 - smoothstep(remap(prog, DISC_END, DISC_END + SETTLE)));
+		// geodesics: in, held through the centre shift, out before the tiling
+		const geoT =
+			smoothstep(remap(prog, DISC_END + SETTLE * 0.5, GEODESIC_END)) *
+			(1 - smoothstep(remap(prog, SHIFT_END, SHIFT_END + SETTLE)));
+		// the centre shift moves out and comes back, so the tiling is drawn
+		// centred rather than inheriting the offset from the beat before it
+		const shiftT =
+			smoothstep(remap(prog, GEODESIC_END, SHIFT_END)) *
+			(1 - smoothstep(remap(prog, SHIFT_END, SHIFT_END + SETTLE)));
+		const escherT = smoothstep(remap(prog, SHIFT_END + SETTLE, ESCHER_END));
+		const equatorT = smoothstep(remap(prog, FLATTEN_END, EQUATOR_END));
+		const focusT = smoothstep(remap(prog, EQUATOR_END, ANGLES_END));
+		// The right angles make their point while the view is still; once it
+		// starts turning they'd just be clutter riding along, so they go as
+		// the tour begins. The two great circles stay.
+		const rightAngleT = focusT * (1 - smoothstep(remap(prog, ANGLES_END, ANGLES_END + 0.06)));
+
+		// City tour: each leg travels along a great circle, then holds.
+		let viewLon = spinLon,
+			viewLat = tiltLat,
+			guided = false,
+			tourName = '',
+			tourNameAlpha = 0;
+		if (prog > ANGLES_END) {
+			const u = remap(prog, ANGLES_END, TOUR_END);
+			const s = Math.min(u * TOUR.length, TOUR.length - 1e-9);
+			const i = Math.floor(s);
+			const f = s - i;
+			const from = i === 0 ? [SPIN_TOTAL_DEG, 90] : [TOUR[i - 1].lon, TOUR[i - 1].lat];
+			const to = [TOUR[i].lon, TOUR[i].lat];
+			// Component-wise, longitude the short way round -- NOT a great-circle
+			// interpolation. Longitude is degenerate at a pole (every meridian
+			// meets there), so a great circle leaves the pole already on the
+			// destination's meridian: the first leg begins at the north pole,
+			// so longitude leapt 300 -> -73.9 in a single frame while latitude
+			// had barely moved, and the map appeared to snap round.
+			const travel = smoothstep(remap(f, 0, 0.55));
+			const dLon = ((to[0] - from[0] + 540) % 360) - 180;
+			viewLon = from[0] + dLon * travel;
+			viewLat = from[1] + (to[1] - from[1]) * travel;
+			tourName = TOUR[i].name;
+			tourNameAlpha = smoothstep(remap(f, 0.45, 0.65)) * (1 - smoothstep(remap(f, 0.92, 1)));
+			guided = true;
+		}
+		if (freeView) {
+			viewLon = freeView[0];
+			viewLat = freeView[1];
+			guided = true;
+			tourName = '';
+			tourNameAlpha = 0;
+		}
+		// The gore seams only coincide with the geographic meridians while the
+		// flat projection is pole-centred -- off the pole its lobe structure is
+		// measured in the rotated frame, and the orange cuts would drift off
+		// the gore edges. So the flat panel holds at the pole through the tilt
+		// and only follows the view once the tour takes over, by which point
+		// the globe has caught up with it anyway.
+		// Ease back to the pole once free rotation closes, so the stereographic
+		// morph starts from the same view the reader already understands.
+		if (restoreT > 0) {
+			// Interpolate longitude and latitude separately, longitude the short
+			// way round. A great-circle interpolation to the pole looks wrong
+			// here: longitude is degenerate AT the pole, so the map spins as it
+			// arrives and then snaps to the home orientation at the last frame.
+			const from = freeView || [viewLon, viewLat];
+			let dLon = ((SPIN_TOTAL_DEG - from[0] + 540) % 360) - 180;
+			viewLon = from[0] + dLon * restoreT;
+			viewLat = from[1] + (90 - from[1]) * restoreT;
+			tourName = '';
+			tourNameAlpha = 0;
+		}
+		const globeLat = viewLat;
+		const flatLat = restoreT > 0 ? viewLat : guided ? viewLat : 90;
+		return {
+			viewLon, viewLat, globeLat, flatLat, splitT, wT, equatorT, focusT, rightAngleT,
+			restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha
+		};
 	}
 
-	function currentProjection(prog) {
-		const flat = prog >= ROTATE_END;
-		const [lambda, phi, gamma] = effectiveRotate(prog);
+	// A seam's opacity: the two kept meridians stay, the rest fade out as the
+	// right-angle demonstration takes over.
+	// The ten set aside for the right-angle demonstration return afterwards.
+	const seamAlpha = (k, focusT, restoreT = 0) =>
+		KEPT_SEAMS.includes(k) ? 1 : 1 - focusT * (1 - restoreT);
+
+	// The flat panel needs TWO projections, because the two kinds of geometry
+	// need different clipping and no single preclip serves both:
+	//
+	//  * lines (seam edges, equator, south rim) cross seams and must be SPLIT
+	//    at them -- that's geoPolarPetalPreclip, wrapped in the antimeridian
+	//    clip exactly as the library's own line preclip is.
+	//
+	//  * fills must NOT use geoPolarPetalFillPreclip here. That preclip
+	//    reconstructs rings by walking a lobe's boundary, and it is only
+	//    valid at the true gore width. At intermediate widths a ring that
+	//    encircles the pole -- Antarctica -- closes the wrong way round and
+	//    comes back as its own COMPLEMENT, flooding the entire disc with
+	//    land. Measured: with it, Antarctica covers 100% of both gores and
+	//    gaps at every intermediate width; without it, a sane 2%-13% of gore
+	//    area, spilling only into the gaps via chords across the cuts.
+	//    Those chords are then removed by clipping to the gores on the
+	//    canvas, which is exact and width-independent.
+	function buildFlat(wT, viewLon, viewLat, scale, cx, cy, stereoT = 0) {
+		const base = () =>
+			geoProjection(petalMorphRaw(wT, stereoT))
+				.scale(scale)
+				.translate([cx, cy])
+				// centre is read in the rotated frame, so it stays pinned to the
+				// raw's own natural centre (its pole); the view moves via rotate
+				.center([0, 90])
+				.rotate([-viewLon, 90 - viewLat, 0])
+				.angle(-90);
+		// Once the gores have closed there are no seams to split at, so the
+		// petal preclip is unnecessary -- and dropping it frees up clipAngle,
+		// which stereographic genuinely needs (the antipode is at infinity).
+		if (wT <= 0.02) {
+			// Tighten the clip almost at once. Held at 179.9 the meridians run
+			// to within a whisker of the antipode, where tan is astronomical --
+			// so they shot off the page while the continents had barely moved.
+			// Clamping early makes the whole map expand as one piece.
+			// The ANGULAR clip stays generous and constant so no polygon ever
+			// straddles it (see the note in coastlines.js). What the reader
+			// actually sees is bounded on the canvas instead, by a plain
+			// circular clip -- exact, and it can tighten freely as the
+			// stereographic map runs away without risking the complement bug.
+			// CONSTANT, not eased. Easing it down from 179.9 fought the radial
+			// growth: the clip shrinks the edge while stereographic expands it,
+			// and right at 180 -- where tan is most violent -- the two crossed
+			// over. The edge shot to 1.28 frames and then fell back to 1.14,
+			// which is the bulge. Holding the clip fixed makes the edge grow
+			// monotonically the whole way. The cost is that the equidistant map
+			// is cropped at 176 rather than 179.9, about 2% shy of the true
+			// antipode -- under the eye's threshold, and the clip can never
+			// reach 180 anyway since stereographic sends that point to infinity.
+			// 179.9 until the morph actually starts, then the tighter clip.
+			//
+			// Both parts matter. Easing BETWEEN them mid-morph caused a bulge
+			// (the clip shrinks the edge while stereographic expands it, and
+			// near 180 tan makes that fight violent). But holding the tight
+			// clip during the return caused a worse bug: off the pole,
+			// Antarctica's boundary swings out past 176 from the view centre,
+			// so it straddles the clip circle and resolves to its complement --
+			// flooding the map with land for viewLat 87.5..88.5, right in the
+			// middle of the rotation home. At 179.9 nothing straddles at any
+			// view latitude.
+			//
+			// So: switch once, at stereoT = 0, where the only visible change is
+			// a 2% sliver at the very rim rather than a moving boundary.
+			const clipDeg = stereoT > 0 ? stereoClipDeg : 179.9;
+			const proj = geoProjection(flatRawEquatorNative(stereoT))
+				.scale(scale)
+				.translate([cx, cy])
+				.rotate([-viewLon, -viewLat, 0])
+				.clipAngle(clipDeg);
+			return { proj, fillProj: proj, plain: true, horizonRad: clipDeg * D2R };
+		}
+		const lineProj = base();
+		lineProj.preclip((sink) => geoClipAntimeridian(geoPolarPetalPreclip(LOBES)(sink)));
+		return { proj: lineProj, fillProj: base() };
+	}
+
+	const buildGlobe = (viewLon, viewLat, scale, cx, cy) =>
+		geoOrthographic().scale(scale).translate([cx, cy]).rotate([-viewLon, -viewLat, 0]).clipAngle(90);
+
+	function drawRightAngle(path2, proj, lon, size, inward, visible) {
+		if (!visible) return;
+		const P = proj([lon, 0]);
+		if (!P || Number.isNaN(P[0])) return;
+		// North along the meridian, and along the equator TOWARD the other
+		// circle -- so the mark occupies the interior angle between the two
+		// lines rather than an arbitrary outer quadrant.
+		const A = proj([lon, 1.2]);
+		const B = proj([lon + 1.2 * inward, 0]);
+		if (!A || !B) return;
+		const unit = (p, q) => {
+			const dx = q[0] - p[0],
+				dy = q[1] - p[1];
+			const m = Math.hypot(dx, dy) || 1;
+			return [dx / m, dy / m];
+		};
+		const u = unit(P, A);
+		const v = unit(P, B);
+		ctx.beginPath();
+		ctx.moveTo(P[0] + u[0] * size, P[1] + u[1] * size);
+		ctx.lineTo(P[0] + (u[0] + v[0]) * size, P[1] + (u[1] + v[1]) * size);
+		ctx.lineTo(P[0] + v[0] * size, P[1] + v[1] * size);
+		ctx.stroke();
+	}
+
+	function drawMap(proj, o) {
+		const { radiusPx, flat, alpha, shade, meridianGrow, tissotT, cx, cy, labelAlpha, focusT, equatorT } = o;
+		if (alpha <= 0.01) return;
+		const pal = activePalette();
+		const path = geoPath(proj, ctx);
+		// fills go through their own projection on the flat panel (see buildFlat)
+		const fillPath = o.fillProj ? geoPath(o.fillProj, ctx) : path;
+		const viewCentre = proj.invert ? proj.invert([cx, cy]) : null;
+		const horizon = o.horizonRad ?? (flat ? Math.PI : 90 * D2R);
+		const onScreen = (lon, lat) => !viewCentre || geoDistance([lon, lat], viewCentre) <= horizon;
+
+		// ocean
+		ctx.globalAlpha = alpha;
+		ctx.fillStyle = pal.mapWater;
+		if (flat && !o.plain) {
+			ctx.strokeStyle = pal.mapWater;
+			ctx.lineWidth = 1;
+			for (const l of goreLunes) {
+				ctx.beginPath();
+				fillPath(l);
+				ctx.fill();
+				ctx.stroke();
+			}
+		} else {
+			ctx.beginPath();
+			path({ type: 'Sphere' });
+			ctx.fill();
+		}
+
+		// land. The guard rejects an impossible result: d3-geo's spherical
+		// clipping has a tangency case where a small ring sitting almost
+		// exactly on the clip limb resolves to its own COMPLEMENT and emits
+		// the whole clip circle, flooding the map. Reproduced with stock
+		// geoOrthographic too, and densifying doesn't avoid it. No landmass
+		// covers most of a hemisphere, so anything claiming to is the bug.
+		// GLOBE ONLY. The bug being guarded against is specific to d3-geo's
+		// clipCircle, which only the globe uses (via clipAngle); the flat
+		// panel clips at its seams instead and never floods -- swept every
+		// rotation and it peaks around 12% coverage.
+		//
+		// Applying it to the flat panel actively broke things: Antarctica
+		// encircles the pole, so under the seam preclip it comes back as a
+		// ring in ~17 reconstructed pieces, and summing their signed areas
+		// reports more than the whole disc even though the shape is right
+		// (its centroid sits ~1px from centre, as a symmetric ring should).
+		// The guard then suppressed it, which is why Antarctica was missing
+		// from the gores and only appeared once the map finished flattening.
+		const floodLimit = Math.PI * radiusPx * radiusPx * Math.max(0.5, LARGEST_LAND_SPHERE_FRACTION * 3);
+		ctx.fillStyle = pal.mapLand;
+		if (flat && !o.plain) {
+			// Confine land to the gores. Each lune covers exactly one lobe and
+			// never crosses a seam, so it projects cleanly with no preclip --
+			// which makes this clip exact at every gore width, and removes the
+			// chords land would otherwise draw across the gaps.
+			ctx.save();
+			ctx.beginPath();
+			for (const l of goreLunes) fillPath(l);
+			ctx.clip();
+			for (const f of landFeatures) {
+				ctx.beginPath();
+				fillPath(f);
+				ctx.fill();
+			}
+			ctx.restore();
+		} else {
+			for (const f of landFeatures) {
+				// GLOBE ONLY. On the flat map nothing straddles the clip circle
+				// (see MIN_LAT in coastlines.js), so the complement bug can't
+				// arise -- and Antarctica's area there is legitimately vast,
+				// because it contains the pole and stereographic sends the pole
+				// to infinity. Guarding it just deleted Antarctica.
+				if (!flat && Math.abs(path.area(f)) > floodLimit) continue;
+				ctx.beginPath();
+				path(f);
+				ctx.fill();
+			}
+		}
+
+		if (shade > 0.01 && !flat) {
+			ctx.save();
+			ctx.beginPath();
+			path({ type: 'Sphere' });
+			ctx.clip();
+			// Two CONCENTRIC gradients rather than one offset one. A radial
+			// gradient between two circles that don't share a centre is a
+			// cone, not a sphere: its falloff isolines bulge into a lobe with
+			// a visible edge, which read as a blob sitting on the globe --
+			// invisible against a light ocean, glaring against a dark one.
+			// Each pass here has its start and end circle on the same centre,
+			// so both fall off cleanly.
+			const s = shade * alpha;
+
+			// limb darkening: the sphere curving away at its edge
+			const limb = ctx.createRadialGradient(cx, cy, radiusPx * 0.5, cx, cy, radiusPx);
+			limb.addColorStop(0, 'rgba(0,0,0,0)');
+			limb.addColorStop(1, `rgba(0,0,0,${0.4 * s})`);
+			ctx.fillStyle = limb;
+			ctx.fillRect(cx - radiusPx, cy - radiusPx, radiusPx * 2, radiusPx * 2);
+
+			// highlight: soft, off-centre, but concentric about its own point
+			const lx = cx - radiusPx * 0.34,
+				ly = cy - radiusPx * 0.36;
+			const hi = ctx.createRadialGradient(lx, ly, 0, lx, ly, radiusPx * 1.2);
+			hi.addColorStop(0, `rgba(255,255,255,${0.15 * s})`);
+			hi.addColorStop(1, 'rgba(255,255,255,0)');
+			ctx.fillStyle = hi;
+			ctx.fillRect(cx - radiusPx, cy - radiusPx, radiusPx * 2, radiusPx * 2);
+			ctx.restore();
+		}
+
+		// the cuts
+		if (meridianGrow > 0) {
+			ctx.strokeStyle = pal.orange;
+			ctx.lineWidth = 2;
+			for (let k = 0; k < LOBES; k++) {
+				const a = alpha * 0.95 * seamAlpha(k, focusT, o.restoreT ?? 0);
+				if (a <= 0.01) continue;
+				ctx.globalAlpha = a;
+				if (flat) {
+					for (const edge of seamEdges[k]) {
+						ctx.beginPath();
+						path(edge);
+						ctx.stroke();
+					}
+				} else {
+					ctx.beginPath();
+					path(meridianArc(SEAM_LONS[k], meridianGrow));
+					ctx.stroke();
+				}
+			}
+		}
+
+		// the south pole -- a rim on the flat map, a point on the globe, so
+		// only drawn where it means something
+		// The south pole: a finite ring while the map is equidistant, and it
+		// flies away to infinity as stereographic takes over.
+		// The ring is only the SOUTH POLE while the view is centred on the
+		// north pole. Rotate away and the map's edge becomes the antipode of
+		// wherever you have moved to, so the ring stops meaning what the
+		// caption says it means -- it fades out with the tilt as well as with
+		// the stereographic morph.
+		const poleAlign = 1 - smoothstep(remap(Math.abs(90 - (o.viewLat ?? 90)), 0, 8));
+		const rimAlpha = (1 - smoothstep(remap(o.stereoT ?? 0, 0, 0.02))) * poleAlign;
+		if (flat && meridianGrow > 0 && rimAlpha > 0.01) {
+			ctx.strokeStyle = pal.orange;
+			ctx.lineWidth = 2;
+			ctx.globalAlpha = alpha * 0.95 * rimAlpha;
+			ctx.beginPath();
+			if (o.plain && o.edgePx) {
+				// Draw the ring at the map's ACTUAL edge, in screen space.
+				// As a geographic parallel it sat at colatitude 179.5 while the
+				// clip runs to 179.9 -- and Antarctica, which contains the pole,
+				// fills everything from its coastline out to that clip. So the
+				// ring appeared as a circle sitting INSIDE a band of Antarctica
+				// rather than bounding the map.
+				ctx.arc(cx, cy, o.edgePx, 0, Math.PI * 2);
+			} else {
+				path(southRimLine);
+			}
+			ctx.stroke();
+		}
+
+		// the equator
+		if (equatorT > 0.01) {
+			ctx.strokeStyle = pal.blue;
+			ctx.lineWidth = 2;
+			ctx.globalAlpha = alpha * equatorT * 0.95;
+			ctx.beginPath();
+			path(equatorLine);
+			ctx.stroke();
+		}
+
+		// Right angles wherever a kept great circle crosses the equator. Each
+		// circle crosses twice (once per half), so there are four in all --
+		// the globe hides whichever are round the back on its own.
+		if (o.rightAngleT > 0.01 && equatorT > 0.5) {
+			ctx.strokeStyle = pal.blue;
+			ctx.lineWidth = 2;
+			ctx.globalAlpha = alpha * o.rightAngleT;
+			KEPT_CIRCLES.forEach((circle, ci) => {
+				for (const k of circle) {
+					drawRightAngle(
+						path,
+						proj,
+						SEAM_LONS[k],
+						Math.max(7, radiusPx * 0.035),
+						CIRCLE_INWARD[ci],
+						onScreen(SEAM_LONS[k], 0)
+					);
+				}
+			});
+		}
+
+		// equal-size circles
+		if (tissotT > 0) {
+			ctx.fillStyle = pal.orange;
+			ctx.strokeStyle = pal.orange;
+			ctx.lineWidth = 1.25;
+			for (const { lat, feature } of tissotCircles) {
+				const delay = (Math.abs(lat) / 75) * 0.45;
+				const a = smoothstep(remap(tissotT, delay, delay + 0.55));
+				if (a <= 0.01) continue;
+				ctx.globalAlpha = alpha * a * 0.55;
+				ctx.beginPath();
+				path(feature);
+				ctx.fill();
+				ctx.globalAlpha = alpha * a * 0.95;
+				ctx.stroke();
+			}
+		}
+
+		// outline: the globe's own limb only -- the flat map's edge is the
+		// south pole rim drawn above
 		if (!flat) {
-			const spin = SPIN_TOTAL_DEG * remap(prog, 0, ROTATE_END);
-			orthographic.rotate([lambda + spin, phi, gamma]);
-			return { proj: orthographic, flat: false, morphT: 0 };
+			ctx.strokeStyle = pal.textPrimary ?? '#0b0b0b';
+			ctx.globalAlpha = alpha * 0.45;
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			path({ type: 'Sphere' });
+			ctx.stroke();
 		}
-		const morphT = smoothstep(remap(prog, MORPH_REVEAL_END, MORPH_END));
-		if (morphT <= 0) {
-			azimuthal.rotate([lambda, phi, gamma]);
-			return { proj: azimuthal, flat: true, morphT: 0 };
+
+		// The point the projection is currently centred on. Both panels are
+		// azimuthal about the same place, so this is literally the panel
+		// centre in each -- it marks the same spot on the globe and on the
+		// map, which is what ties the two together while the view moves.
+		if ((o.centreDot ?? 0) > 0.01) {
+			// Aqua, not orange. The cuts and the Tissot circles are already
+			// orange and the equator and right angles are blue; aqua is the
+			// only free hue well clear of both (54 deg from blue, 142 from
+			// orange -- violet and yellow each collide with one of them). The
+			// surface-coloured ring is the same halo trick the labels use, so
+			// it stays legible over land, ocean or a line.
+			const r = Math.max(4, radiusPx * 0.022);
+			ctx.globalAlpha = alpha * o.centreDot;
+			ctx.beginPath();
+			ctx.arc(cx, cy, r, 0, Math.PI * 2);
+			ctx.fillStyle = pal.aqua;
+			ctx.fill();
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = pal.surface;
+			ctx.stroke();
 		}
-		// Rebuilt each frame the morph is active -- geoProjection's
-		// constructor is cheap (no heavy precomputation), and this only
-		// runs on scroll/drag ticks, not a continuous animation loop.
-		const clipDeg = morphClipDeg(morphT);
-		const clipRad = (clipDeg * Math.PI) / 180;
-		const fixedRadius = Math.min(width, height) * 0.42;
-		const k = fixedRadius / rhoAt(clipRad, morphT);
-		const proj = geoProjection(azimuthalMorphRaw(morphT))
-			.translate([width / 2, height / 2])
-			.scale(k)
-			.clipAngle(clipDeg)
-			.rotate([lambda, phi, gamma]);
-		return { proj, flat: true, morphT };
+
+		if (labelAlpha > 0.01) {
+			// Scale the type with the map itself, so the labels stay pinned to
+			// their continents and dwindle along with them -- unreadable by the
+			// time the map has run away, which is the point of the beat.
+			const labelPx = Math.max(3, radiusPx * 0.045 * (o.labelScale ?? 1));
+			ctx.font = `600 ${labelPx.toFixed(1)}px sans-serif`;
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			for (const c of CONTINENT_LABELS) {
+				if (!onScreen(c.lon, c.lat)) continue;
+				const p = proj([c.lon, c.lat]);
+				if (!p || Number.isNaN(p[0])) continue;
+				ctx.lineWidth = Math.max(1, labelPx * 0.22);
+				ctx.strokeStyle = pal.surface;
+				ctx.globalAlpha = alpha * labelAlpha * 0.85;
+				ctx.strokeText(c.name, p[0], p[1]);
+				ctx.fillStyle = pal.textPrimary ?? '#0b0b0b';
+				ctx.globalAlpha = alpha * labelAlpha * 0.9;
+				ctx.fillText(c.name, p[0], p[1]);
+			}
+		}
+		ctx.globalAlpha = 1;
+	}
+
+	// ---------------------------------------------------------------------
+	// The Poincare disc. NOT a projection of the sphere -- a different space
+	// entirely, and the mirror of the stereographic case: stereographic puts
+	// a FINITE surface onto an INFINITE sheet, this puts an INFINITE surface
+	// inside a FINITE circle.
+	//
+	// Radial map r = tanh(d/2). tanh saturates at 1, so however far you walk
+	// the rim only creeps closer -- it is infinitely far away, and is not
+	// part of the space.
+	// ---------------------------------------------------------------------
+	const hypRadial = (d) => Math.tanh(d / 2);
+	// A circle of fixed hyperbolic radius p, centred d from the origin, is
+	// still a genuine circle on screen (the model is conformal) -- only its
+	// size can lie, which is exactly what we want to show.
+	function hypCircle(d, p) {
+		const near = hypRadial(d - p),
+			far = hypRadial(d + p);
+		return { c: (near + far) / 2, r: (far - near) / 2 };
+	}
+	// Geodesic through two ideal points on the rim: the circle orthogonal to
+	// the boundary, centre sec(h) along the bisector, radius tan(h). Verified
+	// to meet the rim at exactly 90 deg for every pair. A geodesic through
+	// the centre is the limiting case h -> pi/2: radius -> infinity, i.e. a
+	// straight diameter -- the same thing that happens on the flat map, where
+	// lines through the centre are the ones drawn straight.
+	function hypGeodesic(a, b) {
+		const m = (a + b) / 2;
+		let h = (b - a) / 2;
+		if (Math.abs(Math.cos(h)) < 1e-6) return null; // diameter
+		return { cx: Math.cos(m) / Math.cos(h), cy: Math.sin(m) / Math.cos(h), r: Math.abs(Math.tan(h)) };
+	}
+
+	function drawGeodesic(cx, cy, R, a, b, markAngles) {
+		const g = hypGeodesic(a, b);
+		if (!g) {
+			ctx.beginPath();
+			ctx.moveTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
+			ctx.lineTo(cx + R * Math.cos(b), cy + R * Math.sin(b));
+			ctx.stroke();
+			return;
+		}
+		const GX = cx + g.cx * R,
+			GY = cy + g.cy * R,
+			GR = g.r * R;
+		const a1 = Math.atan2(cy + R * Math.sin(a) - GY, cx + R * Math.cos(a) - GX);
+		const a2 = Math.atan2(cy + R * Math.sin(b) - GY, cx + R * Math.cos(b) - GX);
+		let d = a2 - a1;
+		while (d > Math.PI) d -= 2 * Math.PI;
+		while (d < -Math.PI) d += 2 * Math.PI;
+		// The anticlockwise flag is load-bearing: canvas goes counter-clockwise
+		// from start to end, so a negative delta would draw the MAJOR arc --
+		// the part lying outside the disc, which the clip then removes,
+		// leaving the geodesic invisible while its right-angle marks remained.
+		ctx.beginPath();
+		ctx.arc(GX, GY, GR, a1, a1 + d, d < 0);
+		ctx.stroke();
+		if (markAngles) {
+			// square the geodesic makes with the rim, drawn from the real
+			// tangents rather than assumed
+			for (const t of [a, b]) {
+				const P = [cx + R * Math.cos(t), cy + R * Math.sin(t)];
+				const inward = [-Math.cos(t), -Math.sin(t)];
+				const tang = [-Math.sin(t), Math.cos(t)];
+				const sz = Math.max(6, R * 0.028);
+				ctx.beginPath();
+				ctx.moveTo(P[0] + inward[0] * sz, P[1] + inward[1] * sz);
+				ctx.lineTo(P[0] + (inward[0] + tang[0]) * sz, P[1] + (inward[1] + tang[1]) * sz);
+				ctx.lineTo(P[0] + tang[0] * sz, P[1] + tang[1] * sz);
+				ctx.stroke();
+			}
+		}
+	}
+
+	// Moebius translation: z -> (z+a)/(1+conj(a)z). It moves the origin to a
+	// and is an ISOMETRY of the hyperbolic plane -- the exact counterpart of
+	// dragging the map's centre earlier. Boundary points stay on the boundary
+	// (verified), so a geodesic can be moved simply by transforming its two
+	// ideal endpoints and rebuilding the orthogonal circle through them.
+	function mobius(z, a) {
+		const nx = z[0] + a[0],
+			ny = z[1] + a[1];
+		const cx = 1 + (a[0] * z[0] + a[1] * z[1]);
+		const cy = a[0] * z[1] - a[1] * z[0];
+		const den = cx * cx + cy * cy || 1;
+		return [(nx * cx + ny * cy) / den, (ny * cx - nx * cy) / den];
+	}
+	const shiftAngle = (t, a) => {
+		const w = mobius([Math.cos(t), Math.sin(t)], a);
+		return Math.atan2(w[1], w[0]);
+	};
+
+	// ---------------------------------------------------------------------
+	// The tiling under Circle Limit III.
+	//
+	// In that print the fish meet nose-to-nose FOUR at a time at some
+	// junctions and THREE at a time at others, which is the (4,3,3) triangle
+	// group: a fundamental triangle with angles 45/60/60 (sum 165 < 180, so
+	// genuinely hyperbolic), reflected in its own sides for ever. Two sides
+	// are diameters; the third is a geodesic, solved for below so the corner
+	// angle comes out at exactly 60 deg.
+	//
+	// Worth knowing, and a nice sting given the beat before this one: the
+	// white spines running through Escher's fish are NOT geodesics. Coxeter
+	// showed they meet the boundary at about 80 deg, not 90 -- they are
+	// hypercycles, curves at constant distance from a geodesic. Escher
+	// believed he had drawn straight lines; he had not. The tiling underneath
+	// them, which is what this draws, is built from true geodesics.
+	// ---------------------------------------------------------------------
+	const CL3_P = 4,
+		CL3_Q = 3;
+	function buildCircleLimitTiling(maxTriangles = 2600) {
+		const bis = Math.PI / CL3_P / 2;
+		const probe = (d) => {
+			const r = Math.sqrt(d * d - 1);
+			const cx = d * Math.cos(bis),
+				cy = d * Math.sin(bis);
+			const disc = r * r - cy * cy;
+			if (disc < 0) return null;
+			const t = cx - Math.sqrt(disc);
+			const nx = t - cx,
+				ny = -cy;
+			let a = Math.abs(Math.atan2(nx, -ny));
+			if (a > Math.PI / 2) a = Math.PI - a;
+			return { t, a, r, cx, cy };
+		};
+		let lo = 1.0001,
+			hi = 8;
+		for (let i = 0; i < 120; i++) {
+			const m = (lo + hi) / 2;
+			const q = probe(m);
+			if (!q || q.a < Math.PI / CL3_Q) lo = m;
+			else hi = m;
+		}
+		const f = probe((lo + hi) / 2);
+		const C = [f.cx, f.cy],
+			rr = f.r;
+		const cosA = Math.cos((2 * Math.PI) / CL3_P),
+			sinA = Math.sin((2 * Math.PI) / CL3_P);
+		const reflections = [
+			(z) => [z[0], -z[1]],
+			(z) => [cosA * z[0] + sinA * z[1], sinA * z[0] - cosA * z[1]],
+			(z) => {
+				const dx = z[0] - C[0],
+					dy = z[1] - C[1];
+				const d2 = dx * dx + dy * dy || 1e-12;
+				return [C[0] + (rr * rr * dx) / d2, C[1] + (rr * rr * dy) / d2];
+			}
+		];
+		const seed = [
+			[0, 0],
+			[f.t, 0],
+			[f.t * Math.cos(Math.PI / CL3_P), f.t * Math.sin(Math.PI / CL3_P)]
+		];
+		const key = (tri) =>
+			tri
+				.map((q) => q[0].toFixed(4) + ',' + q[1].toFixed(4))
+				.sort()
+				.join('|');
+		const out = [seed];
+		const seen = new Set([key(seed)]);
+		for (let i = 0; i < out.length && out.length < maxTriangles; i++) {
+			for (const R of reflections) {
+				const tri = out[i].map(R);
+				// stop before the numerics degrade at the rim
+				if (tri.some((q) => Math.hypot(q[0], q[1]) > 0.975)) continue;
+				const k = key(tri);
+				if (seen.has(k)) continue;
+				seen.add(k);
+				out.push(tri);
+			}
+		}
+		return out;
+	}
+	const CL3_TILES = buildCircleLimitTiling();
+
+	// The tiling's edges lie along complete geodesics, so rather than drawing
+	// each edge as a stub we draw the whole line, boundary to boundary --
+	// which is how the construction is normally shown, and reads far better.
+	// Each line is stored as its two IDEAL endpoints (angles on the rim), so
+	// the centre-shift can carry it by transforming just those two points.
+	//
+	// There are infinitely many such lines; every one further out is another
+	// line. Lines whose closest approach to the centre exceeds LINE_REACH are
+	// dropped -- they crowd the rim into solid ink without adding anything.
+	const LINE_REACH = 0.88;
+	const CL3_LINES = (() => {
+		const seen = new Set();
+		const out = [];
+		for (const [ta, tb, tc] of CL3_TILES) {
+			const q = reflectInGeodesic(ta, tb, tc);
+			const p = tc;
+			const a1 = 2 * p[0],
+				b1 = 2 * p[1],
+				c1 = p[0] * p[0] + p[1] * p[1] + 1;
+			const a2 = 2 * q[0],
+				b2 = 2 * q[1],
+				c2 = q[0] * q[0] + q[1] * q[1] + 1;
+			const det = a1 * b2 - a2 * b1;
+			let e1, e2, reach;
+			if (Math.abs(det) < 1e-9) {
+				const ref = Math.hypot(q[0], q[1]) > Math.hypot(p[0], p[1]) ? q : p;
+				const th = Math.atan2(ref[1], ref[0]);
+				e1 = th;
+				e2 = th + Math.PI;
+				reach = 0; // a diameter passes through the centre
+			} else {
+				const Ox = (c1 * b2 - c2 * b1) / det,
+					Oy = (a1 * c2 - a2 * c1) / det;
+				const mag = Math.hypot(Ox, Oy);
+				if (mag <= 1.0001) continue;
+				reach = mag - Math.sqrt(mag * mag - 1);
+				const ux = Ox / mag,
+					uy = Oy / mag;
+				const fx = ux / mag,
+					fy = uy / mag;
+				const sN = Math.sqrt(Math.max(0, 1 - 1 / (mag * mag)));
+				e1 = Math.atan2(fy + sN * ux, fx - sN * uy);
+				e2 = Math.atan2(fy - sN * ux, fx + sN * uy);
+			}
+			if (reach > LINE_REACH) continue;
+			const k = [e1, e2].map((v) => (((v % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)).toFixed(4)).sort().join('|');
+			if (seen.has(k)) continue;
+			seen.add(k);
+			out.push([e1, e2, reach]);
+		}
+		out.sort((x, y) => x[2] - y[2]); // draw inner lines first
+		return out;
+	})();
+
+	// Reflect a point in the geodesic through two others -- inversion in that
+	// circle, or a plain mirror when the two points are radial from the centre.
+	function reflectInGeodesic(p, q, z) {
+		const a1 = 2 * p[0],
+			b1 = 2 * p[1],
+			c1 = p[0] * p[0] + p[1] * p[1] + 1;
+		const a2 = 2 * q[0],
+			b2 = 2 * q[1],
+			c2 = q[0] * q[0] + q[1] * q[1] + 1;
+		const det = a1 * b2 - a2 * b1;
+		if (Math.abs(det) < 1e-9) {
+			// The geodesic is a diameter. Take the direction from whichever
+			// point is further out: one of them is often the ORIGIN, and
+			// normalising that gave a zero vector -- which silently turned the
+			// mirror into a point-reflection and produced edges of unequal
+			// length, i.e. not a tiling at all.
+			const ref = Math.hypot(q[0], q[1]) > Math.hypot(p[0], p[1]) ? q : p;
+			const L = Math.hypot(ref[0], ref[1]) || 1;
+			const ux = ref[0] / L,
+				uy = ref[1] / L;
+			const d = z[0] * ux + z[1] * uy;
+			return [2 * d * ux - z[0], 2 * d * uy - z[1]];
+		}
+		const Ox = (c1 * b2 - c2 * b1) / det,
+			Oy = (a1 * c2 - a2 * c1) / det;
+		const r2 = Ox * Ox + Oy * Oy - 1;
+		const dx = z[0] - Ox,
+			dy = z[1] - Oy;
+		const m = dx * dx + dy * dy || 1e-12;
+		return [Ox + (r2 * dx) / m, Oy + (r2 * dy) / m];
+	}
+
+	// Geodesic through two INTERIOR points: the circle through them that is
+	// orthogonal to the boundary. |C|^2 = 1 + r^2 gives 2*C.p = |p|^2 + 1 for
+	// each point, a 2x2 linear solve. A near-zero determinant means the two
+	// points are radial from the centre, where the geodesic is a diameter.
+	function drawGeodesicSeg(cx, cy, R, p, q) {
+		const a1 = 2 * p[0],
+			b1 = 2 * p[1],
+			c1 = p[0] * p[0] + p[1] * p[1] + 1;
+		const a2 = 2 * q[0],
+			b2 = 2 * q[1],
+			c2 = q[0] * q[0] + q[1] * q[1] + 1;
+		const det = a1 * b2 - a2 * b1;
+		if (Math.abs(det) < 1e-9) {
+			ctx.moveTo(cx + p[0] * R, cy + p[1] * R);
+			ctx.lineTo(cx + q[0] * R, cy + q[1] * R);
+			return;
+		}
+		const Ox = (c1 * b2 - c2 * b1) / det,
+			Oy = (a1 * c2 - a2 * c1) / det;
+		const rad = Math.sqrt(Math.max(0, Ox * Ox + Oy * Oy - 1));
+		const t1 = Math.atan2(p[1] - Oy, p[0] - Ox);
+		const t2 = Math.atan2(q[1] - Oy, q[0] - Ox);
+		let d = t2 - t1;
+		while (d > Math.PI) d -= 2 * Math.PI;
+		while (d < -Math.PI) d += 2 * Math.PI;
+		// Start a fresh sub-path at the arc's own start. ctx.arc() otherwise
+		// draws an implicit straight line from wherever the path currently is,
+		// so batching many edges into one path chained them all together --
+		// which is what turned the tiling into a web of crossing lines.
+		ctx.moveTo(cx + p[0] * R, cy + p[1] * R);
+		ctx.arc(cx + Ox * R, cy + Oy * R, rad * R, t1, t1 + d, d < 0);
+	}
+
+	function drawPoincare(cx, cy, R, o) {
+		const { alpha, circlesT, geoT, shiftT, escherT } = o;
+		if (alpha <= 0.01) return;
+		const pal = activePalette();
+		const a = [0.52 * shiftT, 0];
+
+		ctx.globalAlpha = alpha;
+		ctx.beginPath();
+		ctx.arc(cx, cy, R, 0, Math.PI * 2);
+		ctx.fillStyle = pal.mapWater;
+		ctx.fill();
+
+		// Everything inside the disc is clipped to it: the disc IS the world,
+		// and the parts of a geodesic's circle lying outside are not in the
+		// space at all.
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(cx, cy, R, 0, Math.PI * 2);
+		ctx.clip();
+
+		// equal-sized circles marching out along ONE direction
+		const P = 0.42,
+			STEPS = 10;
+		for (let i = 1; i <= STEPS; i++) {
+			const reveal = smoothstep(remap(circlesT, (i - 1) / (STEPS + 2), (i + 1) / (STEPS + 2)));
+			if (reveal <= 0.01) continue;
+			const d = 0.55 + (i - 1) * 0.72;
+			// step out along a ray, then carry the centre through the shift
+			const base = Math.tanh(d / 2);
+			const w = mobius([base * Math.cos(-Math.PI / 2), base * Math.sin(-Math.PI / 2)], a);
+			const mag = Math.min(0.999999, Math.hypot(w[0], w[1]));
+			const dd = 2 * Math.atanh(mag),
+				ang = Math.atan2(w[1], w[0]);
+			const near = Math.tanh((dd - P) / 2),
+				far = Math.tanh((dd + P) / 2);
+			const c = ((near + far) / 2) * R,
+				rr = ((far - near) / 2) * R;
+			if (rr < 0.4) continue;
+			ctx.beginPath();
+			ctx.arc(cx + c * Math.cos(ang), cy + c * Math.sin(ang), rr, 0, Math.PI * 2);
+			ctx.fillStyle = pal.orange;
+			ctx.globalAlpha = alpha * reveal * 0.32;
+			ctx.fill();
+			ctx.strokeStyle = pal.orange;
+			ctx.lineWidth = 1.1;
+			ctx.globalAlpha = alpha * reveal * 0.9;
+			ctx.stroke();
+		}
+
+		// the straight lines of this world
+		if (geoT > 0.01) {
+			ctx.strokeStyle = pal.blue;
+			ctx.lineWidth = 2;
+			ctx.globalAlpha = alpha * geoT;
+			for (const [p0, p1] of [
+				[0.5, 2.4],
+				[2.9, 4.9]
+			]) {
+				drawGeodesic(cx, cy, R, shiftAngle(p0, a), shiftAngle(p1, a), shiftT < 0.02);
+			}
+			// through the centre: the limiting case of the same construction,
+			// drawn straight -- exactly as on the map
+			if (geoT > 0.45) {
+				ctx.globalAlpha = alpha * smoothstep(remap(geoT, 0.45, 0.8));
+				drawGeodesic(cx, cy, R, shiftAngle(0, a), shiftAngle(Math.PI, a), false);
+			}
+		}
+
+		// the tiling Circle Limit III is built on
+		if (escherT > 0.01) {
+			// Drawn as EDGES, not extended into complete lines. The edges of
+			// this tiling genuinely do not lie along whole geodesics: with
+			// vertex figure 3.4.3.4.3.4 the angles satisfy a_tri + a_sq = 120,
+			// so three edges round a vertex span 120 + a_tri, and a hyperbolic
+			// triangle forces a_tri < 60 -- never the 180 that collinearity
+			// would need. Extending them produced lines cutting straight
+			// through the central square, which no tiling line can do.
+			const shown = Math.floor(CL3_TILES.length * smoothstep(remap(escherT, 0, 0.85)));
+			ctx.strokeStyle = pal.orange;
+			ctx.lineWidth = 1;
+			ctx.globalAlpha = alpha * 0.6;
+			ctx.beginPath();
+			for (let i = 0; i < shown; i++) {
+				const [ta, tb, tc] = CL3_TILES[i];
+				const mirrored = reflectInGeodesic(ta, tb, tc);
+				if (Math.hypot(mirrored[0], mirrored[1]) > 0.995) continue;
+				drawGeodesicSeg(cx, cy, R, mobius(tc, a), mobius(mirrored, a));
+			}
+			ctx.stroke();
+		}
+		ctx.restore();
+
+		// rim last, so it sits above everything
+		ctx.beginPath();
+		ctx.arc(cx, cy, R, 0, Math.PI * 2);
+		ctx.strokeStyle = pal.textPrimary ?? '#0b0b0b';
+		ctx.lineWidth = 2;
+		ctx.globalAlpha = alpha * 0.75;
+		ctx.stroke();
+		ctx.globalAlpha = 1;
+	}
+
+	// Panel layout, shared by render() and the drag hit-test.
+	function layout(splitT) {
+		const fullR = Math.min(width, height) * 0.42;
+		const goreR = Math.min(width * 0.32, height * 0.44);
+		return {
+			goreR,
+			globeR: lerp(fullR, goreR * 0.36, splitT),
+			globeX: lerp(width / 2, width * 0.14, splitT),
+			goreX: width * 0.62,
+			cy: height / 2
+		};
 	}
 
 	function render() {
 		if (!ctx || !width || !height) return;
 		const prog = progress;
+		const pal = activePalette();
+		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha } = stageParams(prog);
+		const meridianGrow = smoothstep(remap(prog, MERIDIANS_START, MERIDIANS_END));
+		const tissotT = smoothstep(remap(prog, MERIDIANS_END, TISSOT_END));
+		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
+		// Once the map starts running off the page the globe has said its
+		// piece, so it steps aside and the map takes the centre.
+		const soloT = smoothstep(remap(prog, DRAG_END, RETURN_END));
+		const flatX = lerp(goreX, width / 2, soloT);
+		const flatR = lerp(goreR, Math.min(width, height) * 0.42, soloT);
+		// Hold the scale fixed through the stereographic morph so the map
+		// visibly bursts its frame, then pull back until it fits again --
+		// by which point the inhabited world is a speck.
+		const stereoEdge = flatRadius((stereoT > 0 ? stereoClipDeg : 179.9) * D2R, stereoT);
+		// Anchor the framing to Antarctica's northern coast, holding it at a
+		// fixed fraction of the frame radius.
+		//
+		// At a fixed scale, stereographic magnifies the antipodal region
+		// enormously while the centre barely moves, so the morph reads as
+		// "Antarctica inflating" rather than "shapes changing" -- Antarctica
+		// drove the whole transition. Pinning it still inverts that: the
+		// composition holds, the map edge grows past 5x the frame (it floods),
+		// and what visibly changes is the shapes, which is the point of the
+		// beat. The continents compress toward the centre, which is exactly
+		// what stereographic does to the near side.
+		//
+		// HOLD_MORPH is where Antarctica already sits on the equidistant map,
+		// so the framing is continuous with the stage before it.
+		// Interpolate the SCALE between its endpoints, rather than
+		// interpolating the anchor and hold and deriving the scale each frame.
+		// Doing the latter is not monotonic -- anchor, hold and flatRadius all
+		// move at once, and the product dipped to 0.87 around a third of the
+		// way in before climbing to 1.18, which is the bounce-out-then-in.
+		// The anchor/hold knobs now define the two ENDPOINTS; everything
+		// between is a straight ride.
+		const zoomStart = (HOLD_START * Math.PI) / flatRadius(ANCHOR_START * D2R, 0);
+		const zoomMorph = (holdMorph * Math.PI) / flatRadius(anchorColat * D2R, 1);
+		const zoomBack = (holdZoom * Math.PI) / flatRadius(anchorColat * D2R, 1);
+		const zoomMul = lerp(lerp(zoomStart, zoomMorph, stereoT), zoomBack, zoomT);
+		const flatScale = (flatR / Math.PI) * zoomMul;
+		const flatAlpha = (1 - discT) * (splitT > 0 ? 1 : 0);
+		// The centre marker arrives with the tour, when where-we-are-centred
+		// starts changing and therefore starts mattering.
+		const centreDot = smoothstep(remap(prog, ANGLES_END, ANGLES_END + 0.08));
+
 		ctx.clearRect(0, 0, width, height);
 
-		const { proj, flat, morphT } = currentProjection(prog);
-		const path = geoPath(proj, ctx);
-		const liveRotate = effectiveRotate(prog);
+		drawMap(buildGlobe(viewLon, globeLat, globeR, globeX, cy), {
+			radiusPx: globeR,
+			flat: false,
+			alpha: Math.max(0, 1 - soloT - discT),
+			shade: 1,
+			meridianGrow,
+			tissotT,
+			cx: globeX,
+			cy,
+			labelAlpha: 1 - smoothstep(remap(splitT, 0.15, 0.5)),
+			focusT,
+			equatorT,
+			rightAngleT,
+			restoreT,
+			centreDot
+		});
 
-		// water backdrop -- the visible disc/hemisphere, same in both stages
-		// (mapWater), so the globe-to-map jump cut doesn't also change what
-		// "ocean" looks like.
-		ctx.beginPath();
-		path({ type: 'Sphere' });
-		ctx.fillStyle = activePalette().mapWater;
-		ctx.fill();
-
-		// land -- each feature gets its own beginPath()/fill(), not one path()
-		// call over the whole FeatureCollection. Under clipAngle, every
-		// polygon that gets cut by the visible boundary circle has its own
-		// synthetic boundary-arc spliced in by d3-geo's spherical clipping;
-		// batching multiple such polygons into a single canvas path lets
-		// their synthetic loops combine under the nonzero fill rule in a
-		// rotation-dependent way, which is exactly what caused the whole
-		// map's fill to invert (ocean painted, land punched out) at some
-		// rotations but not others.
-		ctx.fillStyle = activePalette().mapLand;
-		for (const feature of land.features) {
-			ctx.beginPath();
-			path(feature);
-			ctx.fill();
+		const goreAlpha = smoothstep(remap(splitT, 0.35, 0.85)) * flatAlpha;
+		if (goreAlpha > 0.01) {
+			const flatPair = buildFlat(wT, viewLon, flatLat, flatScale, flatX, cy, stereoT);
+			drawMap(flatPair.proj, {
+				fillProj: flatPair.fillProj,
+				plain: flatPair.plain,
+				horizonRad: flatPair.horizonRad,
+				edgePx: flatPair.horizonRad ? flatRadius(flatPair.horizonRad, stereoT) * flatScale : 0,
+				radiusPx: flatR,
+				flat: true,
+				alpha: goreAlpha,
+				shade: 0,
+				meridianGrow,
+				tissotT,
+				cx: flatX,
+				cy,
+				// stay on through the morph and the pull-back; they only go when
+				// the Poincare disc replaces the map
+				labelAlpha: goreAlpha * (1 - discT),
+				labelScale: zoomMul,
+				focusT,
+				equatorT,
+				rightAngleT,
+				restoreT,
+				stereoT,
+				viewLat: flatLat,
+				centreDot
+			});
 		}
 
-		if (flat) {
-			// Tissot circles: fade in, hold, fade out -- a triangular window
-			// inside [ROTATE_END, TISSOT_END] rather than a straight ramp, so
-			// there's a beat where the reader can actually look at them.
-			// They reappear a second time (already fully formed, just fading
-			// in rather than re-running the triangular window) once free-drag
-			// exploration is done and the great circles are back too.
-			const tissotWindow = remap(prog, ROTATE_END, TISSOT_END);
-			const tissotFirstReveal = Math.min(smoothstep(remap(tissotWindow, 0, 0.35)), 1 - smoothstep(remap(tissotWindow, 0.65, 1)));
-			const tissotSecondReveal = smoothstep(remap(prog, RETURN_END, MORPH_REVEAL_END));
-			const tissotOpacity = Math.max(tissotFirstReveal, tissotSecondReveal);
-			if (tissotOpacity > 0.01) {
-				ctx.globalAlpha = tissotOpacity * 0.85;
-				ctx.fillStyle = activePalette().orange;
-				ctx.strokeStyle = activePalette().orange;
-				ctx.lineWidth = 1.5;
-				for (const circle of tissotCircles) {
-					ctx.beginPath();
-					path(circle);
-					ctx.fill();
-					ctx.stroke();
-				}
-				ctx.globalAlpha = 1;
-			}
+		// the mirror case
+		if (discT > 0.01) {
+			drawPoincare(width / 2, cy, Math.min(width, height) * 0.42, {
+				alpha: discT,
+				circlesT,
+				geoT,
+				shiftT,
+				escherT
+			});
+		}
 
-			// Once the reader is done exploring (progress >= DRAG_END), these
-			// lines fade out over the window the view eases back to the pole
-			// in, then fade back in (already fully formed, not re-growing)
-			// once the projection starts its morph to stereographic. A clean
-			// max() handoff between the two envelopes -- their domains don't
-			// overlap, so there's no double-counting to worry about.
-			const fadeOut = 1 - smoothstep(remap(prog, DRAG_END, RETURN_END));
-			const fadeBackIn = smoothstep(remap(prog, RETURN_END, MORPH_REVEAL_END));
-			const linesVisibility = Math.max(fadeOut, fadeBackIn);
-			// The dashed equator fades fully in first, on its own, before the
-			// meridians start growing -- two sequential beats instead of
-			// everything animating in together.
-			const equatorT = smoothstep(remap(prog, TISSOT_END, EQUATOR_FADE_END));
-			const growthT = smoothstep(remap(prog, EQUATOR_FADE_END, CIRCLES_END));
-			if ((equatorT > 0 || growthT > 0) && linesVisibility > 0.001) {
-				ctx.globalAlpha = equatorT * 0.5 * linesVisibility;
-				ctx.lineWidth = 1.5;
-				ctx.strokeStyle = activePalette().textPrimary ?? '#0b0b0b';
-				ctx.setLineDash([4, 4]);
-				ctx.beginPath();
-				path(equatorCircle);
-				ctx.stroke();
-				ctx.setLineDash([]);
-
-				ctx.globalAlpha = growthT * linesVisibility;
-				ctx.lineWidth = 2.5;
-				ctx.strokeStyle = activePalette().blue;
-				for (const lonDeg of [PLON_A_DEG, PLON_B_DEG]) {
-					ctx.beginPath();
-					path(meridianArc(lonDeg, growthT));
-					ctx.stroke();
-				}
-
-				// Both meridians reach the south pole at the same instant
-				// (theta = 3*pi/2, i.e. growthT = 0.75 of the full 2*pi
-				// loop) -- but centered on the north pole, the south pole
-				// isn't a point on this map, it's the *entire* outer edge.
-				// So instead of the lines converging somewhere, ring the
-				// map's whole circumference in the same color right as they
-				// arrive, showing that every point on that boundary is
-				// simultaneously "the south pole."
-				// Only true while the map is actually centered on the north
-				// pole (phi = -90 of the rotation actually being rendered,
-				// which during the return animation is effectiveRotate, not
-				// the raw drag target) *and* still (close to) equidistant --
-				// under the stereographic morph the antipode maps to
-				// infinity, not this artificial clip boundary, so the ring's
-				// claim stops being true the moment the morph starts and
-				// needs to fade out rather than ride along with it.
-				const poleAlignT = 1 - smoothstep(remap(Math.abs(liveRotate[1] + 90), 0, 3));
-				const equidistantness = 1 - smoothstep(remap(morphT, 0, 0.08));
-				const southPoleT = smoothstep(remap(growthT, 0.74, 0.78)) * poleAlignT * equidistantness;
-				if (southPoleT > 0.001) {
-					// azimuthal.scale() specifically (not proj.scale()) --
-					// the ring's radius only ever means anything relative to
-					// the plain equidistant object; equidistantness has
-					// already faded it to ~invisible by the time proj is
-					// actually the morphed projection.
-					ctx.globalAlpha = growthT * southPoleT * linesVisibility;
-					ctx.lineWidth = 2.5;
-					ctx.strokeStyle = activePalette().blue;
-					ctx.beginPath();
-					ctx.arc(width / 2, height / 2, azimuthal.scale() * Math.PI, 0, Math.PI * 2);
-					ctx.stroke();
-				}
-				ctx.globalAlpha = 1;
-			}
-
-			// Continent labels -- skip any whose label point has rotated
-			// past the projection's own visible range (relevant mainly once
-			// dragging moves the center away from the pole; centroid-ish
-			// points can end up right at the antipodal edge).
-			const center = proj.invert([width / 2, height / 2]);
-			const clipRad = ((proj.clipAngle() ?? 180) * Math.PI) / 180;
-			ctx.font = '600 13px sans-serif';
+		if (tourNameAlpha > 0.01) {
+			ctx.globalAlpha = tourNameAlpha;
+			ctx.fillStyle = pal.textPrimary ?? '#0b0b0b';
+			ctx.font = '600 1.1rem sans-serif';
 			ctx.textAlign = 'center';
-			ctx.textBaseline = 'middle';
-			for (const c of CONTINENT_LABELS) {
-				if (center && geoDistance([c.lon, c.lat], center) > clipRad) continue;
-				const p = proj([c.lon, c.lat]);
-				if (!p) continue;
-				ctx.lineWidth = 3;
-				ctx.strokeStyle = activePalette().surface;
-				ctx.globalAlpha = 0.85;
-				ctx.strokeText(c.name, p[0], p[1]);
-				ctx.fillStyle = activePalette().textPrimary ?? '#0b0b0b';
-				ctx.globalAlpha = 0.9;
-				ctx.fillText(c.name, p[0], p[1]);
-			}
+			ctx.textBaseline = 'top';
+			ctx.fillText(tourName, width / 2, height * 0.06);
 			ctx.globalAlpha = 1;
+		}
 
-			// Final stage: once back at the pole and the great circles have
-			// cleared, tile the sphere in spherical triangles, ring by ring
-			// outward from the pole. Each ring's own triangles ease in
-			// (rather than popping in as a block) as the reveal sweeps
-			// through them, matching "expanding outward" rather than
-			// growing in discrete jumps.
-			const tessRingReveal = smoothstep(remap(prog, MORPH_END, TESSELLATE_END)) * TESS_RING_COUNT;
-			if (tessRingReveal > 0) {
-				ctx.strokeStyle = activePalette().textPrimary ?? '#0b0b0b';
-				ctx.lineWidth = 1;
-				for (const { ring, coords } of tessTriangles) {
-					const t = tessRingReveal - ring;
-					if (t <= 0) continue;
-					ctx.globalAlpha = 0.55 * Math.min(1, t);
-					ctx.beginPath();
-					path({ type: 'Polygon', coordinates: [coords] });
-					ctx.stroke();
-				}
-				ctx.globalAlpha = 1;
-			}
-
-			if (dragEnabled) {
-				const cx = width / 2,
-					cy = height / 2;
-				ctx.beginPath();
-				ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-				ctx.fillStyle = activePalette().orange;
-				ctx.fill();
-			}
-
-			// drag diagnostics: down-pixel (fixed, red), the anchor point's
-			// live projected position under the current rotation (should sit
-			// exactly under the cursor if the drag math is correct, green),
-			// and the actual last-seen cursor pixel (blue) -- if green and
-			// blue don't coincide, the anchor isn't tracking the cursor.
-			if (debug && debugDrag) {
-				const dot = (pt, color, label) => {
-					if (!pt || Number.isNaN(pt[0]) || Number.isNaN(pt[1])) return;
-					ctx.beginPath();
-					ctx.arc(pt[0], pt[1], 9, 0, Math.PI * 2);
-					ctx.fillStyle = color;
-					ctx.globalAlpha = 0.9;
-					ctx.fill();
-					ctx.lineWidth = 2;
-					ctx.strokeStyle = '#ffffff';
-					ctx.stroke();
-					ctx.globalAlpha = 1;
-					ctx.fillStyle = '#000000';
-					ctx.font = '12px sans-serif';
-					ctx.fillText(label, pt[0] + 12, pt[1] - 8);
-				};
-				dot(debugDrag.downPixel, '#e5484d', 'down'); // red: where the drag started
-				dot(azimuthal(debugDrag.anchorGeo), '#30a46c', 'anchor'); // green: anchor's live position
-				dot(debugDrag.cursorPixel, '#0091ff', 'cursor'); // blue: actual cursor
-			}
+		if (debug) {
+			ctx.fillStyle = pal.textPrimary;
+			ctx.globalAlpha = 0.75;
+			ctx.font = '11px ui-monospace, monospace';
+			ctx.textAlign = 'left';
+			ctx.textBaseline = 'alphabetic';
+			ctx.fillText(
+				`prog ${prog.toFixed(3)}  view ${viewLon.toFixed(1)},${globeLat.toFixed(1)}  split ${splitT.toFixed(2)}  wT ${wT.toFixed(2)}  eq ${equatorT.toFixed(2)}  focus ${focusT.toFixed(2)}${freeView ? '  [free]' : ''}`,
+				12,
+				18
+			);
+			ctx.globalAlpha = 1;
 		}
 	}
 
 	$effect(() => {
-		// re-render whenever progress, drag state, or size changes
 		void progress;
-		void dragEnabled;
-		void rotate;
+		void width;
+		void height;
+		void freeView;
 		render();
 	});
 
-	// --- drag-to-recenter, using versor.js exactly as in the reference
-	// notebook: grab the geographic point under the cursor at pointerdown,
-	// then on each move compute the quaternion that rotates from that point
-	// to wherever the cursor is now (evaluated against the rotation at
-	// drag-start), and apply it on top of the starting rotation. Verified
-	// numerically (outside the browser, chaining this exact algorithm over
-	// many steps and checking the down-point's own projected pixel tracks
-	// the cursor's actual pixel exactly) -- including starting a drag at the
-	// literal center pixel, which is stable too (an earlier attempt to
-	// special-case that as a singularity was based on a mistaken test and
-	// actively broke ordinary drags near the center, like grabbing Iceland,
-	// by deferring which point got "grabbed" -- removed). ---
+	// --- free rotation. versor's quaternion drag, so the grabbed point
+	// tracks the cursor without the instability a naive lat/lon delta hits
+	// near the poles. Whichever panel is grabbed drives the shared view
+	// point, so both stay locked together. ---
 	let dragging = false;
-	let v0, q0, r0;
-	// Diagnostic overlay (see the three dots drawn in render() above) plus
-	// console logging -- temporary, for tracking down the reported "grabbed
-	// point doesn't follow the cursor" behavior live in the browser, since
-	// the same algorithm checks out exactly when run standalone in Node.
-	let debugDrag = $state(null);
-	function pointerXY(evt) {
-		return pointer(evt, canvas);
+	let v0, q0, r0, dragProj, dragIsFlat, dragFlatPoleNative;
+	const canDrag = $derived((dragEnabled || progress >= TOUR_END) && progress < DRAG_END);
+
+	function panelAt(x, y) {
+		const { splitT } = stageParams(progress);
+		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
+		// match render()'s solo shift, or the hit target sits where the map
+		// used to be rather than where it is
+		const soloT = smoothstep(remap(progress, DRAG_END, RETURN_END));
+		const flatX = lerp(goreX, width / 2, soloT);
+		const flatR = lerp(goreR, Math.min(width, height) * 0.42, soloT);
+		if (Math.hypot(x - flatX, y - cy) <= flatR * 1.05) return 'flat';
+		if (Math.hypot(x - globeX, y - cy) <= globeR * 1.05) return 'globe';
+		return null;
 	}
+
 	function onPointerDown(evt) {
-		if (!dragEnabled) return;
-		const downPixel = pointerXY(evt);
-		const p = azimuthal.invert(downPixel);
-		if (!p) return;
+		if (!canDrag) return;
+		const [x, y] = pointer(evt, canvas);
+		const which = panelAt(x, y);
+		if (!which) return;
+		const { viewLon, globeLat, flatLat, splitT, wT, stereoT, zoomT } = stageParams(progress);
+		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
+		// Rebuild the SAME projection render() is drawing -- including the
+		// solo shift and the zoom. Grabbing through a projection built at a
+		// different scale or position would mean the point under the cursor
+		// was never the point being dragged.
+		const soloT = smoothstep(remap(progress, DRAG_END, RETURN_END));
+		const flatX = lerp(goreX, width / 2, soloT);
+		const flatR = lerp(goreR, Math.min(width, height) * 0.42, soloT);
+		const zoomStart = (HOLD_START * Math.PI) / flatRadius(ANCHOR_START * D2R, 0);
+		const zoomMorph = (holdMorph * Math.PI) / flatRadius(anchorColat * D2R, 1);
+		const zoomBack = (holdZoom * Math.PI) / flatRadius(anchorColat * D2R, 1);
+		const zoomMul = lerp(lerp(zoomStart, zoomMorph, stereoT), zoomBack, zoomT);
+		const flatScale = (flatR / Math.PI) * zoomMul;
+
+		dragIsFlat = which === 'flat';
+		dragFlatPoleNative = false;
+		if (dragIsFlat) {
+			const fp = buildFlat(wT, viewLon, flatLat, flatScale, flatX, cy, stereoT);
+			// pole-native only while there are still gores; once closed it is
+			// equator-native, the same convention as the globe
+			dragFlatPoleNative = !fp.plain;
+			dragProj = fp.proj;
+		} else {
+			dragProj = buildGlobe(viewLon, globeLat, globeR, globeX, cy);
+		}
+		const p = dragProj.invert([x, y]);
+		if (!p || Number.isNaN(p[0])) return;
 		dragging = true;
 		v0 = versor.cartesian(p);
-		r0 = azimuthal.rotate(); // Euler angles [lambda,phi,gamma] -- degrees
-		q0 = versor(r0); // the corresponding quaternion, a *different* value from r0
-		if (debug) {
-			debugDrag = { downPixel, anchorGeo: p, cursorPixel: downPixel };
-			// self-consistency check: forward-projecting the just-inverted point
-			// should land back on downPixel exactly. If it doesn't, invert/project
-			// disagree with each other right here, before any drag math runs.
-			const roundTrip = azimuthal(p);
-			console.log('[azimuthal-drag] down', {
-				downPixel,
-				anchorGeo: p,
-				r0,
-				roundTrip,
-				roundTripMismatchPx: roundTrip ? Math.hypot(roundTrip[0] - downPixel[0], roundTrip[1] - downPixel[1]) : null,
-				width,
-				height,
-				canvasRect: canvas.getBoundingClientRect(),
-				dpr: window.devicePixelRatio || 1
-			});
-		}
+		r0 = dragProj.rotate();
+		q0 = versor(r0);
 		canvas.setPointerCapture(evt.pointerId);
 	}
+
 	function onPointerMove(evt) {
 		if (!dragging) return;
-		azimuthal.rotate(r0);
-		const cursorPixel = pointerXY(evt);
-		const p = azimuthal.invert(cursorPixel);
-		if (!p) return;
-		const v1 = versor.cartesian(p);
-		const q1 = versor.multiply(q0, versor.delta(v0, v1));
-		const nextRotate = versor.rotation(q1);
-		azimuthal.rotate(nextRotate);
-		rotate = nextRotate;
-		if (debug && debugDrag) {
-			const anchorNowAt = azimuthal(debugDrag.anchorGeo);
-			debugDrag = { ...debugDrag, cursorPixel };
-			console.log('[azimuthal-drag] move', {
-				cursorPixel,
-				cursorGeo: p,
-				anchorProjectsTo: anchorNowAt,
-				mismatchPx: anchorNowAt ? Math.hypot(anchorNowAt[0] - cursorPixel[0], anchorNowAt[1] - cursorPixel[1]) : null,
-				nextRotate
-			});
-		}
+		dragProj.rotate(r0);
+		const p = dragProj.invert(pointer(evt, canvas));
+		if (!p || Number.isNaN(p[0])) return;
+		const next = versor.rotation(versor.multiply(q0, versor.delta(v0, versor.cartesian(p))));
+		// Both panels are parameterised by one geographic view point, so the
+		// dragged rotation is converted back into that: the flat projection
+		// is pole-native (rotate = [-lon, 90-lat]), the globe equator-native
+		// (rotate = [-lon, -lat]).
+		freeView = [-next[0], dragFlatPoleNative ? 90 - next[1] : -next[1]];
 	}
+
 	function onPointerUp(evt) {
 		dragging = false;
-		// leave debugDrag in place (not nulled) so the markers persist after
-		// release for a screenshot -- cleared on the next pointerdown instead
 		canvas.releasePointerCapture(evt.pointerId);
 	}
 
+	// Scrubbing back out of the free-rotation window hands control back to
+	// the script rather than stranding the view wherever it was left.
+	$effect(() => {
+		if (!canDrag && freeView) freeView = null;
+	});
+
 	onMount(() => {
 		ctx = canvas.getContext('2d');
-		const resizeObserver = new ResizeObserver((entries) => {
-			const rect = entries[0].contentRect;
-			if (rect.width === 0 || rect.height === 0) return;
-			width = rect.width;
-			height = rect.height;
+		const ro = new ResizeObserver(([entry]) => {
+			const r = entry.contentRect;
+			if (!r.width || !r.height) return;
+			width = r.width;
+			height = r.height;
 			const dpr = window.devicePixelRatio || 1;
-			canvas.width = width * dpr;
-			canvas.height = height * dpr;
-			canvas.style.width = `${width}px`;
-			canvas.style.height = `${height}px`;
+			canvas.width = r.width * dpr;
+			canvas.height = r.height * dpr;
+			canvas.style.width = `${r.width}px`;
+			canvas.style.height = `${r.height}px`;
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			layoutProjections();
 			render();
 		});
-		resizeObserver.observe(container);
-
+		ro.observe(container);
 		canvas.addEventListener('pointerdown', onPointerDown);
 		canvas.addEventListener('pointermove', onPointerMove);
 		canvas.addEventListener('pointerup', onPointerUp);
-
 		return () => {
-			resizeObserver.disconnect();
+			ro.disconnect();
 			canvas.removeEventListener('pointerdown', onPointerDown);
 			canvas.removeEventListener('pointermove', onPointerMove);
 			canvas.removeEventListener('pointerup', onPointerUp);
 		};
 	});
 
-	// --- on-canvas captions, same pattern as the rest of this stanza ---
-	const CAPTION_DEFAULT_BOTTOM = '12%';
-	const ROTATE_MID = ROTATE_END * 0.55;
 	const CAPTIONS = [
-		{ start: 0, end: ROTATE_MID, text: 'Every flat map distorts a round world somehow.' },
+		{ start: 0, end: MERIDIANS_START, text: 'There are many different ways to view the surface of a sphere in 2 dimensions.' },
+		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'One starts by making twelve cuts, pole to pole — like scoring an orange before peeling it.' },
+		{ start: MERIDIANS_END, end: TISSOT_END, text: "We can also add some equally sized circles on the surface that we'll track as we look at look at different versions of our map."},
+		{ start: TISSOT_END, end: SPLIT_START, text: "Now well peel each segments up towards the north pole, and press them flat." },
+		{ start: SPLIT_START, end: SPLIT_END, text: 'With the Noth Pole in the center we can make a circular map of the world...' },
+		{ start: SPLIT_END, end: FLATTEN_END, text: 'by streching out each segment to meet eachother. Look how increasing distorted our reference circles are now.' },
+		{ start: FLATTEN_END, end: EQUATOR_END, text: 'The whole rim is the south pole. The equator (the blue circle) is spaced half way from the center of our circular map to the edge.' },
 		{
-			start: ROTATE_MID,
-			end: ROTATE_END,
-			text: 'This is the Azimuthal Equidistant projection, centered on the north pole.'
+			start: EQUATOR_END,
+			end: ANGLES_END,
+			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the South Pole.'
 		},
-		{
-			start: ROTATE_END,
-			end: TISSOT_END,
-			text: 'Every one of these circles is the same true size on the globe. Watch how differently they land on the flat map.'
-		},
-		{
-			start: TISSOT_END,
-			end: CIRCLES_END,
-			text: 'The equator, and the same two great circles from before — meeting again at the pole, this map’s exact center.'
-		},
-		{
-			start: CIRCLES_END,
-			end: 1,
-			text: 'Drag anywhere to re-center the projection there, and watch the whole map reflow.'
-		},
+		{ start: ANGLES_END, end: TOUR_END, text: 'But these lines - both the equator and "parallel lines" shift as we rotate the center of the map to some places Osserman spent time.' },
+		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either view to put yourself at the center.' },
 		{
 			start: DRAG_END,
-			end: RETURN_END,
-			text: 'Back to the north pole.'
+			end: STEREO_END,
+			text: "Now that we've explored this view of the world, lets look at a related one."
+		},
+
+		{
+			start: STEREO_END,
+			end: ZOOM_END,
+			text: "If we want to make our reference circles circular once again we can achieve that by stretch the map out in all directions. But in doing so our map is no longer finite, as the South Pole moves off the map to infinity."
 		},
 		{
-			start: RETURN_END,
-			end: MORPH_REVEAL_END,
-			text: 'The circles and great circles again — this time watch what happens as the projection itself changes.'
+			start: ZOOM_END,
+			end: DISC_END,
+			text: 'This last view is a finite world that needs infinite paper we now turn towards a new map of a new surface. Instead of a mapping our sphere, a surface with constant positive curvature that can exist in 3-dimensional space, we turn towards a map of a surface with constant negative curvature, which would be infinite in three dimentional space. Our map of it however fits in a finite circle.'
 		},
 		{
-			start: MORPH_REVEAL_END,
-			end: MORPH_END,
-			text: 'Morphing to the Stereographic projection — same center, same bearings, but a different rule for how distance grows outward.'
+			start: DISC_END,
+			end: GEODESIC_END,
+			text: 'Here, instead of reference circles (all of the same size on actual surface) growing as they extend from the center, here they shrink. The outer rim of the cirle, instead of the representing a pole opposite the center, represent all points that are infinitely far away in the space.'
 		},
 		{
-			start: MORPH_END,
-			end: TESSELLATE_END,
-			text: 'Tiling the sphere in spherical triangles, growing outward from the pole.'
+			start: GEODESIC_END,
+			end: SHIFT_END,
+			text: 'Infinitely long lings in our space appear as arcs, only looking straight when they pass through they center. '
+		},
+		{
+			start: SHIFT_END,
+			end: ESCHER_END,
+			text: 'This disk - the Poincaré disk - which represents an infinite negatively curved space, become the inspriration for the endless tesselations of MC Escher in his "Circle Limit" works.'
 		}
 	];
-	function captionOpacity(start, end, prog) {
+	const captionOpacity = (start, end, prog) => {
 		if (prog < start || prog > end) return 0;
-		const fade = Math.min(0.15, (end - start) * 0.25) || 0.001;
+		const fade = Math.min(0.12, (end - start) * 0.28) || 0.001;
 		return Math.min(remap(prog, start, start + fade), 1 - remap(prog, end - fade, end));
-	}
+	};
 	let captionOpacities = $derived(CAPTIONS.map((c) => captionOpacity(c.start, c.end, progress)));
 </script>
 
 <div class="scene-container" bind:this={container}>
-	<canvas bind:this={canvas}></canvas>
+	<canvas bind:this={canvas} class:grabbable={canDrag}></canvas>
 </div>
 
 <div class="caption-overlay">
 	{#each CAPTIONS as c, i}
 		{#if captionOpacities[i] > 0.01}
-			<p class="caption" style="opacity: {captionOpacities[i]}; bottom: {c.bottom ?? CAPTION_DEFAULT_BOTTOM};">{c.text}</p>
+			<p class="caption" style="opacity: {captionOpacities[i]};">{c.text}</p>
 		{/if}
 	{/each}
-	{#if dragEnabled}
-		<p class="caption drag-hint" style="opacity: {1 - captionOpacities.reduce((a, b) => a + b, 0)};">Drag the map to re-center it</p>
-	{/if}
 </div>
-
-{#if dragEnabled}
-	<div class="rotate-control">
-		<label>
-			Rotate
-			<input type="range" min="-180" max="180" step="1" value={rotate[2]} oninput={(e) => setRoll(Number(e.currentTarget.value))} />
-		</label>
-	</div>
-{/if}
-
-{#if debug}
-	<pre class="debug-readout">rotate: [{rotate.map((v) => v.toFixed(1)).join(', ')}]</pre>
-{/if}
 
 <style>
 	.scene-container {
@@ -755,6 +1522,12 @@
 	.scene-container canvas {
 		display: block;
 		touch-action: none;
+	}
+	.scene-container canvas.grabbable {
+		cursor: grab;
+	}
+	.scene-container canvas.grabbable:active {
+		cursor: grabbing;
 	}
 	.caption-overlay {
 		position: absolute;
@@ -766,7 +1539,8 @@
 	}
 	.caption {
 		position: absolute;
-		max-width: 30rem;
+		bottom: 8%;
+		max-width: 32rem;
 		margin: 0;
 		padding: 0.85rem 1.25rem;
 		border-radius: 10px;
@@ -777,48 +1551,5 @@
 		line-height: 1.5;
 		text-align: center;
 		color: var(--text-primary);
-	}
-	.drag-hint {
-		font-size: 0.85rem;
-		color: var(--text-muted);
-		background: transparent;
-		box-shadow: none;
-		backdrop-filter: none;
-	}
-	.rotate-control {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		padding: 0.5rem 0.85rem;
-		border-radius: 10px;
-		background: color-mix(in srgb, var(--surface-1) 82%, transparent);
-		backdrop-filter: blur(6px);
-		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-	}
-	.rotate-control label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.8rem;
-		color: var(--text-muted);
-	}
-	.rotate-control input[type='range'] {
-		width: 8rem;
-	}
-	.debug-readout {
-		position: absolute;
-		top: 1rem;
-		left: 1rem;
-		margin: 0;
-		padding: 0.6rem 0.8rem;
-		border-radius: 6px;
-		background: rgba(0, 0, 0, 0.75);
-		color: #6fffb0;
-		font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-		font-size: 0.8rem;
-		line-height: 1.4;
-		white-space: pre;
-		pointer-events: none;
-		z-index: 10;
 	}
 </style>

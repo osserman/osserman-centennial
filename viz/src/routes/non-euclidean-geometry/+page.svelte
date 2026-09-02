@@ -15,7 +15,7 @@
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
 	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
-	import AzimuthalProjectionScene, { DRAG_END, TESSELLATE_END } from '$lib/components/AzimuthalProjectionScene.svelte';
+	import AzimuthalProjectionScene, { TOUR_END, DRAG_END, ESCHER_END } from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
 
@@ -134,10 +134,9 @@
 	}
 
 	// Third, independent instance of the same arrival/settle pattern above,
-	// driving AzimuthalProjectionScene. dragEnabled for step 5 is derived
-	// the same way ParallelPostulateScene's is: azimuthalProgress >= 1,
-	// flipped by the parent once fully scrolled through, not decided inside
-	// the scene itself.
+	// driving AzimuthalProjectionScene, which now runs a single scripted
+	// 0..1 sequence (globe -> orange cuts -> Tissot -> pole view -> gore
+	// projection) with no interactive stage, so no dragEnabled handoff.
 	let azimuthalProgress = $state(0);
 	let azimuthalTextEl = $state();
 	const AZIMUTHAL_SPAN_VH = 4.5;
@@ -157,7 +156,7 @@
 		}
 		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
 		const traveled = window.scrollY - azimuthalSettleScrollY;
-		azimuthalProgress = Math.max(0, Math.min(TESSELLATE_END, traveled / AZIMUTHAL_SPAN_PX()));
+		azimuthalProgress = Math.max(0, Math.min(ESCHER_END, traveled / AZIMUTHAL_SPAN_PX()));
 	}
 
 	onMount(() => {
@@ -283,7 +282,7 @@
 	<div class="scene-panel">
 		<AzimuthalProjectionScene
 			progress={azimuthalProgress}
-			dragEnabled={azimuthalProgress >= 1 && azimuthalProgress < DRAG_END}
+			dragEnabled={azimuthalProgress >= TOUR_END && azimuthalProgress < DRAG_END}
 			debug={debugAzimuthal}
 		/>
 	</div>
@@ -506,7 +505,7 @@
 		height: 720vh;
 	}
 	.trailing-spacer-azimuthal {
-		height: 1180vh;
+		height: 2900vh;
 	}
 	.scene-panel {
 		flex: 1;
