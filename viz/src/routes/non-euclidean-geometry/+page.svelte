@@ -444,6 +444,9 @@
 			<div class="intro-sticky" bind:this={curvatureTextEl}>
 				<h2>{curvatureSlide.title}</h2>
 				<p class="subtitle">{@html renderInline(curvatureSlide.subtitle)}</p>
+				{#if curvatureSlide.aside}
+					<a class="aside-link" href={curvatureSlide.aside.href}>{curvatureSlide.aside.label} →</a>
+				{/if}
 			</div>
 			<div class="trailing-spacer" style="height: {spacerVh(CURVATURE_SPAN_VH * 100)}vh"></div>
 		</div>
@@ -611,6 +614,16 @@
 	}
 	.intro-spacer-lead {
 		height: 15vh;
+	}
+	.aside-link {
+		align-self: flex-start;
+		font-size: 0.85rem;
+		color: var(--accent);
+		text-decoration: none;
+		border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+	}
+	.aside-link:hover {
+		border-bottom-color: var(--accent);
 	}
 	.intro-sticky {
 		position: sticky;

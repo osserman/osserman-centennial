@@ -106,7 +106,7 @@ export const slides = [
 		// it is long, and it reads far better held still in the sidebar while
 		// the map transforms than flashed over the top of it.
 		subtitle:
-			'We are looking at a view of a finite world that requires infinite paper to show in its entirety. Next, we turn to an inverse of this map — one that shows an infinite surface within a simple circle.'
+			"We are looking at a view of a finite world that requires infinite paper to show in its entirety. Next, we turn to an inverse of this map — one that shows an infinite surface within a simple circle. Like Euclid's plane, this disk requires thinking abstractly, not using geometry to represent or measure real world objects, but developing a geometry of an imaginary world."
 	},
 	{
 		id: 'negative-curvature',
@@ -120,7 +120,13 @@ export const slides = [
 		// The subtitle poses the question the scene spends its whole run
 		// answering, and points back at the disc the reader has just left.
 		subtitle:
-			'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.'
+			'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.',
+		// Optional side door, rendered under the subtitle. Not part of the
+		// narrative -- the stanza reads correctly without ever following it.
+		aside: {
+			href: '/pseudosphere',
+			label: 'Aside: the surface that saddle sits on'
+		}
 	},
 	{
 		id: 'hyperbolic-outro',
