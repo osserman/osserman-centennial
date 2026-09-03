@@ -56,37 +56,45 @@
 
 	// --- the frame that puts the opening point where the narrative left it ----
 	// Canonical surface has its axis along Y. We rotate and translate so that
-	// (U_START, theta=0) sits at the world origin with the surface normal along
-	// +Y, the meridian along X and the parallel along Z -- the exact frame
-	// CurvatureExplorerScene ends in. The normal is taken INWARD: the outward
-	// one gives k1 = -0.70, k2 = +0.70, which is the same surface with both
-	// signs flipped, but it would swap which colour is which against the
-	// previous scene. Flipping it costs nothing mathematically (reversing a
-	// normal reverses both principal curvatures and leaves K alone) and keeps
-	// blue on the meridian throughout the piece.
+	// (U_START, theta=0) lands at the world origin, reproducing the saddle the
+	// narrative ends on: bending DOWN along X, UP along Z, seen from +Y.
+	//
+	// The normal must be the OUTWARD one, or the camera ends up inside the horn
+	// looking at the concave side -- which is what buried the curves in the
+	// first version. Given that, matching the narrative's picture means the
+	// PARALLEL goes along X (curvature +0.70, bending down) and the MERIDIAN
+	// along Z (-0.70, bending up), which is the opposite pairing to the sphere
+	// at the start of the explorer.
+	//
+	// That swap is free: those colours lost their compass labels when the
+	// explorer's legend labels came off, so they now mean nothing more than
+	// "two perpendicular directions". Preserving the picture the reader just
+	// looked at is worth more than preserving which family each hue tracked.
 	const FRAME = (() => {
 		const u = U_START;
 		const rp = -A * (1 / Math.cosh(u)) * Math.tanh(u);
 		const zp = A * Math.tanh(u) * Math.tanh(u);
 		const sp = Math.hypot(rp, zp);
-		const T = new THREE.Vector3(rp / sp, zp / sp, 0);
-		const N = new THREE.Vector3(-zp / sp, rp / sp, 0);
-		const B = new THREE.Vector3().crossVectors(T, N); // right-handed by construction
-		return { T, N, B, P0: new THREE.Vector3(radiusAt(u), heightAt(u), 0) };
+		const X = new THREE.Vector3(0, 0, 1); // parallel  -> world X (blue)
+		const Y = new THREE.Vector3(zp / sp, -rp / sp, 0); // outward normal -> world Y
+		const Z = new THREE.Vector3(rp / sp, zp / sp, 0); // meridian  -> world Z (orange)
+		return { X, Y, Z, P0: new THREE.Vector3(radiusAt(u), heightAt(u), 0) };
 	})();
 	function toWorld(x, y, z) {
 		const d = new THREE.Vector3(x, y, z).sub(FRAME.P0);
-		return new THREE.Vector3(d.dot(FRAME.T), d.dot(FRAME.N), d.dot(FRAME.B));
+		return new THREE.Vector3(d.dot(FRAME.X), d.dot(FRAME.Y), d.dot(FRAME.Z));
 	}
 	const surfacePoint = (u, th) => toWorld(radiusAt(u) * Math.cos(th), heightAt(u), radiusAt(u) * Math.sin(th));
-	// Unit normal at (u, th), in world coordinates — same construction as FRAME
-	// but evaluated where the point currently is, used to lift the curves clear.
+	// OUTWARD unit normal at (u, th), in world coordinates. Outward is the whole
+	// point: the curves and the marked point are lifted along it to sit ON the
+	// surface. The first version used the inward normal here and pushed all
+	// three inside the horn, where the surface hid them completely.
 	function normalAt(u, th) {
 		const rp = -A * (1 / Math.cosh(u)) * Math.tanh(u);
 		const zp = A * Math.tanh(u) * Math.tanh(u);
 		const sp = Math.hypot(rp, zp);
-		const n = new THREE.Vector3((-zp / sp) * Math.cos(th), rp / sp, (-zp / sp) * Math.sin(th));
-		return new THREE.Vector3(n.dot(FRAME.T), n.dot(FRAME.N), n.dot(FRAME.B));
+		const n = new THREE.Vector3((zp / sp) * Math.cos(th), -rp / sp, (zp / sp) * Math.sin(th));
+		return new THREE.Vector3(n.dot(FRAME.X), n.dot(FRAME.Y), n.dot(FRAME.Z));
 	}
 
 	// Arc length along the meridian, measured from the rim: s(u) = A ln cosh u.
@@ -114,7 +122,15 @@
 
 	// --- cameras: the narrative's framing, easing out to the whole horn -------
 	const CAM_SADDLE = { pos: new THREE.Vector3(3.062, 2.75, 3.649), look: new THREE.Vector3(0, 0, 0) };
-	const CAM_WIDE = { pos: new THREE.Vector3(4.14, 3.52, 4.28), look: new THREE.Vector3(0.8, 0.63, 0) };
+	// Chosen by search, not by eye: the lowest elevation that still keeps the
+	// marked meridian turned toward the camera at EVERY position along the
+	// surface (worst facing 0.36, i.e. 69 deg off the normal -- a three-quarter
+	// view, not face-on). The obvious framing camera put the marked side on the
+	// far side of the horn for the whole upper half of the range.
+	const CAM_WIDE = {
+		pos: new THREE.Vector3(6.409, 3.07, 0.8),
+		look: new THREE.Vector3(0, -0.63, 0.8)
+	};
 
 	function buildSurface() {
 		const positions = [];
@@ -201,9 +217,10 @@
 	}
 
 	// --- readout -------------------------------------------------------------
+	// Blue tracks the parallel and orange the meridian -- see the FRAME note.
 	let readout = $derived({
-		mer: kMeridian(u),
-		par: kParallel(u),
+		blue: -kParallel(u),
+		orange: -kMeridian(u),
 		product: kMeridian(u) * kParallel(u)
 	});
 	const LEG_W = 128;
@@ -275,14 +292,22 @@
 			metalness: 0,
 			side: THREE.DoubleSide,
 			transparent: true,
-			vertexColors: true
+			vertexColors: true,
+			// Alpha alone does not stop a fragment reaching the depth buffer, so
+			// the not-yet-revealed part of the horn would stay invisible and go on
+			// occluding the curves drawn after it. alphaTest DISCARDS those
+			// fragments instead, which keeps them out of the depth buffer while
+			// leaving depthWrite on -- turning depthWrite off would have fixed the
+			// curves but stopped the horn occluding itself, letting its far wall
+			// paint straight over the near one.
+			alphaTest: 0.05
 		});
 		surfaceMesh = new THREE.Mesh(surfaceGeo, surfaceMat);
 		scene.add(surfaceMesh);
 
 		const curveMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, depthWrite: false });
-		merMesh = new THREE.Mesh(tubeFrom(meridianPoints(U_START)), curveMat(pal.blue));
-		parMesh = new THREE.Mesh(tubeFrom(parallelPoints(U_START)), curveMat(pal.orange));
+		parMesh = new THREE.Mesh(tubeFrom(parallelPoints(U_START)), curveMat(pal.blue));
+		merMesh = new THREE.Mesh(tubeFrom(meridianPoints(U_START)), curveMat(pal.orange));
 		merMesh.renderOrder = 3;
 		parMesh.renderOrder = 3;
 		scene.add(merMesh, parMesh);
@@ -356,22 +381,22 @@
 			<div class="legend-item">
 				<svg viewBox="0 0 {LEG_W} {LEG_H}" aria-hidden="true">
 					<line class="axis" x1="6" y1={LEG_H / 2} x2={LEG_W - 6} y2={LEG_H / 2} />
-					<path class="curve" style="stroke: {pal.blue}" d={profilePath(readout.mer)} />
+					<path class="curve" style="stroke: {pal.blue}" d={profilePath(readout.blue)} />
 				</svg>
-				<span class="k" style="color: {pal.blue}">{readout.mer.toFixed(2)}</span>
+				<span class="k" style="color: {pal.blue}">{readout.blue.toFixed(2)}</span>
 			</div>
 			<div class="legend-item">
 				<svg viewBox="0 0 {LEG_W} {LEG_H}" aria-hidden="true">
 					<line class="axis" x1="6" y1={LEG_H / 2} x2={LEG_W - 6} y2={LEG_H / 2} />
-					<path class="curve" style="stroke: {pal.orange}" d={profilePath(readout.par)} />
+					<path class="curve" style="stroke: {pal.orange}" d={profilePath(readout.orange)} />
 				</svg>
-				<span class="k" style="color: {pal.orange}">{readout.par.toFixed(2)}</span>
+				<span class="k" style="color: {pal.orange}">{readout.orange.toFixed(2)}</span>
 			</div>
 		</div>
 		<p class="product">
-			<span style="color: {pal.blue}">{readout.mer.toFixed(2)}</span>
+			<span style="color: {pal.blue}">{readout.blue.toFixed(2)}</span>
 			<span class="dim">×</span>
-			<span style="color: {pal.orange}">{readout.par.toFixed(2)}</span>
+			<span style="color: {pal.orange}">{readout.orange.toFixed(2)}</span>
 			<span class="dim">=</span>
 			<strong>{readout.product.toFixed(2)}</strong>
 		</p>

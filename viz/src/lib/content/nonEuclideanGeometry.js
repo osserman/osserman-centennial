@@ -94,7 +94,7 @@ export const slides = [
 		// side (how flattening a sphere distorts it); the hyperbolic-disk
 		// connection is a deliberately separate follow-up, not yet built.
 		subtitle:
-			"The same curvature that makes a triangle's angles misbehave on a sphere also means a sphere can never be flattened without distortion. Every world map is lying to you somehow — the only choice is which lie.",
+			"Flat maps of our curved world have been designed for centuries for practical purposes. But they can also be mathematically derived, with facinating geometric properties.",
 		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
 	},
 	{
