@@ -74,13 +74,13 @@
 		{
 			start: DRAG_END,
 			end: STEREO_END,
-			text: "Now that we've explored this view of the world, let's look at a related one."
+			text: "Now that we've explored this view of the world, let's look at a related one. If we want to make our reference circles circular once again we can achieve that by stretching the map out in all directions."
 		},
 
 		{
 			start: STEREO_END,
 			end: ZOOM_END,
-			text: "If we want to make our reference circles circular once again we can achieve that by stretching the map out in all directions. But in doing so our map is no longer finite, as the South Pole moves off the map to infinity."
+			text: "But stretching until the circles are truly round makes our map is no longer finite. The South Pole moves off the map to infinity."
 		},
 		// NOTE: there is deliberately no caption for ZOOM_END..DISC_END. That
 		// beat's text became the sidebar for the 'a-different-kind-of-map'
@@ -112,7 +112,7 @@
 		{
 			start: MANY_END,
 			end: RECENTRE_END,
-			text: 'They might not look straight. But shifting the centre of our map onto that point shows that they are.'
+			text: 'They might not look straight. But shifting the center of our map onto that point shows that they are.'
 		}
 	];
 
@@ -889,6 +889,49 @@
 	// the rim only creeps closer -- it is infinitely far away, and is not
 	// part of the space.
 	// ---------------------------------------------------------------------
+	// Drawing, so it stays here rather than in $lib/hyperbolic.js -- it needs
+	// ctx. It sat between hypGeodesic and mobius in the source, which is how
+	// extracting those two took it with them.
+	function drawGeodesic(cx, cy, R, a, b, markAngles) {
+		const g = hypGeodesic(a, b);
+		if (!g) {
+			ctx.beginPath();
+			ctx.moveTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
+			ctx.lineTo(cx + R * Math.cos(b), cy + R * Math.sin(b));
+			ctx.stroke();
+			return;
+		}
+		const GX = cx + g.cx * R,
+			GY = cy + g.cy * R,
+			GR = g.r * R;
+		const a1 = Math.atan2(cy + R * Math.sin(a) - GY, cx + R * Math.cos(a) - GX);
+		const a2 = Math.atan2(cy + R * Math.sin(b) - GY, cx + R * Math.cos(b) - GX);
+		let d = a2 - a1;
+		while (d > Math.PI) d -= 2 * Math.PI;
+		while (d < -Math.PI) d += 2 * Math.PI;
+		// The anticlockwise flag is load-bearing: canvas goes counter-clockwise
+		// from start to end, so a negative delta would draw the MAJOR arc --
+		// the part lying outside the disc, which the clip then removes,
+		// leaving the geodesic invisible while its right-angle marks remained.
+		ctx.beginPath();
+		ctx.arc(GX, GY, GR, a1, a1 + d, d < 0);
+		ctx.stroke();
+		if (markAngles) {
+			// square the geodesic makes with the rim, drawn from the real
+			// tangents rather than assumed
+			for (const t of [a, b]) {
+				const P = [cx + R * Math.cos(t), cy + R * Math.sin(t)];
+				const inward = [-Math.cos(t), -Math.sin(t)];
+				const tang = [-Math.sin(t), Math.cos(t)];
+				const sz = Math.max(6, R * 0.028);
+				ctx.beginPath();
+				ctx.moveTo(P[0] + inward[0] * sz, P[1] + inward[1] * sz);
+				ctx.lineTo(P[0] + (inward[0] + tang[0]) * sz, P[1] + (inward[1] + tang[1]) * sz);
+				ctx.lineTo(P[0] + tang[0] * sz, P[1] + tang[1] * sz);
+				ctx.stroke();
+			}
+		}
+	}
 
 	// The point off the line, and the directions of the lines drawn through it.
 	// Both chosen against the geometry rather than by eye: with the reference
