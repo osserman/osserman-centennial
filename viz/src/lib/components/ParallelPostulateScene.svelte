@@ -476,12 +476,12 @@
 		{
 			start: ROTATE_CAPTION_SPLIT,
 			end: ALT_HOLD_END,
-			text: 'Swing that crossing line however you like: the two angles trade size, but their sum never moves off 180°.'
+			text: 'If the lines are parallel you can swing that crossing line however you like; the two angles change values, but their sum never deviates from 180°.'
 		},
 		{
 			start: ALT_FADEOUT_END,
 			end: ALTERNATE_END,
-			text: 'He showed that any line crossing two parallel lines creates alternate interior angles that are equal.'
+			text: 'It follows that any line crossing two parallel lines creates alternate interior angles that are equal.'
 		},
 		{ start: ALTERNATE_END, end: TRIANGLE_END, text: 'And from here, he showed...' },
 		{
