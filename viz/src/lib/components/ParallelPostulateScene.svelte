@@ -476,7 +476,7 @@
 		{
 			start: ROTATE_CAPTION_SPLIT,
 			end: ALT_HOLD_END,
-			text: 'If the lines are parallel you can swing that crossing line however you like; the two angles change values, but their sum never deviates from 180°.'
+			text: 'With parallel lines you can swing that crossing line however you like; the two angles change values, but their sum never deviates from 180°.'
 		},
 		{
 			start: ALT_FADEOUT_END,

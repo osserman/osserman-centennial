@@ -147,6 +147,25 @@
 		return SPHERE_SPAN_VH * window.innerHeight;
 	}
 
+	// Handover between the two scenes that share one panel. This is a
+	// CROSSFADE, not a switch: activeIndex flips at the trigger line, which is
+	// the right moment for the text highlight but makes the visual cut over in
+	// a single frame while the incoming text is still halfway up the screen.
+	//
+	// Tied to the sphere heading's own arrival rather than to the step boundary,
+	// so the sphere really does come in with its text: 0 while that heading is
+	// still low on screen, 1 exactly as it reaches its sticky position and
+	// sphereProgress starts running.
+	let sceneHandover = $state(0);
+	const HANDOVER_START_FRAC = 0.8; // viewport fraction where the crossfade begins
+
+	function updateSceneHandover() {
+		if (!sphereTextEl) return;
+		const top = sphereTextEl.getBoundingClientRect().top;
+		const from = window.innerHeight * HANDOVER_START_FRAC;
+		sceneHandover = Math.max(0, Math.min(1, (from - top) / (from - STICKY_TOP_PX)));
+	}
+
 	function updateSphereProgress() {
 		if (!sphereTextEl) return;
 		const rect = sphereTextEl.getBoundingClientRect();
@@ -302,23 +321,28 @@
 		updateSphereProgress();
 		updateAzimuthalProgress();
 		updateCurvatureProgress();
+		updateSceneHandover();
 		window.addEventListener('scroll', updateParallelProgress, { passive: true });
 		window.addEventListener('scroll', updateSphereProgress, { passive: true });
 		window.addEventListener('scroll', updateAzimuthalProgress, { passive: true });
 		window.addEventListener('scroll', updateCurvatureProgress, { passive: true });
+		window.addEventListener('scroll', updateSceneHandover, { passive: true });
 		window.addEventListener('resize', updateParallelProgress);
 		window.addEventListener('resize', updateSphereProgress);
 		window.addEventListener('resize', updateAzimuthalProgress);
 		window.addEventListener('resize', updateCurvatureProgress);
+		window.addEventListener('resize', updateSceneHandover);
 		return () => {
 			window.removeEventListener('scroll', updateParallelProgress);
 			window.removeEventListener('scroll', updateSphereProgress);
 			window.removeEventListener('scroll', updateAzimuthalProgress);
 			window.removeEventListener('scroll', updateCurvatureProgress);
+			window.removeEventListener('scroll', updateSceneHandover);
 			window.removeEventListener('resize', updateParallelProgress);
 			window.removeEventListener('resize', updateSphereProgress);
 			window.removeEventListener('resize', updateAzimuthalProgress);
 			window.removeEventListener('resize', updateCurvatureProgress);
+			window.removeEventListener('resize', updateSceneHandover);
 		};
 	});
 </script>
@@ -381,11 +405,31 @@
 		</Scrolly>
 	</div>
 
+	<!-- Two scenes, one panel, crossfaded rather than switched. Each is mounted
+	     only while it has something to show, so there is at most a moment where
+	     both exist; the sphere's WebGL context is not created until its heading
+	     is actually on its way in. Pointer events go to whichever is in front,
+	     so the triangle's drag handles stop responding once it is more than
+	     half faded out. -->
 	<div class="scene-panel">
-		{#if activeIndex === parallelIndex}
-			<ParallelPostulateScene progress={parallelProgress} dragEnabled={parallelProgress >= 1} />
-		{:else if activeIndex === sphereIndex}
-			<SphereGeometryScene progress={sphereProgress} debug={debugSphere} />
+		{#if sceneHandover < 1}
+			<div
+				class="scene-layer"
+				style="opacity: {1 - sceneHandover}; pointer-events: {sceneHandover < 0.5 ? 'auto' : 'none'}"
+			>
+				<ParallelPostulateScene
+					progress={parallelProgress}
+					dragEnabled={parallelProgress >= 1 && sceneHandover < 0.5}
+				/>
+			</div>
+		{/if}
+		{#if sceneHandover > 0}
+			<div
+				class="scene-layer"
+				style="opacity: {sceneHandover}; pointer-events: {sceneHandover >= 0.5 ? 'auto' : 'none'}"
+			>
+				<SphereGeometryScene progress={sphereProgress} debug={debugSphere} />
+			</div>
 		{/if}
 	</div>
 </main>
@@ -652,6 +696,11 @@
 	   above rather than here -- they have to stay tied to each slide's own
 	   SPAN_VH and to .scene-panel's height, and a hardcoded number here
 	   silently drifts out of step the moment either changes. */
+	/* Stacked so the two can overlap during the handover. */
+	.scene-layer {
+		position: absolute;
+		inset: 0;
+	}
 	.scene-panel {
 		flex: 1;
 		min-width: 0;
