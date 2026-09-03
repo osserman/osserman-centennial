@@ -82,6 +82,26 @@
 	// and a shared helper is worth extracting only once both stanzas'
 	// scroll-driven slides have settled, not preemptively.
 	const STICKY_TOP_PX = 0;
+
+	// Trailing-spacer sizing, derived rather than hand-tuned.
+	//
+	// The scene panel is `position: sticky; top: 0; height: 100vh`, so it
+	// unsticks when its <main>'s bottom edge reaches 100vh from the viewport
+	// top -- it starts scrolling away a FULL PANEL-HEIGHT before the trailing
+	// spacer runs out. A spacer sized to the animation's span alone therefore
+	// leaves zero pinned time at the end, and the last beat drifts off mid-
+	// motion. Every spacer needs span + hold + one panel height.
+	//
+	// These were all hand-tuned before and all three came out under one
+	// screen of hold (parallel 20vh, sphere 60vh, azimuthal 20vh), which is
+	// what made the sphere's meridian growth scroll away before it finished.
+	const PANEL_VH = 100; // must match .scene-panel's height below
+	const HOLD_VH = 140; // a beat to rest on the finished frame
+	// Slides whose interaction unlocks at the END of the scripted run need
+	// materially more: the reader has to notice the handles and use them,
+	// and every bit of that happens after progress hits 1.
+	const DRAG_HOLD_VH = 260;
+	const spacerVh = (spanVh, holdVh = HOLD_VH) => spanVh + holdVh + PANEL_VH;
 	let parallelProgress = $state(0);
 	let parallelTextEl = $state();
 	// Tuned visually against the animation itself (most of this beat's
@@ -277,7 +297,7 @@
 								<h2>{slide.title}</h2>
 								<p class="subtitle">{@html renderInline(slide.subtitle)}</p>
 							</div>
-							<div class="trailing-spacer trailing-spacer-parallel"></div>
+							<div class="trailing-spacer" style="height: {spacerVh(PARALLEL_SPAN_VH * 100, DRAG_HOLD_VH)}vh"></div>
 						</div>
 					{:else if slide.id === 'sphere'}
 						<!-- Same shape as parallel-postulate above. -->
@@ -287,7 +307,7 @@
 								<h2>{slide.title}</h2>
 								<p class="subtitle">{@html renderInline(slide.subtitle)}</p>
 							</div>
-							<div class="trailing-spacer trailing-spacer-sphere"></div>
+							<div class="trailing-spacer" style="height: {spacerVh(SPHERE_SPAN_VH * 100)}vh"></div>
 						</div>
 					{/if}
 				</ScrollyStep>
@@ -319,7 +339,7 @@
 				<h2>{azimuthalSlide.title}</h2>
 				<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
 			</div>
-			<div class="trailing-spacer trailing-spacer-azimuthal"></div>
+			<div class="trailing-spacer" style="height: {spacerVh(AZIMUTHAL_TOTAL_VH)}vh"></div>
 		</div>
 	</div>
 	<div class="scene-panel">
@@ -539,20 +559,10 @@
 	   scrolling stage prompts anymore (both scenes carry their narration
 	   as on-canvas captions instead — see each component's CAPTIONS
 	   array), so this spacer is the *only* source of scroll height behind
-	   each slide, sized per slide against its own SPAN_VH (sphere's is
-	   more than double parallel's, so needs proportionally more). */
-	.trailing-spacer-parallel {
-		height: 380vh;
-	}
-	.trailing-spacer-sphere {
-		height: 720vh;
-	}
-	/* Matches AZIMUTHAL_TOTAL_VH (2900) plus a hold, so the completed Circle
-	   Limit tiling rests on screen instead of being scrolled off the instant
-	   its last stroke lands. */
-	.trailing-spacer-azimuthal {
-		height: 3020vh;
-	}
+	   each slide. Heights are set inline from spacerVh() in the script
+	   above rather than here -- they have to stay tied to each slide's own
+	   SPAN_VH and to .scene-panel's height, and a hardcoded number here
+	   silently drifts out of step the moment either changes. */
 	.scene-panel {
 		flex: 1;
 		min-width: 0;
