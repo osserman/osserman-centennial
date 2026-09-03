@@ -97,6 +97,20 @@
 	const R_MAX = 6.0; // flattest sphere, and where the quadratic handoff happens
 	const K_SADDLE = 0.7; // final |curvature| in each direction on the saddle
 
+	// Geodesic rings at FIXED distances along the surface from the marked
+	// point. These are the answer to "is the sphere changing size, or is the
+	// camera moving?" -- a question the scene could not settle before, because
+	// the lat/long wireframe scaled with the sphere and so did everything else
+	// in frame. When every feature changes together the image is self-similar,
+	// which is exactly what a dolly looks like.
+	//
+	// These rings never change size on screen. The sphere passes through them:
+	// the 2.4 ring sits 145° round a tight sphere and only 23° round a flat
+	// one. No camera move can do that, so the size change becomes unambiguous.
+	const GRID_RADII = [0.4, 0.8, 1.2, 1.6, 2.0, 2.4];
+	const GRID_SEG = 96;
+	const GRID_MAX_ANGLE = 2.6; // rad; past this a ring is collapsing on the antipode
+
 	const CURVE_SEGMENTS = 96;
 	const CURVE_TUBE_R = 0.022;
 	const PATCH_RINGS = 48;
@@ -135,6 +149,7 @@
 	let debugControls;
 	let pivot; // holds the sphere + curves; rotates globe frame -> patch frame
 	let sphereMesh, sphereMat, gridMesh, gridMat;
+	let ringGrid, ringGridMat;
 	let patchMesh, patchMat, patchGeo;
 	let curveNSMesh, curveEWMesh, curveNSMat, curveEWMat;
 	let ringMesh, ringMat;
@@ -256,6 +271,32 @@
 		}
 		return pts;
 	}
+	// Rewritten in place each frame: fixed vertex budget, draw range trimmed to
+	// however many rings are currently valid.
+	function updateRingGrid(R) {
+		const pos = ringGrid.geometry.attributes.position;
+		const arr = pos.array;
+		const RR = R + CURVE_EPS;
+		let n = 0;
+		for (const d of GRID_RADII) {
+			const th = d / R;
+			if (th > GRID_MAX_ANGLE) continue;
+			const rr = RR * Math.sin(th);
+			const yy = -R + RR * Math.cos(th);
+			for (let i = 0; i < GRID_SEG; i++) {
+				const a0 = (2 * Math.PI * i) / GRID_SEG;
+				const a1 = (2 * Math.PI * (i + 1)) / GRID_SEG;
+				arr[n++] = rr * Math.cos(a0);
+				arr[n++] = yy;
+				arr[n++] = rr * Math.sin(a0);
+				arr[n++] = rr * Math.cos(a1);
+				arr[n++] = yy;
+				arr[n++] = rr * Math.sin(a1);
+			}
+		}
+		pos.needsUpdate = true;
+		ringGrid.geometry.setDrawRange(0, n / 3);
+	}
 	function tubeFromPoints(points, radius = CURVE_TUBE_R) {
 		const curve = new THREE.CatmullRomCurve3(points);
 		return new THREE.TubeGeometry(curve, points.length, radius, 10, false);
@@ -354,8 +395,15 @@
 		// keep occluding the patch fading in behind it.
 		sphereMat.depthWrite = st.sphereFade > 0.999;
 		sphereMesh.visible = st.sphereFade > 0.002;
-		gridMat.opacity = 0.14 * st.sphereFade;
-		gridMesh.visible = sphereMesh.visible;
+		// The lat/long wireframe says "this is a globe", worth having while the
+		// ball is being introduced -- but it scales with the sphere, so it has
+		// to be gone before the size sweep starts or it argues for a zoom. It
+		// hands over to the fixed-distance rings across the rotation.
+		gridMat.opacity = 0.14 * st.sphereFade * (1 - st.rotT);
+		gridMesh.visible = sphereMesh.visible && gridMat.opacity > 0.005;
+		updateRingGrid(st.R);
+		ringGridMat.opacity = 0.4 * st.rotT * st.sphereFade;
+		ringGrid.visible = ringGridMat.opacity > 0.005;
 
 		// --- the local patch ---
 		if (st.patchFade > 0.002) {
@@ -508,6 +556,17 @@
 		gridMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), gridMat);
 		pivot.add(gridMesh);
 
+		const gridArr = new Float32Array(GRID_RADII.length * GRID_SEG * 2 * 3);
+		const ringGeo = new THREE.BufferGeometry();
+		ringGeo.setAttribute('position', new THREE.BufferAttribute(gridArr, 3));
+		ringGridMat = new THREE.LineBasicMaterial({
+			color: pal.muted ?? 0x898781,
+			transparent: true,
+			opacity: 0
+		});
+		ringGrid = new THREE.LineSegments(ringGeo, ringGridMat);
+		pivot.add(ringGrid);
+
 		patchGeo = buildPatchGeometry();
 		patchMat = new THREE.MeshStandardMaterial({
 			color: 0x9a9a94,
@@ -594,6 +653,7 @@
 			curveEWMesh.geometry.dispose();
 			ringMesh.geometry.dispose();
 			patchGeo.dispose();
+			ringGrid.geometry.dispose();
 			renderer.dispose();
 		};
 	});
