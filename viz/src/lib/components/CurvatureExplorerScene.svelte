@@ -5,9 +5,13 @@
 	export const CURVES_END = 0.1; // the two principal curves draw onto the globe
 	export const ROTATE_END = 0.18; // marked point rotates to face the camera; legend arrives
 	export const SHRINK_END = 0.26; // radius shrinks — same curves, steeper
-	export const GROW_END = 0.36; // radius grows — same curves, flatter
-	export const HANDOFF_END = 0.42; // sphere mesh gives way to a cap patch of the same shape
-	export const PLANE_END = 0.52; // the cap flattens, still full width
+	// No GROW_END/HANDOFF_END any more. Between SHRINK_END and PLANE_END the
+	// scene runs one continuous curvature ramp, and the moment the sphere hands
+	// over to the patch is derived from it (it falls where kappa reaches
+	// 1/R_MAX, around progress 0.45) rather than being a stage of its own. It
+	// used to be a stage, and that stage was 54vh of scrolling in which nothing
+	// moved.
+	export const PLANE_END = 0.52; // the surface reaches flat
 	export const RING_END = 0.57; // a faint circle marks off the neighbourhood
 	export const CLIP_END = 0.64; // everything outside that circle fades away
 	export const PLANE_HOLD_END = 0.68; // a pause on the flat plane — the neutral hinge
@@ -162,35 +166,50 @@
 		const drawT = smoothstep(remap(p, 0.02, CURVES_END));
 		const rotT = smoothstep(remap(p, CURVES_END, ROTATE_END));
 
-		// Radius: hold, shrink, grow, hold.
-		let R;
-		if (p < ROTATE_END) R = R_OPEN;
-		else if (p < SHRINK_END) R = lerp(R_OPEN, R_MIN, smoothstep(remap(p, ROTATE_END, SHRINK_END)));
-		else if (p < GROW_END) R = lerp(R_MIN, R_MAX, smoothstep(remap(p, SHRINK_END, GROW_END)));
-		else R = R_MAX;
+		// CURVATURE is the schedule here, not radius. The thing the reader is
+		// actually watching -- how hard the two curves bend -- falls linearly
+		// from the tightest sphere all the way to flat, and R, the morph and
+		// the mesh swap are all derived from it.
+		//
+		// The previous version scheduled radius and morph as separate
+		// smoothstepped segments, which put a 54vh dead window in the middle of
+		// the scroll. Two compounding causes: the crossfade beat changed no
+		// geometry at all, and smoothstep drives its rate to zero at every
+		// boundary, so the growth decelerated to a stop just before that window
+		// and the flattening accelerated from a stop just after it. Scrolling
+		// stopped moving the curves, which is the one thing this scene cannot
+		// afford to do.
+		//
+		// With kappa falling linearly in `flatten`, its rate is constant right
+		// through the handover -- nothing special happens at the junction.
+		const K_TIGHT = 1 / R_MIN;
+		const K_HANDOVER = 1 / R_MAX; // where a whole sphere stops being useful
+		const flatten = smoothstep(remap(p, SHRINK_END, PLANE_END));
 
-		const handoffT = smoothstep(remap(p, GROW_END, HANDOFF_END));
-		// Curvatures. Through the sphere phase they are simply 1/R in both
-		// directions — that IS the lesson of stage 3, so it is not modelled
-		// separately. The quadratic patch picks them up unchanged at handoff.
-		const kSphere = 1 / R_MAX;
-		const flatT = smoothstep(remap(p, HANDOFF_END, PLANE_END));
-		const saddleT = smoothstep(remap(p, PLANE_HOLD_END, SADDLE_END));
-
-		let k1, k2;
-		if (p < HANDOFF_END) {
-			k1 = k2 = 1 / R;
+		let R, kappa, morphT;
+		if (p < ROTATE_END) {
+			R = R_OPEN;
+			kappa = 1 / R_OPEN;
+			morphT = 0;
+		} else if (p < SHRINK_END) {
+			R = lerp(R_OPEN, R_MIN, smoothstep(remap(p, ROTATE_END, SHRINK_END)));
+			kappa = 1 / R;
+			morphT = 0;
 		} else {
-			const base = lerp(kSphere, 0, flatT);
-			k1 = lerp(base, K_SADDLE, saddleT);
-			k2 = lerp(base, -K_SADDLE, saddleT);
+			kappa = lerp(K_TIGHT, 0, flatten);
+			if (kappa >= K_HANDOVER) {
+				R = 1 / kappa; // still a sphere; its radius is whatever kappa implies
+				morphT = 0;
+			} else {
+				R = R_MAX;
+				morphT = 1 - kappa / K_HANDOVER;
+			}
 		}
 
-		// morphT drives the patch from "exactly the sphere cap" to "the
-		// quadratic form". It stays at 0 through the whole crossfade, so the
-		// swap happens between two identical surfaces, and only then does the
-		// shape start changing.
-		const morphT = smoothstep(remap(p, HANDOFF_END, PLANE_END));
+		const saddleT = smoothstep(remap(p, PLANE_HOLD_END, SADDLE_END));
+		const k1 = lerp(kappa, K_SADDLE, saddleT);
+		const k2 = lerp(kappa, -K_SADDLE, saddleT);
+
 		// The plane keeps its full width to the end. Rather than shrinking it --
 		// which read as the whole surface retreating, as if the world got
 		// smaller -- a circle is drawn on it and everything outside that circle
@@ -204,25 +223,25 @@
 			drawT,
 			rotT,
 			R,
+			kappa,
 			k1,
 			k2,
-			handoffT,
-			// Which surface is on screen, and which curve generator is live.
 			morphT,
 			flatRadius,
 			ringT,
 			clipT,
-			sphereFade: 1 - handoffT,
-			patchFade: handoffT,
-			// The curve generator switches at GROW_END, where morphT is still 0
-			// and the blended generator reduces to the circular arc exactly —
-			// not approximately. The curves never blink.
-			useSphereCurves: p < GROW_END,
+			// A hard swap, not a crossfade. At morphT = 0 the patch IS the
+			// sphere cap -- same geometry, same material, same normals, and with
+			// FrontSide the same pixels -- so there is nothing for a fade to
+			// smooth over. Cutting instead frees the flattening to begin at the
+			// same instant, which is what keeps the curves moving.
+			sphereOn: morphT <= 0,
+			useSphereCurves: morphT <= 0,
 			legendIn: smoothstep(remap(p, CURVES_END, ROTATE_END)),
-			// Aim rises from the hanging ball to the marked point across the
-			// growth beat — by the time it arrives the sphere is far too big to
+			// Aim rises from the hanging ball to the marked point as the surface
+			// flattens -- by the time it arrives the sphere is far too big to
 			// frame anyway, so nothing is lost by stopping tracking it.
-			aimT: smoothstep(remap(p, SHRINK_END, HANDOFF_END))
+			aimT: smoothstep(remap(p, SHRINK_END, PLANE_END))
 		};
 	}
 
@@ -273,16 +292,20 @@
 	}
 	// Rewritten in place each frame: fixed vertex budget, draw range trimmed to
 	// however many rings are currently valid.
-	function updateRingGrid(R) {
+	function updateRingGrid(st) {
 		const pos = ringGrid.geometry.attributes.position;
 		const arr = pos.array;
+		const R = st.R;
 		const RR = R + CURVE_EPS;
 		let n = 0;
 		for (const d of GRID_RADII) {
 			const th = d / R;
 			if (th > GRID_MAX_ANGLE) continue;
-			const rr = RR * Math.sin(th);
-			const yy = -R + RR * Math.cos(th);
+			// Blended exactly as the surface is, so a ring stays welded to it
+			// through the morph. A ring is a fixed distance ALONG the surface,
+			// so on the flattened patch that distance is just d.
+			const rr = lerp(RR * Math.sin(th), d, st.morphT);
+			const yy = lerp(-R + RR * Math.cos(th), -0.5 * st.kappa * d * d + CURVE_EPS, st.morphT);
 			for (let i = 0; i < GRID_SEG; i++) {
 				const a0 = (2 * Math.PI * i) / GRID_SEG;
 				const a1 = (2 * Math.PI * (i + 1)) / GRID_SEG;
@@ -389,29 +412,28 @@
 		sphereMesh.position.set(0, -st.R, 0);
 		gridMesh.scale.setScalar(st.R * 1.002);
 		gridMesh.position.copy(sphereMesh.position);
-		sphereMat.opacity = st.sphereFade;
-		sphereMat.transparent = st.sphereFade < 0.999;
-		// depthWrite off only while it is actually see-through, or it would
-		// keep occluding the patch fading in behind it.
-		sphereMat.depthWrite = st.sphereFade > 0.999;
-		sphereMesh.visible = st.sphereFade > 0.002;
+		// Never transparent now: the swap is instantaneous, so the sphere stays
+		// fully opaque its whole life and the transparent-queue sorting hazards
+		// that came with fading it simply do not arise.
+		sphereMesh.visible = st.sphereOn;
 		// The lat/long wireframe says "this is a globe", worth having while the
 		// ball is being introduced -- but it scales with the sphere, so it has
 		// to be gone before the size sweep starts or it argues for a zoom. It
 		// hands over to the fixed-distance rings across the rotation.
-		gridMat.opacity = 0.14 * st.sphereFade * (1 - st.rotT);
-		gridMesh.visible = sphereMesh.visible && gridMat.opacity > 0.005;
-		updateRingGrid(st.R);
-		ringGridMat.opacity = 0.4 * st.rotT * st.sphereFade;
+		gridMat.opacity = 0.14 * (1 - st.rotT);
+		gridMesh.visible = st.sphereOn && gridMat.opacity > 0.005;
+		// The fixed-distance rings carry straight on through the flattening --
+		// staying the same size while the surface goes flat under them is the
+		// clearest statement of what is happening -- and hand over to the single
+		// neighbourhood circle rather than vanishing at the mesh swap.
+		updateRingGrid(st);
+		ringGridMat.opacity = 0.4 * st.rotT * (1 - st.ringT);
 		ringGrid.visible = ringGridMat.opacity > 0.005;
 
 		// --- the local patch ---
-		if (st.patchFade > 0.002) {
+		if (!st.sphereOn) {
 			updatePatch(st);
 			patchMesh.visible = true;
-			patchMat.opacity = st.patchFade;
-			patchMat.transparent = st.patchFade < 0.999;
-			patchMat.depthWrite = st.patchFade > 0.999;
 		} else {
 			patchMesh.visible = false;
 		}
@@ -659,7 +681,10 @@
 	});
 
 	// --- captions -----------------------------------------------------------
-	const CAPTION_DEFAULT_BOTTOM = '8%';
+	// Captions sit just under the legend rather than down at the foot of the
+	// panel: the legend is where the change is actually legible, and a caption
+	// a whole viewport away from it made the reader choose which to watch.
+	const CAPTION_DEFAULT_TOP = '9.5rem';
 	export const CAPTIONS = [
 		{
 			start: 0,
@@ -737,7 +762,7 @@
 <div class="caption-overlay">
 	{#each CAPTIONS as c, i}
 		{#if captionOpacities[i] > 0.01}
-			<p class="caption" style="opacity: {captionOpacities[i]}; bottom: {c.bottom ?? CAPTION_DEFAULT_BOTTOM};">
+			<p class="caption" style="opacity: {captionOpacities[i]}; top: {c.top ?? CAPTION_DEFAULT_TOP};">
 				{c.text}
 			</p>
 		{/if}
@@ -789,6 +814,7 @@
 		stroke-linecap: round;
 	}
 	.caption-overlay {
+		/* No top here -- each .caption sets its own (CAPTION_DEFAULT_TOP). */
 		position: absolute;
 		inset: 0;
 		display: flex;
