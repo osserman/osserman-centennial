@@ -4,7 +4,11 @@
 	// (same reasoning as MeanCurvatureScene's own exported boundaries).
 	export const LINES_END = 0.1; // two bare lines, no transversal yet
 	export const TRANSVERSAL_END = 0.18; // transversal fades in
-	export const ROTATE_END = 0.5; // continuous rotation + live equation/verdict
+	// The two angle wedges fade fully in *before* anything starts moving --
+	// otherwise the reader is asked to watch a quantity change at the same
+	// moment they are still working out which quantity is being pointed at.
+	export const WEDGES_END = 0.26;
+	export const ROTATE_END = 0.5; // rotation + live equation
 	// Between ROTATE_END and ALTERNATE_END: a brief hold at "won't
 	// intersect" (nothing changes), then the rotate-beat's own wedges/text
 	// fade fully out, *then* the second transversal fades in — sequential,
@@ -60,6 +64,11 @@
 	let { progress = 0, dragEnabled = false } = $props();
 
 	const VIEW_W = 600;
+	// Drawn extent of the two parallel lines: past both edges of the frame,
+	// so their round linecaps fall outside it (see the template).
+	const LINE_X0 = -12;
+	const LINE_X1 = 612;
+	const LINE_SPAN = LINE_X1 - LINE_X0;
 	const VIEW_H = 480;
 	const BOTTOM_Y = 300;
 	const TOP_Y_NOMINAL = 150; // only used to seed T1_FIXED below
@@ -81,8 +90,12 @@
 	// wedge larger, which read as inconsistent once the others settled).
 	const WEDGE_R_SMALL = 28;
 	const LABEL_PAD = 22;
-	const VERDICT_Y = 335; // just under the bottom line, not down by the equation
-	const EQUATION_Y = 405;
+	// The running total sits in the open space *between* the two lines --
+	// the thing it is a statement about -- rather than parked below the
+	// figure. Pushed right of the transversal so it clears the two degree
+	// labels, which reach x~250 at the shallowest sweep angle.
+	const EQUATION_X = 400;
+	const EQUATION_Y = 232;
 	const HANDLE_RADIUS = 7;
 	const BASE_DRAG_MARGIN = 12; // keep base handles from sliding off the line's ends
 
@@ -259,7 +272,8 @@
 
 		const linesT = remap(p, 0, LINES_END);
 		const transversalT = remap(p, LINES_END, TRANSVERSAL_END);
-		const rotateT = remap(p, TRANSVERSAL_END, ROTATE_END);
+		const wedgeT = remap(p, TRANSVERSAL_END, WEDGES_END);
+		const rotateT = remap(p, WEDGES_END, ROTATE_END);
 		const altT = remap(p, ROTATE_END, ALTERNATE_END);
 		// Sequential, not simultaneous: old content is fully opaque through
 		// the hold, then fades out; new content only starts fading in once
@@ -336,6 +350,7 @@
 		return {
 			linesT,
 			transversalT,
+			wedgeT,
 			rotateT,
 			altT,
 			oldFadeT,
@@ -406,16 +421,6 @@
 		return Math.round(aB1 + aB2 + aApex);
 	});
 
-	// side: 'left' | 'right' | null (parallel — no arrow, centered text).
-	// With the lines held parallel this is now always the parallel case; the
-	// intersecting branches are kept because they follow from sumRounded
-	// rather than from the script, so they stay correct for any construction.
-	let verdict = $derived.by(() => {
-		const diff = scene.sumRounded - 180;
-		if (Math.abs(diff) < 1) return { text: 'parallel — they never meet', side: null };
-		return { text: 'will intersect', side: diff > 0 ? 'left' : 'right' };
-	});
-
 	// --- on-canvas captions -- same pattern tried out in SphereGeometryScene:
 	// once the animation is doing something specific, the explanatory text
 	// sits directly over the scene, timed to the same progress boundaries
@@ -470,40 +475,46 @@
 	role="img"
 	aria-label="Parallel postulate construction"
 >
-	<!-- base lines — always full width, never fade out, but fade to grey
-	     once the triangle is fully formed: the triangle itself (drawn in
-	     black below, including its own bottom edge) becomes the thing to
-	     look at, and these read as background reference from here on. -->
-	<g style="opacity:{scene.linesT}">
-		<line x1={scene.bottomP1[0]} y1={scene.bottomP1[1]} x2={scene.bottomP2[0]} y2={scene.bottomP2[1]} class="line" class:faded={scene.proofT > 0 || dragEnabled} />
-		<line x1={scene.topP1[0]} y1={scene.topP1[1]} x2={scene.topP2[0]} y2={scene.topP2[1]} class="line" class:faded={scene.proofT > 0 || dragEnabled} />
-	</g>
+	<!-- base lines — they run off both edges of the frame rather than stopping
+	     short of them, which is the whole claim of the caption above: this is a
+	     plane with no edges, so the lines cannot be seen to end. They draw on
+	     left-to-right (dashoffset, not opacity) so the reader watches them
+	     extend rather than materialise. Never fade out, but go grey once the
+	     triangle is formed: the triangle becomes the thing to look at and these
+	     read as background reference from there on.
+
+	     The endpoints sit slightly outside the viewBox so the round linecaps
+	     land off-frame -- drawn to exactly 0 and VIEW_W, the caps would render
+	     as two visible rounded stubs at the edges. -->
+	{#snippet baseLine(y)}
+		<line
+			x1={LINE_X0}
+			y1={y}
+			x2={LINE_X1}
+			y2={y}
+			class="line"
+			class:faded={scene.proofT > 0 || dragEnabled}
+			style="stroke-dasharray:{LINE_SPAN};stroke-dashoffset:{LINE_SPAN * (1 - scene.linesT)}"
+		/>
+	{/snippet}
+	{@render baseLine(scene.bottomP1[1])}
+	{@render baseLine(scene.topP1[1])}
 
 	<!-- rotate/test-angle wedges — drawn *behind* the lines below (SVG
 	     paints in document order) so the crossing point itself stays crisp
 	     rather than getting buried under a filled wedge -->
-	{#if scene.rotateT > 0 && scene.oldFadeT < 1}
-		<g style="opacity:{Math.min(1, scene.rotateT * 3) * (1 - scene.oldFadeT)}">
+	{#if scene.wedgeT > 0 && scene.oldFadeT < 1}
+		<g style="opacity:{scene.wedgeT * (1 - scene.oldFadeT)}">
 			<path d={scene.wedgeB1} class="wedge wedge-a" />
 			<path d={scene.wedgeT1} class="wedge wedge-c" />
 			<text x={scene.labelB1[0]} y={scene.labelB1[1]} class="label label-a">{Math.round(scene.angleB1Deg)}°</text>
 			<text x={scene.labelT1[0]} y={scene.labelT1[1]} class="label label-c">{Math.round(scene.angleT1Deg)}°</text>
-			<text x={CENTER_X} y={EQUATION_Y} class="label equation" text-anchor="middle">
+			<text x={EQUATION_X} y={EQUATION_Y} class="label equation" text-anchor="middle">
 				<tspan class="eq-a">{Math.round(scene.angleT1Deg)}°</tspan>
 				<tspan class="eq-neutral"> + </tspan>
 				<tspan class="eq-c">{Math.round(scene.angleB1Deg)}°</tspan>
 				<tspan class="eq-neutral"> {scene.sumRounded === 180 ? '=' : scene.sumRounded > 180 ? '>' : '<'} 180°</tspan>
 			</text>
-			<!-- verdict sits just under the bottom line, with a bold arrow
-			     planted on whichever side the lines would actually meet on
-			     — left of the text for a left meet, right of the text for a
-			     right meet — rather than a fixed trailing arrow. -->
-			<text x={CENTER_X} y={VERDICT_Y} class="label verdict" text-anchor="middle">{verdict.text}</text>
-			{#if verdict.side === 'left'}
-				<text x={CENTER_X - 88} y={VERDICT_Y} class="label verdict-arrow" text-anchor="middle">←</text>
-			{:else if verdict.side === 'right'}
-				<text x={CENTER_X + 88} y={VERDICT_Y} class="label verdict-arrow" text-anchor="middle">→</text>
-			{/if}
 		</g>
 	{/if}
 
@@ -607,9 +618,10 @@
 		/* No top/bottom here -- each .caption sets its own `top` (see
 		   CAPTIONS' per-entry `top` field / CAPTION_DEFAULT_TOP), since
 		   different captions may want different vertical spots. Default
-		   is near the top: this scene's own SVG content (equation,
-		   verdict, wedge labels) is concentrated in the lower-middle of
-		   the frame, so a bottom-anchored caption collided with it. */
+		   is near the top: this scene's own SVG content (equation, wedge
+		   labels, the triangle itself) is concentrated in the middle and
+		   lower-middle of the frame, so a bottom-anchored caption
+		   collided with it. */
 		position: absolute;
 		inset: 0;
 		display: flex;
@@ -693,16 +705,6 @@
 		fill: var(--accent);
 	}
 	.eq-neutral {
-		fill: var(--text-primary);
-	}
-	.verdict {
-		font-size: 18px;
-		font-weight: 600;
-		fill: var(--text-secondary);
-	}
-	.verdict-arrow {
-		font-size: 30px;
-		font-weight: 700;
 		fill: var(--text-primary);
 	}
 	.handle {
