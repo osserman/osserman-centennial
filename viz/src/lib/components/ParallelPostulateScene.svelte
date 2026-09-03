@@ -65,11 +65,12 @@
 	const TOP_Y_NOMINAL = 150; // only used to seed T1_FIXED below
 	const CENTER_X = 300;
 	const HALF_LEN = 250;
-	// Swapped from an earlier version so the sweep starts on the right
-	// (sum < 180) and moves through parallel to the left (sum > 180) —
-	// was the other way around.
-	const TOP_ANGLE_START = -10; // deg, tilted down-right initially
-	const TOP_ANGLE_OVERSHOOT = 10; // deg, swept past parallel to show the flip
+	// The two lines are parallel from the start and never move. It's the
+	// *transversal* that sweeps -- far enough past perpendicular to make the
+	// two same-side angles visibly trade size, and back. Bounded so its
+	// crossing point stays comfortably on the top line's drawn extent
+	// (at 108 deg it sits at x=91, against a line starting at x=50).
+	const TRANSVERSAL_ROTATE_TO = 108;
 	// Wide gap — the two transversals need real room to visibly slide
 	// together into a triangle, not just nudge inward.
 	const TRANSVERSAL1_X = 140; // where it crosses the bottom line
@@ -268,37 +269,44 @@
 		const triT = remap(p, ALTERNATE_END, TRIANGLE_END);
 		const proofT = remap(p, TRIANGLE_END, 1);
 
-		// Top line's angle: sweeps from START past parallel to the
-		// OVERSHOOT (showing the meet-side flip), then eases back to
-		// exactly parallel (0) so later beats can assume a horizontal line.
-		const topAngle =
+		// The transversal pivots at its own foot on the bottom line, sweeping
+		// up through perpendicular and back. It returns to TRANSVERSAL1_ANGLE
+		// by the end of the beat, which is what lets every later beat go on
+		// assuming its original angle.
+		const transversalAngle =
 			rotateT <= 0.7
-				? lerp(TOP_ANGLE_START, TOP_ANGLE_OVERSHOOT, remap(rotateT, 0, 0.7))
-				: lerp(TOP_ANGLE_OVERSHOOT, 0, remap(rotateT, 0.7, 1));
-		const topDir = angleToDir(topAngle);
-		const scriptedTopP1 = addScaled(T1_FIXED, topDir, -TOP_LEFT_EXTENT);
-		const scriptedTopP2 = addScaled(T1_FIXED, topDir, TOP_RIGHT_EXTENT);
+				? lerp(TRANSVERSAL1_ANGLE, TRANSVERSAL_ROTATE_TO, remap(rotateT, 0, 0.7))
+				: lerp(TRANSVERSAL_ROTATE_TO, TRANSVERSAL1_ANGLE, remap(rotateT, 0.7, 1));
+
+		// The top line is horizontal for the whole scripted construction --
+		// the two lines are parallel from the first frame, which is the point.
+		const scriptedTopP1 = [T1_FIXED[0] - TOP_LEFT_EXTENT, TOP_Y];
+		const scriptedTopP2 = [T1_FIXED[0] + TOP_RIGHT_EXTENT, TOP_Y];
 
 		const bottomP1 = [CENTER_X - HALF_LEN, BOTTOM_Y];
 		const bottomP2 = [CENTER_X + HALF_LEN, BOTTOM_Y];
 
-		// T1 is *always* T1_FIXED — the whole point of pivoting there.
-		const T1 = T1_FIXED;
-		const T2 = intersect(B2_FIXED, TRANSVERSAL2_ANGLE, T1_FIXED, topAngle) ?? T2_SETTLED;
+		// Where the transversal currently crosses the top line: it slides
+		// along that line as the transversal pivots, coming to rest exactly
+		// at T1_FIXED once the sweep returns.
+		const T1 = intersect(B1_FIXED, transversalAngle, [CENTER_X, TOP_Y], 0) ?? T1_FIXED;
 
 		// --- angle at B1 (bottom, transversal 1): fixed regardless of
 		// topAngle, since it only depends on the transversal vs. the
 		// bottom line, both constant. ---
-		const angleB1Deg = angleBetween(B1_FIXED, bottomP2, T1_FIXED);
+		const angleB1Deg = angleBetween(B1_FIXED, bottomP2, T1);
 		// --- angle at T1 (top, transversal 1): the co-interior angle
 		// under test as the top line rotates — between the top line's
 		// rightward ray (same side as bottomP2, for the "sum of same-side
 		// interior angles" condition) and the transversal ray down toward
 		// B1. Sums to 180 with angleB1Deg exactly when parallel —
 		// verified numerically, not just by eye. ---
-		const angleT1Deg = angleBetween(T1_FIXED, scriptedTopP2, B1_FIXED);
+		const angleT1Deg = angleBetween(T1, scriptedTopP2, B1_FIXED);
+		// Always 180 now, by construction rather than by coincidence: the
+		// lines are parallel, so these two same-side interior angles are
+		// supplementary at every transversal angle. Left derived rather than
+		// hardcoded so the readout stays honest if the construction changes.
 		const sumRounded = Math.round(angleB1Deg + angleT1Deg);
-		const meetSign = sumRounded > 180 ? -1 : sumRounded < 180 ? 1 : 0; // -1 left, +1 right
 
 		// --- translate (not bend) each transversal toward the shared
 		// apex: both of its endpoints shift by the same horizontal vector,
@@ -311,7 +319,7 @@
 		const shift2 = triT * (APEX_FIXED[0] - T2_SETTLED[0]);
 		const scriptedB1 = [B1_FIXED[0] + shift1, BOTTOM_Y];
 		const scriptedB2 = [B2_FIXED[0] + shift2, BOTTOM_Y];
-		const scriptedApex1 = [T1_FIXED[0] + shift1, TOP_Y];
+		const scriptedApex1 = [T1[0] + shift1, TOP_Y];
 		const scriptedApex2 = [T2_SETTLED[0] + shift2, TOP_Y];
 
 		const currentB1 = dragB1 ?? scriptedB1;
@@ -339,7 +347,6 @@
 			topP1,
 			topP2,
 			T1,
-			T2,
 			currentB1,
 			currentB2,
 			currentApex1,
@@ -347,12 +354,11 @@
 			angleB1Deg,
 			angleT1Deg,
 			sumRounded,
-			meetSign,
 			// rotate-beat wedges (single transversal, testing the top angle)
-			wedgeB1: wedgePath(B1_FIXED, bottomP2, T1_FIXED, WEDGE_R_SMALL),
-			wedgeT1: wedgePath(T1_FIXED, scriptedTopP2, B1_FIXED, WEDGE_R_SMALL),
-			labelB1: bisectorPoint(B1_FIXED, bottomP2, T1_FIXED, WEDGE_R_SMALL + LABEL_PAD),
-			labelT1: bisectorPoint(T1_FIXED, scriptedTopP2, B1_FIXED, WEDGE_R_SMALL + LABEL_PAD),
+			wedgeB1: wedgePath(B1_FIXED, bottomP2, T1, WEDGE_R_SMALL),
+			wedgeT1: wedgePath(T1, scriptedTopP2, B1_FIXED, WEDGE_R_SMALL),
+			labelB1: bisectorPoint(B1_FIXED, bottomP2, T1, WEDGE_R_SMALL + LABEL_PAD),
+			labelT1: bisectorPoint(T1, scriptedTopP2, B1_FIXED, WEDGE_R_SMALL + LABEL_PAD),
 			// B1/B2's own wedges — unified across the alternate-angle beat,
 			// the triangle forming, the scripted proof, *and* dragging.
 			wedgeB1Base: wedgePath(currentB1, currentB2, currentApex1, WEDGE_R_SMALL),
@@ -400,10 +406,13 @@
 		return Math.round(aB1 + aB2 + aApex);
 	});
 
-	// side: 'left' | 'right' | null (parallel — no arrow, centered text)
+	// side: 'left' | 'right' | null (parallel — no arrow, centered text).
+	// With the lines held parallel this is now always the parallel case; the
+	// intersecting branches are kept because they follow from sumRounded
+	// rather than from the script, so they stay correct for any construction.
 	let verdict = $derived.by(() => {
 		const diff = scene.sumRounded - 180;
-		if (Math.abs(diff) < 1) return { text: "won't intersect", side: null };
+		if (Math.abs(diff) < 1) return { text: 'parallel — they never meet', side: null };
 		return { text: 'will intersect', side: diff > 0 ? 'left' : 'right' };
 	});
 
@@ -427,12 +436,12 @@
 		{
 			start: TRANSVERSAL_END,
 			end: ROTATE_CAPTION_SPLIT,
-			text: "Euclid reasoned that if two interior angles on one side add up to less than 180°, the lines will eventually meet on that side."
+			text: 'In this world, two lines are parallel — they never meet, however far you extend them — exactly when the angles on one side of a line crossing them add up to 180°.'
 		},
 		{
 			start: ROTATE_CAPTION_SPLIT,
 			end: ALT_HOLD_END,
-			text: "At exactly 180°, they'll never meet — they're parallel."
+			text: 'Swing that crossing line however you like: the two angles trade size, but their sum never moves off 180°.'
 		},
 		{
 			start: ALT_FADEOUT_END,

@@ -56,7 +56,7 @@ export const slides = [
 		// animation -- see that component's CAPTIONS array (and its
 		// drag-hint, which used to be this slide's separate `dragCaption`
 		// field, now folded in there too).
-		subtitle: "The **parallel postulate doesn't actually start with parallel lines**. It starts with any two lines — and another line that intersects them.",
+		subtitle: '**What does it mean for two lines to be parallel?** According to Euclid, you have to start by imagining a perfectly flat, infinite plane — a world no one could ever actually draw.',
 		visualLabel: 'Parallel-postulate / triangle-angle-sum animation'
 	},
 	{
