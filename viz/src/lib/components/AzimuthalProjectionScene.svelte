@@ -36,16 +36,22 @@
 	//  15. [.. DISC_END]       cut to the Poincare disc: the mirror case --
 	//                          an infinite surface inside a finite circle
 	//  16. [.. GEODESIC_END]   its straight lines, meeting the rim at 90 deg
-	//  17. [.. SHIFT_END]      move the centre, exactly as on the map
-	//  18. [.. ESCHER_END]     the tiling construction Escher worked from
+	//  17. [.. ARCS_END]       the two geodesics hold, named as arcs
+	//  18. [.. POSTULATE_END]  a reference line through the centre, a point off it
+	//  19. [.. MANY_END]       many lines through that point that never reach it
+	//  20. [.. RECENTRE_END]   the centre slides onto the point; all of them straighten
 	export const DRAG_END = 3.0;
 	export const RETURN_END = 3.25;
 	export const STEREO_END = 3.8;
 	export const ZOOM_END = 4.35;
 	export const DISC_END = 4.85;
 	export const GEODESIC_END = 5.35;
-	export const SHIFT_END = 5.85;
-	export const ESCHER_END = 6.5;
+	// The arcs caption used to run on the old centre-shift beat. With that beat
+	// repurposed it needs its own window, before the postulate sequence starts.
+	export const ARCS_END = 5.75;
+	export const POSTULATE_END = 6.2;
+	export const MANY_END = 6.6;
+	export const RECENTRE_END = 7.2;
 	// Exported so the narrative page can pace its scroll by how much text
 	// each beat actually carries. The animation spans were tuned for
 	// choreography, not for reading time, and the two disagree by ~9x --
@@ -63,7 +69,7 @@
 			end: ANGLES_END,
 			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the South Pole.'
 		},
-		{ start: ANGLES_END, end: TOUR_END, text: 'But these lines - both the equator and "parallel lines" shift as we rotate the center of the map to some places Osserman spent time.' },
+		{ start: ANGLES_END, end: TOUR_END, text: 'But these lines - both the equator and "parallel lines" - shift as we rotate the center of the map to some places Osserman spent time.' },
 		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either view to put yourself at the center.' },
 		{
 			start: DRAG_END,
@@ -90,13 +96,23 @@
 		},
 		{
 			start: GEODESIC_END,
-			end: SHIFT_END,
+			end: ARCS_END,
 			text: 'Infinitely long lines in our space appear as arcs, only looking straight when they pass through the center.'
 		},
 		{
-			start: SHIFT_END,
-			end: ESCHER_END,
-			text: 'This disk - the Poincaré disk - which represents an infinite negatively curved space, became the inspiration for the endless tessellations of MC Escher in his "Circle Limit" works.'
+			start: ARCS_END,
+			end: POSTULATE_END,
+			text: 'One consequence of the parallel postulate: for any line, and a point off that line, there is only one line through that point that will never intersect it, however far both are extended.'
+		},
+		{
+			start: POSTULATE_END,
+			end: MANY_END,
+			text: 'Here there are many.'
+		},
+		{
+			start: MANY_END,
+			end: RECENTRE_END,
+			text: 'They might not look straight. But shifting the centre of our map onto that point shows that they are.'
 		}
 	];
 
@@ -117,6 +133,16 @@
 	import versor from 'versor';
 	import { geoPolarPetalPreclip } from 'radial-petal-projection';
 	import { activePalette } from '$lib/palette.js';
+	// Poincare-disc maths lives in $lib/hyperbolic.js so the Circle Limit aside
+	// can share it rather than keeping a second copy that quietly diverges.
+	import {
+		hypRadial,
+		hypCircle,
+		hypGeodesic,
+		mobius,
+		shiftAngle,
+		geodesicThroughPoint
+	} from '$lib/hyperbolic.js';
 	import { landFeatures } from '$lib/coastlines.js';
 
 	// The stereographic morph's framing knobs, exposed so they can be tuned
@@ -382,16 +408,22 @@
 		// circles: in with the disc, out as the geodesics arrive
 		const circlesT =
 			smoothstep(remap(prog, ZOOM_END, DISC_END)) * (1 - smoothstep(remap(prog, DISC_END, DISC_END + SETTLE)));
-		// geodesics: in, held through the centre shift, out before the tiling
+		// The two demonstration geodesics: in, held while the caption names them
+		// as arcs, then out -- the postulate sequence draws its own lines and
+		// these would only crowd them.
 		const geoT =
 			smoothstep(remap(prog, DISC_END + SETTLE * 0.5, GEODESIC_END)) *
-			(1 - smoothstep(remap(prog, SHIFT_END, SHIFT_END + SETTLE)));
-		// the centre shift moves out and comes back, so the tiling is drawn
-		// centred rather than inheriting the offset from the beat before it
-		const shiftT =
-			smoothstep(remap(prog, GEODESIC_END, SHIFT_END)) *
-			(1 - smoothstep(remap(prog, SHIFT_END, SHIFT_END + SETTLE)));
-		const escherT = smoothstep(remap(prog, SHIFT_END + SETTLE, ESCHER_END));
+			(1 - smoothstep(remap(prog, ARCS_END, ARCS_END + SETTLE)));
+		// The postulate demonstration. The reference line and the point off it
+		// arrive first; then the family of lines through that point that never
+		// reach it; then the centre of the map slides onto that point, which is
+		// what turns every one of them straight.
+		const setupT = smoothstep(remap(prog, ARCS_END, POSTULATE_END));
+		const manyT = smoothstep(remap(prog, POSTULATE_END, MANY_END));
+		// This IS the old centre-shift beat, no longer a free-standing
+		// demonstration but the payoff of the two before it: it is doing work
+		// now rather than just showing that the model can move.
+		const shiftT = smoothstep(remap(prog, MANY_END, RECENTRE_END));
 		const equatorT = smoothstep(remap(prog, FLATTEN_END, EQUATOR_END));
 		const focusT = smoothstep(remap(prog, EQUATOR_END, ANGLES_END));
 		// The other ten meridians clear out over the FIRST part of this beat
@@ -465,7 +497,7 @@
 		const flatLat = restoreT > 0 ? viewLat : guided ? viewLat : 90;
 		return {
 			viewLon, viewLat, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT,
-			restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha
+			restoreT, stereoT, zoomT, discT, circlesT, geoT, setupT, manyT, shiftT, tourName, tourNameAlpha
 		};
 	}
 
@@ -857,295 +889,25 @@
 	// the rim only creeps closer -- it is infinitely far away, and is not
 	// part of the space.
 	// ---------------------------------------------------------------------
-	const hypRadial = (d) => Math.tanh(d / 2);
-	// A circle of fixed hyperbolic radius p, centred d from the origin, is
-	// still a genuine circle on screen (the model is conformal) -- only its
-	// size can lie, which is exactly what we want to show.
-	function hypCircle(d, p) {
-		const near = hypRadial(d - p),
-			far = hypRadial(d + p);
-		return { c: (near + far) / 2, r: (far - near) / 2 };
-	}
-	// Geodesic through two ideal points on the rim: the circle orthogonal to
-	// the boundary, centre sec(h) along the bisector, radius tan(h). Verified
-	// to meet the rim at exactly 90 deg for every pair. A geodesic through
-	// the centre is the limiting case h -> pi/2: radius -> infinity, i.e. a
-	// straight diameter -- the same thing that happens on the flat map, where
-	// lines through the centre are the ones drawn straight.
-	function hypGeodesic(a, b) {
-		const m = (a + b) / 2;
-		let h = (b - a) / 2;
-		if (Math.abs(Math.cos(h)) < 1e-6) return null; // diameter
-		return { cx: Math.cos(m) / Math.cos(h), cy: Math.sin(m) / Math.cos(h), r: Math.abs(Math.tan(h)) };
-	}
 
-	function drawGeodesic(cx, cy, R, a, b, markAngles) {
-		const g = hypGeodesic(a, b);
-		if (!g) {
-			ctx.beginPath();
-			ctx.moveTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
-			ctx.lineTo(cx + R * Math.cos(b), cy + R * Math.sin(b));
-			ctx.stroke();
-			return;
-		}
-		const GX = cx + g.cx * R,
-			GY = cy + g.cy * R,
-			GR = g.r * R;
-		const a1 = Math.atan2(cy + R * Math.sin(a) - GY, cx + R * Math.cos(a) - GX);
-		const a2 = Math.atan2(cy + R * Math.sin(b) - GY, cx + R * Math.cos(b) - GX);
-		let d = a2 - a1;
-		while (d > Math.PI) d -= 2 * Math.PI;
-		while (d < -Math.PI) d += 2 * Math.PI;
-		// The anticlockwise flag is load-bearing: canvas goes counter-clockwise
-		// from start to end, so a negative delta would draw the MAJOR arc --
-		// the part lying outside the disc, which the clip then removes,
-		// leaving the geodesic invisible while its right-angle marks remained.
-		ctx.beginPath();
-		ctx.arc(GX, GY, GR, a1, a1 + d, d < 0);
-		ctx.stroke();
-		if (markAngles) {
-			// square the geodesic makes with the rim, drawn from the real
-			// tangents rather than assumed
-			for (const t of [a, b]) {
-				const P = [cx + R * Math.cos(t), cy + R * Math.sin(t)];
-				const inward = [-Math.cos(t), -Math.sin(t)];
-				const tang = [-Math.sin(t), Math.cos(t)];
-				const sz = Math.max(6, R * 0.028);
-				ctx.beginPath();
-				ctx.moveTo(P[0] + inward[0] * sz, P[1] + inward[1] * sz);
-				ctx.lineTo(P[0] + (inward[0] + tang[0]) * sz, P[1] + (inward[1] + tang[1]) * sz);
-				ctx.lineTo(P[0] + tang[0] * sz, P[1] + tang[1] * sz);
-				ctx.stroke();
-			}
-		}
-	}
-
-	// Moebius translation: z -> (z+a)/(1+conj(a)z). It moves the origin to a
-	// and is an ISOMETRY of the hyperbolic plane -- the exact counterpart of
-	// dragging the map's centre earlier. Boundary points stay on the boundary
-	// (verified), so a geodesic can be moved simply by transforming its two
-	// ideal endpoints and rebuilding the orthogonal circle through them.
-	function mobius(z, a) {
-		const nx = z[0] + a[0],
-			ny = z[1] + a[1];
-		const cx = 1 + (a[0] * z[0] + a[1] * z[1]);
-		const cy = a[0] * z[1] - a[1] * z[0];
-		const den = cx * cx + cy * cy || 1;
-		return [(nx * cx + ny * cy) / den, (ny * cx - nx * cy) / den];
-	}
-	const shiftAngle = (t, a) => {
-		const w = mobius([Math.cos(t), Math.sin(t)], a);
-		return Math.atan2(w[1], w[0]);
-	};
-
-	// ---------------------------------------------------------------------
-	// The tiling under Circle Limit III.
-	//
-	// In that print the fish meet nose-to-nose FOUR at a time at some
-	// junctions and THREE at a time at others, which is the (4,3,3) triangle
-	// group: a fundamental triangle with angles 45/60/60 (sum 165 < 180, so
-	// genuinely hyperbolic), reflected in its own sides for ever. Two sides
-	// are diameters; the third is a geodesic, solved for below so the corner
-	// angle comes out at exactly 60 deg.
-	//
-	// Worth knowing, and a nice sting given the beat before this one: the
-	// white spines running through Escher's fish are NOT geodesics. Coxeter
-	// showed they meet the boundary at about 80 deg, not 90 -- they are
-	// hypercycles, curves at constant distance from a geodesic. Escher
-	// believed he had drawn straight lines; he had not. The tiling underneath
-	// them, which is what this draws, is built from true geodesics.
-	// ---------------------------------------------------------------------
-	const CL3_P = 4,
-		CL3_Q = 3;
-	function buildCircleLimitTiling(maxTriangles = 2600) {
-		const bis = Math.PI / CL3_P / 2;
-		const probe = (d) => {
-			const r = Math.sqrt(d * d - 1);
-			const cx = d * Math.cos(bis),
-				cy = d * Math.sin(bis);
-			const disc = r * r - cy * cy;
-			if (disc < 0) return null;
-			const t = cx - Math.sqrt(disc);
-			const nx = t - cx,
-				ny = -cy;
-			let a = Math.abs(Math.atan2(nx, -ny));
-			if (a > Math.PI / 2) a = Math.PI - a;
-			return { t, a, r, cx, cy };
-		};
-		let lo = 1.0001,
-			hi = 8;
-		for (let i = 0; i < 120; i++) {
-			const m = (lo + hi) / 2;
-			const q = probe(m);
-			if (!q || q.a < Math.PI / CL3_Q) lo = m;
-			else hi = m;
-		}
-		const f = probe((lo + hi) / 2);
-		const C = [f.cx, f.cy],
-			rr = f.r;
-		const cosA = Math.cos((2 * Math.PI) / CL3_P),
-			sinA = Math.sin((2 * Math.PI) / CL3_P);
-		const reflections = [
-			(z) => [z[0], -z[1]],
-			(z) => [cosA * z[0] + sinA * z[1], sinA * z[0] - cosA * z[1]],
-			(z) => {
-				const dx = z[0] - C[0],
-					dy = z[1] - C[1];
-				const d2 = dx * dx + dy * dy || 1e-12;
-				return [C[0] + (rr * rr * dx) / d2, C[1] + (rr * rr * dy) / d2];
-			}
-		];
-		const seed = [
-			[0, 0],
-			[f.t, 0],
-			[f.t * Math.cos(Math.PI / CL3_P), f.t * Math.sin(Math.PI / CL3_P)]
-		];
-		const key = (tri) =>
-			tri
-				.map((q) => q[0].toFixed(4) + ',' + q[1].toFixed(4))
-				.sort()
-				.join('|');
-		const out = [seed];
-		const seen = new Set([key(seed)]);
-		for (let i = 0; i < out.length && out.length < maxTriangles; i++) {
-			for (const R of reflections) {
-				const tri = out[i].map(R);
-				// stop before the numerics degrade at the rim
-				if (tri.some((q) => Math.hypot(q[0], q[1]) > 0.975)) continue;
-				const k = key(tri);
-				if (seen.has(k)) continue;
-				seen.add(k);
-				out.push(tri);
-			}
-		}
-		return out;
-	}
-	const CL3_TILES = buildCircleLimitTiling();
-
-	// The tiling's edges lie along complete geodesics, so rather than drawing
-	// each edge as a stub we draw the whole line, boundary to boundary --
-	// which is how the construction is normally shown, and reads far better.
-	// Each line is stored as its two IDEAL endpoints (angles on the rim), so
-	// the centre-shift can carry it by transforming just those two points.
-	//
-	// There are infinitely many such lines; every one further out is another
-	// line. Lines whose closest approach to the centre exceeds LINE_REACH are
-	// dropped -- they crowd the rim into solid ink without adding anything.
-	const LINE_REACH = 0.88;
-	const CL3_LINES = (() => {
-		const seen = new Set();
-		const out = [];
-		for (const [ta, tb, tc] of CL3_TILES) {
-			const q = reflectInGeodesic(ta, tb, tc);
-			const p = tc;
-			const a1 = 2 * p[0],
-				b1 = 2 * p[1],
-				c1 = p[0] * p[0] + p[1] * p[1] + 1;
-			const a2 = 2 * q[0],
-				b2 = 2 * q[1],
-				c2 = q[0] * q[0] + q[1] * q[1] + 1;
-			const det = a1 * b2 - a2 * b1;
-			let e1, e2, reach;
-			if (Math.abs(det) < 1e-9) {
-				const ref = Math.hypot(q[0], q[1]) > Math.hypot(p[0], p[1]) ? q : p;
-				const th = Math.atan2(ref[1], ref[0]);
-				e1 = th;
-				e2 = th + Math.PI;
-				reach = 0; // a diameter passes through the centre
-			} else {
-				const Ox = (c1 * b2 - c2 * b1) / det,
-					Oy = (a1 * c2 - a2 * c1) / det;
-				const mag = Math.hypot(Ox, Oy);
-				if (mag <= 1.0001) continue;
-				reach = mag - Math.sqrt(mag * mag - 1);
-				const ux = Ox / mag,
-					uy = Oy / mag;
-				const fx = ux / mag,
-					fy = uy / mag;
-				const sN = Math.sqrt(Math.max(0, 1 - 1 / (mag * mag)));
-				e1 = Math.atan2(fy + sN * ux, fx - sN * uy);
-				e2 = Math.atan2(fy - sN * ux, fx + sN * uy);
-			}
-			if (reach > LINE_REACH) continue;
-			const k = [e1, e2].map((v) => (((v % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)).toFixed(4)).sort().join('|');
-			if (seen.has(k)) continue;
-			seen.add(k);
-			out.push([e1, e2, reach]);
-		}
-		out.sort((x, y) => x[2] - y[2]); // draw inner lines first
-		return out;
-	})();
-
-	// Reflect a point in the geodesic through two others -- inversion in that
-	// circle, or a plain mirror when the two points are radial from the centre.
-	function reflectInGeodesic(p, q, z) {
-		const a1 = 2 * p[0],
-			b1 = 2 * p[1],
-			c1 = p[0] * p[0] + p[1] * p[1] + 1;
-		const a2 = 2 * q[0],
-			b2 = 2 * q[1],
-			c2 = q[0] * q[0] + q[1] * q[1] + 1;
-		const det = a1 * b2 - a2 * b1;
-		if (Math.abs(det) < 1e-9) {
-			// The geodesic is a diameter. Take the direction from whichever
-			// point is further out: one of them is often the ORIGIN, and
-			// normalising that gave a zero vector -- which silently turned the
-			// mirror into a point-reflection and produced edges of unequal
-			// length, i.e. not a tiling at all.
-			const ref = Math.hypot(q[0], q[1]) > Math.hypot(p[0], p[1]) ? q : p;
-			const L = Math.hypot(ref[0], ref[1]) || 1;
-			const ux = ref[0] / L,
-				uy = ref[1] / L;
-			const d = z[0] * ux + z[1] * uy;
-			return [2 * d * ux - z[0], 2 * d * uy - z[1]];
-		}
-		const Ox = (c1 * b2 - c2 * b1) / det,
-			Oy = (a1 * c2 - a2 * c1) / det;
-		const r2 = Ox * Ox + Oy * Oy - 1;
-		const dx = z[0] - Ox,
-			dy = z[1] - Oy;
-		const m = dx * dx + dy * dy || 1e-12;
-		return [Ox + (r2 * dx) / m, Oy + (r2 * dy) / m];
-	}
-
-	// Geodesic through two INTERIOR points: the circle through them that is
-	// orthogonal to the boundary. |C|^2 = 1 + r^2 gives 2*C.p = |p|^2 + 1 for
-	// each point, a 2x2 linear solve. A near-zero determinant means the two
-	// points are radial from the centre, where the geodesic is a diameter.
-	function drawGeodesicSeg(cx, cy, R, p, q) {
-		const a1 = 2 * p[0],
-			b1 = 2 * p[1],
-			c1 = p[0] * p[0] + p[1] * p[1] + 1;
-		const a2 = 2 * q[0],
-			b2 = 2 * q[1],
-			c2 = q[0] * q[0] + q[1] * q[1] + 1;
-		const det = a1 * b2 - a2 * b1;
-		if (Math.abs(det) < 1e-9) {
-			ctx.moveTo(cx + p[0] * R, cy + p[1] * R);
-			ctx.lineTo(cx + q[0] * R, cy + q[1] * R);
-			return;
-		}
-		const Ox = (c1 * b2 - c2 * b1) / det,
-			Oy = (a1 * c2 - a2 * c1) / det;
-		const rad = Math.sqrt(Math.max(0, Ox * Ox + Oy * Oy - 1));
-		const t1 = Math.atan2(p[1] - Oy, p[0] - Ox);
-		const t2 = Math.atan2(q[1] - Oy, q[0] - Ox);
-		let d = t2 - t1;
-		while (d > Math.PI) d -= 2 * Math.PI;
-		while (d < -Math.PI) d += 2 * Math.PI;
-		// Start a fresh sub-path at the arc's own start. ctx.arc() otherwise
-		// draws an implicit straight line from wherever the path currently is,
-		// so batching many edges into one path chained them all together --
-		// which is what turned the tiling into a web of crossing lines.
-		ctx.moveTo(cx + p[0] * R, cy + p[1] * R);
-		ctx.arc(cx + Ox * R, cy + Oy * R, rad * R, t1, t1 + d, d < 0);
-	}
+	// The point off the line, and the directions of the lines drawn through it.
+	// Both chosen against the geometry rather than by eye: with the reference
+	// line as the horizontal diameter, a geodesic through P misses it exactly
+	// when both of P's ideal endpoints stay in the upper arc, which holds for
+	// directions between about -48 and +39 degrees. These five sit inside that
+	// window with at least 6 degrees of clearance at the tightest.
+	const POSTULATE_P = [0.1, 0.4];
+	const POSTULATE_DIRS = [-42, -25, -8, 10, 30].map((d) => (d * Math.PI) / 180);
 
 	function drawPoincare(cx, cy, R, o) {
-		const { alpha, circlesT, geoT, shiftT, escherT } = o;
+		const { alpha, circlesT, geoT, setupT, manyT, shiftT } = o;
 		if (alpha <= 0.01) return;
 		const pal = activePalette();
-		const a = [0.52 * shiftT, 0];
+		// The centre slides onto P itself, rather than to an arbitrary offset:
+		// mobius(z, -P) sends P to 0, so at shiftT = 1 every line through P is a
+		// line through the centre -- and lines through the centre are the ones
+		// this model draws straight. That is the whole argument of the beat.
+		const a = [-POSTULATE_P[0] * shiftT, -POSTULATE_P[1] * shiftT];
 
 		ctx.globalAlpha = alpha;
 		ctx.beginPath();
@@ -1209,28 +971,48 @@
 			}
 		}
 
-		// the tiling Circle Limit III is built on
-		if (escherT > 0.01) {
-			// Drawn as EDGES, not extended into complete lines. The edges of
-			// this tiling genuinely do not lie along whole geodesics: with
-			// vertex figure 3.4.3.4.3.4 the angles satisfy a_tri + a_sq = 120,
-			// so three edges round a vertex span 120 + a_tri, and a hyperbolic
-			// triangle forces a_tri < 60 -- never the 180 that collinearity
-			// would need. Extending them produced lines cutting straight
-			// through the central square, which no tiling line can do.
-			const shown = Math.floor(CL3_TILES.length * smoothstep(remap(escherT, 0, 0.85)));
+		// --- the parallel postulate, put to the test -------------------------
+		// The reference line is the horizontal diameter, so it starts out drawn
+		// straight; the marked point sits off it.
+		if (setupT > 0.01) {
+			ctx.strokeStyle = pal.blue;
+			ctx.lineWidth = 2.4;
+			ctx.globalAlpha = alpha * setupT;
+			drawGeodesic(cx, cy, R, shiftAngle(0, a), shiftAngle(Math.PI, a), false);
+		}
+
+		// Lines through P that never reach it. A geodesic misses another exactly
+		// when their ideal endpoints do not interleave on the rim -- here, when
+		// both of its own ends stay in the upper arc. Euclid's plane allows one
+		// such line; this one allows a family, and the family is the point.
+		if (manyT > 0.01) {
 			ctx.strokeStyle = pal.orange;
-			ctx.lineWidth = 1;
-			ctx.globalAlpha = alpha * 0.6;
+			ctx.lineWidth = 2;
+			POSTULATE_DIRS.forEach((phi, i) => {
+				const reveal = smoothstep(remap(manyT, i / (POSTULATE_DIRS.length + 1), (i + 2) / (POSTULATE_DIRS.length + 1)));
+				if (reveal <= 0.01) return;
+				const g = geodesicThroughPoint(POSTULATE_P, phi);
+				if (!g) return;
+				ctx.globalAlpha = alpha * reveal * 0.9;
+				drawGeodesic(cx, cy, R, shiftAngle(g.a, a), shiftAngle(g.b, a), false);
+			});
+		}
+
+		// The point itself, drawn last of the three so neither line crosses over
+		// it. It rides the shift like everything else, ending at the centre.
+		if (setupT > 0.01) {
+			const w = mobius(POSTULATE_P, a);
+			const pr = Math.max(4, R * 0.022);
+			ctx.globalAlpha = alpha * setupT;
 			ctx.beginPath();
-			for (let i = 0; i < shown; i++) {
-				const [ta, tb, tc] = CL3_TILES[i];
-				const mirrored = reflectInGeodesic(ta, tb, tc);
-				if (Math.hypot(mirrored[0], mirrored[1]) > 0.995) continue;
-				drawGeodesicSeg(cx, cy, R, mobius(tc, a), mobius(mirrored, a));
-			}
+			ctx.arc(cx + w[0] * R, cy + w[1] * R, pr, 0, Math.PI * 2);
+			ctx.fillStyle = pal.aqua;
+			ctx.fill();
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = pal.surface;
 			ctx.stroke();
 		}
+
 		ctx.restore();
 
 		// rim last, so it sits above everything
@@ -1260,7 +1042,7 @@
 		if (!ctx || !width || !height) return;
 		const prog = progress;
 		const pal = activePalette();
-		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha } = stageParams(prog);
+		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, geoT, setupT, manyT, shiftT, tourName, tourNameAlpha } = stageParams(prog);
 		const meridianGrow = smoothstep(remap(prog, MERIDIANS_START, MERIDIANS_END));
 		const tissotT = smoothstep(remap(prog, MERIDIANS_END, TISSOT_END));
 		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
@@ -1361,8 +1143,9 @@
 				alpha: discT,
 				circlesT,
 				geoT,
-				shiftT,
-				escherT
+				setupT,
+				manyT,
+				shiftT
 			});
 		}
 

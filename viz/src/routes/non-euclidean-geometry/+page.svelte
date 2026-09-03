@@ -20,7 +20,7 @@
 		DRAG_END,
 		ZOOM_END,
 		DISC_END,
-		ESCHER_END
+		RECENTRE_END
 	} from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
 	import { slides } from '$lib/content/nonEuclideanGeometry.js';
@@ -287,7 +287,7 @@
 		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
 		const traveled = window.scrollY - azimuthalSettleScrollY;
 		const traveledVh = (traveled / window.innerHeight) * 100;
-		azimuthalProgress = Math.max(0, Math.min(ESCHER_END, azimuthalProgressAt(traveledVh)));
+		azimuthalProgress = Math.max(0, Math.min(RECENTRE_END, azimuthalProgressAt(traveledVh)));
 	}
 
 	// Fourth instance of the arrival/settle pattern above, driving

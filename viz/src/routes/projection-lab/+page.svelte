@@ -31,8 +31,10 @@
 		ZOOM_END,
 		DISC_END,
 		GEODESIC_END,
-		SHIFT_END,
-		ESCHER_END
+		ARCS_END,
+		POSTULATE_END,
+		MANY_END,
+		RECENTRE_END
 	} from '$lib/components/AzimuthalProjectionScene.svelte';
 	import { activePalette } from '$lib/palette.js';
 	import { landFeatures } from '$lib/coastlines.js';
@@ -81,12 +83,14 @@
 		['zoomed out', ZOOM_END],
 		['Poincaré', DISC_END],
 		['geodesics', GEODESIC_END],
-		['centre shift', SHIFT_END],
-		['Escher web', ESCHER_END]
+		['arcs', ARCS_END],
+		['postulate', POSTULATE_END],
+		['many parallels', MANY_END],
+		['recentre', RECENTRE_END]
 	];
 
 	function nudge(delta) {
-		sceneProgress = Math.min(ESCHER_END, Math.max(0, +(sceneProgress + delta).toFixed(4)));
+		sceneProgress = Math.min(RECENTRE_END, Math.max(0, +(sceneProgress + delta).toFixed(4)));
 	}
 
 	function onKey(e) {
@@ -107,8 +111,8 @@
 			last = now;
 			if (playing) {
 				sceneProgress += dt * 0.13;
-				if (sceneProgress >= ESCHER_END) {
-					sceneProgress = ESCHER_END;
+				if (sceneProgress >= RECENTRE_END) {
+					sceneProgress = RECENTRE_END;
 					playing = false;
 				}
 			}
@@ -796,7 +800,7 @@
 		<h2>1 · Scene scrubber</h2>
 		<div class="controls">
 			<button onclick={() => (playing = !playing)}>{playing ? '❚❚ pause' : '▶ play'}</button>
-			<input type="range" min="0" max={ESCHER_END} step="0.001" bind:value={sceneProgress} />
+			<input type="range" min="0" max={RECENTRE_END} step="0.001" bind:value={sceneProgress} />
 			<output>{sceneProgress.toFixed(3)}</output>
 			<label class="chk">
 				<input type="checkbox" bind:checked={sceneDebug} /> debug readout
