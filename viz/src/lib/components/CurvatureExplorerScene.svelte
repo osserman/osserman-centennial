@@ -6,9 +6,10 @@
 	export const ROTATE_END = 0.2; // marked point rotates to face the camera; legend arrives
 	export const SHRINK_END = 0.3; // radius shrinks — same curves, steeper
 	export const GROW_END = 0.42; // radius grows — same curves, flatter
-	export const HANDOFF_END = 0.5; // sphere gives way to the local quadratic patch
-	export const PLANE_END = 0.6; // both curvatures reach zero
-	export const PLANE_HOLD_END = 0.66; // a pause on the flat plane — the neutral hinge
+	export const HANDOFF_END = 0.48; // sphere mesh gives way to a cap patch of the same shape
+	export const PLANE_END = 0.58; // the cap flattens, still full width
+	export const CLIP_END = 0.66; // and only THEN closes down to a local neighbourhood
+	export const PLANE_HOLD_END = 0.7; // a pause on the flat plane — the neutral hinge
 	export const SADDLE_END = 0.82; // one curvature up, the other down
 	// Beyond SADDLE_END: hold on the saddle for the two closing captions. The
 	// back half is deliberately roomier than the stage list suggests -- the
@@ -67,7 +68,24 @@
 
 	// --- geometry constants -------------------------------------------------
 	const L = 1.0; // half arc-length of each principal curve (constant, always)
-	const PATCH_R = 1.2; // radius of the local disc — a little past the curves' ends
+	// The patch does not start life as a small disc. It starts as a CAP of the
+	// very sphere it is replacing, drawn to 85° from the marked point, which
+	// covers everything the camera can see of that sphere (the visible surface
+	// reaches 81.5°) with margin. At the handoff the two meshes are therefore
+	// the same surface, and the crossfade has nothing to give away.
+	//
+	// A patch big enough to run off-frame instead — the obvious alternative —
+	// is not reachable here: the frame's top edge points 7.5° below horizontal,
+	// and a sphere has to exceed R ≈ 317 before its surface stops drooping away
+	// from that ray. Every surface in this scene shows an edge; the fix is to
+	// make the edges coincide, not to push them off-screen.
+	const CAP_PHI = (85 * Math.PI) / 180;
+	const PATCH_R_LOCAL = 1.2; // the local neighbourhood, once it closes down
+	// Lifts the curves clear of the surface so they read as lying on it rather
+	// than z-fighting through it. Baked into the curve points (along the
+	// surface normal) rather than applied as a flat mesh offset, which only
+	// worked where the surface happened to be horizontal.
+	const CURVE_EPS = 0.012;
 	// Sized so the WHOLE ball still fits the frame once it has rotated into
 	// the viewing position, and keeps fitting as it shrinks -- only once it
 	// grows past roughly R 2.2 does it start running off frame, which is
@@ -80,7 +98,7 @@
 
 	const CURVE_SEGMENTS = 96;
 	const CURVE_TUBE_R = 0.022;
-	const PATCH_RINGS = 40;
+	const PATCH_RINGS = 48;
 	const PATCH_SPOKES = 72;
 
 	// north/south runs along X, east/west along Z (see the frame note above)
@@ -151,6 +169,16 @@
 			k2 = lerp(base, -K_SADDLE, saddleT);
 		}
 
+		// morphT drives the patch from "exactly the sphere cap" to "the
+		// quadratic form". It stays at 0 through the whole crossfade, so the
+		// swap happens between two identical surfaces, and only then does the
+		// shape start changing.
+		const morphT = smoothstep(remap(p, HANDOFF_END, PLANE_END));
+		// Width closes down only after the surface is already flat -- the
+		// neighbourhood is taken from a plane, not carved out of a sphere.
+		const capWidth = R_MAX * Math.sin(CAP_PHI);
+		const flatRadius = lerp(capWidth, PATCH_R_LOCAL, smoothstep(remap(p, PLANE_END, CLIP_END)));
+
 		return {
 			drawT,
 			rotT,
@@ -159,12 +187,13 @@
 			k2,
 			handoffT,
 			// Which surface is on screen, and which curve generator is live.
+			morphT,
+			flatRadius,
 			sphereFade: 1 - handoffT,
 			patchFade: handoffT,
-			// Below the handoff the curves are true circular arcs; above it they
-			// are the parabolic normal sections. The switch happens at R_MAX,
-			// where the two agree to ~0.001 world units over the whole curve —
-			// far below a pixel, so the swap is invisible.
+			// The curve generator switches at GROW_END, where morphT is still 0
+			// and the blended generator reduces to the circular arc exactly —
+			// not approximately. The curves never blink.
 			useSphereCurves: p < GROW_END,
 			legendIn: smoothstep(remap(p, CURVES_END, ROTATE_END)),
 			// Aim rises from the hanging ball to the marked point across the
@@ -179,20 +208,30 @@
 	// parameterised by ARC LENGTH s so its on-screen size is independent of R.
 	function sphereArcPoints(dir, R, half, n = CURVE_SEGMENTS) {
 		const pts = [];
+		const RR = R + CURVE_EPS; // lifted along the normal, which here is radial
 		for (let i = 0; i <= n; i++) {
 			const s = -half + (2 * half * i) / n;
 			const th = s / R;
 			const sin = Math.sin(th);
-			pts.push(new THREE.Vector3(sin * dir.x * R, -R + R * Math.cos(th), sin * dir.z * R));
+			pts.push(new THREE.Vector3(sin * dir.x * RR, -R + RR * Math.cos(th), sin * dir.z * RR));
 		}
 		return pts;
 	}
-	// Normal section of the quadratic patch along `dir`: y = -1/2 k u².
-	function patchCurvePoints(dir, k, half, n = CURVE_SEGMENTS) {
+	// The curve on the morphing patch: the same circular arc at morphT = 0,
+	// the parabolic normal section at morphT = 1. Because the arc is written
+	// in arc-length form here too, this reduces EXACTLY to sphereArcPoints
+	// when morphT is 0 — which is what lets the generator switch mid-scene
+	// without the curves moving by even a pixel.
+	function patchCurvePoints(dir, k, st, n = CURVE_SEGMENTS) {
 		const pts = [];
 		for (let i = 0; i <= n; i++) {
-			const u = -half + (2 * half * i) / n;
-			pts.push(new THREE.Vector3(u * dir.x, -0.5 * k * u * u, u * dir.z));
+			const s = -L + (2 * L * i) / n;
+			const th = s / st.R;
+			const capX = st.R * Math.sin(th);
+			const capY = -st.R * (1 - Math.cos(th));
+			const x = lerp(capX, s, st.morphT);
+			const y = lerp(capY, -0.5 * k * x * x, st.morphT) + CURVE_EPS;
+			pts.push(new THREE.Vector3(x * dir.x, y, x * dir.z));
 		}
 		return pts;
 	}
@@ -207,15 +246,24 @@
 	// the mesh simply is the neighbourhood. Topology is fixed for the whole
 	// sequence; only the y values and normals are rewritten per frame, so
 	// scrubbing never triggers a remesh.
+	// patchT / patchTheta hold each vertex's normalised radial parameter and
+	// angle. Positions are rewritten from those every frame, so the same fixed
+	// topology serves the sphere cap, the plane and the saddle alike -- no
+	// remeshing at any point in the scrub.
+	let patchT = [];
+	let patchTheta = [];
 	function buildPatchGeometry() {
 		const positions = [];
 		const indices = [];
 		positions.push(0, 0, 0); // centre vertex
+		patchT = [0];
+		patchTheta = [0];
 		for (let ring = 1; ring <= PATCH_RINGS; ring++) {
-			const r = (PATCH_R * ring) / PATCH_RINGS;
 			for (let s = 0; s < PATCH_SPOKES; s++) {
 				const th = (2 * Math.PI * s) / PATCH_SPOKES;
-				positions.push(r * Math.cos(th), 0, r * Math.sin(th));
+				positions.push(0, 0, 0);
+				patchT.push(ring / PATCH_RINGS);
+				patchTheta.push(th);
 			}
 		}
 		const idx = (ring, s) => 1 + (ring - 1) * PATCH_SPOKES + (s % PATCH_SPOKES);
@@ -235,12 +283,22 @@
 		geo.computeVertexNormals();
 		return geo;
 	}
-	function updatePatch(k1, k2) {
+	// Cap and plane are both written in the same normalised parameter, so the
+	// blend between them is a straight vertex lerp -- no seam, no popping, and
+	// at morphT = 0 the result is the sphere cap to machine precision.
+	function updatePatch(st) {
 		const pos = patchGeo.attributes.position;
 		for (let i = 0; i < pos.count; i++) {
-			const x = pos.getX(i);
-			const z = pos.getZ(i);
-			pos.setY(i, -0.5 * (k1 * x * x + k2 * z * z));
+			const t = patchT[i];
+			const th = patchTheta[i];
+			const a = t * CAP_PHI;
+			const capR = st.R * Math.sin(a);
+			const capY = -st.R * (1 - Math.cos(a));
+			const r = lerp(capR, st.flatRadius * t, st.morphT);
+			const x = r * Math.cos(th);
+			const z = r * Math.sin(th);
+			const quadY = -0.5 * (st.k1 * x * x + st.k2 * z * z);
+			pos.setXYZ(i, x, lerp(capY, quadY, st.morphT), z);
 		}
 		pos.needsUpdate = true;
 		patchGeo.computeVertexNormals();
@@ -269,7 +327,7 @@
 
 		// --- the local patch ---
 		if (st.patchFade > 0.002) {
-			updatePatch(st.k1, st.k2);
+			updatePatch(st);
 			patchMesh.visible = true;
 			patchMat.opacity = st.patchFade;
 			patchMat.transparent = st.patchFade < 0.999;
@@ -285,10 +343,10 @@
 		const half = Math.max(0.02, L * st.drawT);
 		const ns = st.useSphereCurves
 			? sphereArcPoints(DIR_NS, st.R, half)
-			: patchCurvePoints(DIR_NS, st.k1, L);
+			: patchCurvePoints(DIR_NS, st.k1, st);
 		const ew = st.useSphereCurves
 			? sphereArcPoints(DIR_EW, st.R, half)
-			: patchCurvePoints(DIR_EW, st.k2, L);
+			: patchCurvePoints(DIR_EW, st.k2, st);
 		curveNSMesh.geometry.dispose();
 		curveNSMesh.geometry = tubeFromPoints(ns);
 		curveEWMesh.geometry.dispose();
@@ -322,7 +380,7 @@
 		const k = which === 'ns' ? st.k1 : st.k2;
 		const pts = st.useSphereCurves
 			? sphereArcPoints(dir, st.R, L, 48)
-			: patchCurvePoints(dir, k, L, 48);
+			: patchCurvePoints(dir, k, st, 48);
 		const cx = LEG_W / 2;
 		const cy = LEG_H / 2;
 		return pts
@@ -416,26 +474,29 @@
 		// directions stay distinguishable under colour-vision deficiency as
 		// well as in normal vision. They keep these colours for the whole
 		// sequence, in 3D and in the legend alike.
-		curveNSMat = new THREE.MeshBasicMaterial({ color: pal.blue, depthWrite: false });
-		curveEWMat = new THREE.MeshBasicMaterial({ color: pal.orange, depthWrite: false });
+		// transparent:true is not about opacity here -- it moves the curves into
+		// three.js's transparent queue, which draws AFTER the opaque one and
+		// honours renderOrder. As opaque meshes they were drawn first and then
+		// painted over by the sphere and patch the moment either went
+		// see-through for the crossfade, which is exactly when they matter most.
+		curveNSMat = new THREE.MeshBasicMaterial({ color: pal.blue, transparent: true, depthWrite: false });
+		curveEWMat = new THREE.MeshBasicMaterial({ color: pal.orange, transparent: true, depthWrite: false });
 		curveNSMesh = new THREE.Mesh(tubeFromPoints(sphereArcPoints(DIR_NS, R_OPEN, 0.001)), curveNSMat);
 		curveEWMesh = new THREE.Mesh(tubeFromPoints(sphereArcPoints(DIR_EW, R_OPEN, 0.001)), curveEWMat);
 		// Rendered after the surfaces with depth test still on, but nudged
 		// out along the normal so they read as sitting ON the surface rather
 		// than z-fighting through it.
-		curveNSMesh.renderOrder = 2;
-		curveEWMesh.renderOrder = 2;
-		curveNSMesh.position.y = 0.006;
-		curveEWMesh.position.y = 0.006;
+		curveNSMesh.renderOrder = 3;
+		curveEWMesh.renderOrder = 3;
 		pivot.add(curveNSMesh, curveEWMesh);
 
 		// The marked point itself — aqua, well clear of both curve colours.
 		pointMesh = new THREE.Mesh(
 			new THREE.SphereGeometry(0.055, 20, 16),
-			new THREE.MeshBasicMaterial({ color: pal.aqua })
+			new THREE.MeshBasicMaterial({ color: pal.aqua, transparent: true, depthWrite: false })
 		);
-		pointMesh.renderOrder = 3;
-		pointMesh.position.y = 0.01;
+		pointMesh.renderOrder = 4;
+		pointMesh.position.y = CURVE_EPS * 1.5;
 		pivot.add(pointMesh);
 
 		resizeObserver = new ResizeObserver((entries) => {
@@ -489,11 +550,11 @@
 		},
 		{
 			start: SHRINK_END,
-			end: HANDOFF_END,
+			end: 0.52,
 			text: 'The steeper the curves, the smaller the sphere. The flatter the curves, the bigger it is.'
 		},
 		{
-			start: HANDOFF_END,
+			start: 0.52,
 			end: PLANE_HOLD_END,
 			text: 'With no curvature at all in either direction, you have a flat plane.'
 		},
