@@ -98,6 +98,17 @@ export const slides = [
 		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
 	},
 	{
+		id: 'a-different-kind-of-map',
+		title: 'A Different Kind of Map',
+		// Second half of the azimuthal sequence, which runs as ONE continuous
+		// visual across two text sections -- see the .stanza-part pair in
+		// +page.svelte. This subtitle was an on-canvas caption until the split;
+		// it is long, and it reads far better held still in the sidebar while
+		// the map transforms than flashed over the top of it.
+		subtitle:
+			'We are looking at a view of a finite world that requires infinite paper to show in its entirety. Next, we turn to an inverse of this map — one that shows an infinite surface within a simple circle.'
+	},
+	{
 		id: 'negative-curvature',
 		title: 'What Negative Curvature Means',
 		// Replaces the old 'imaginary-curvature' slide (see

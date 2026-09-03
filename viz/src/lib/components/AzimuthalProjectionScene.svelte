@@ -76,11 +76,13 @@
 			end: ZOOM_END,
 			text: "If we want to make our reference circles circular once again we can achieve that by stretching the map out in all directions. But in doing so our map is no longer finite, as the South Pole moves off the map to infinity."
 		},
-		{
-			start: ZOOM_END,
-			end: DISC_END,
-			text: 'This last view is a finite world that needs infinite paper. We now turn towards a new map of a new surface. Instead of mapping our sphere, a surface with constant positive curvature that can exist in 3-dimensional space, we turn towards a map of a surface with constant negative curvature, which would be infinite in three-dimensional space. Our map of it however fits in a finite circle.'
-		},
+		// NOTE: there is deliberately no caption for ZOOM_END..DISC_END. That
+		// beat's text became the sidebar for the 'a-different-kind-of-map'
+		// slide, which is where the stanza splits in two. The beat still needs
+		// its scroll, though -- the reader still has to read those words, just
+		// in the left panel -- so +page.svelte folds that slide's subtitle into
+		// the pacing table at this exact span. Delete this gap without doing
+		// that and the beat introducing the Poincare disk loses most of its room.
 		{
 			start: DISC_END,
 			end: GEODESIC_END,

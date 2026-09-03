@@ -18,6 +18,8 @@
 		CAPTIONS as AZIMUTHAL_CAPTIONS,
 		TOUR_END,
 		DRAG_END,
+		ZOOM_END,
+		DISC_END,
 		ESCHER_END
 	} from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
@@ -51,6 +53,7 @@
 	const introSlide = slides[0];
 	const outroSlide = slides[slides.length - 1];
 	const azimuthalSlide = slides.find((s) => s.id === 'azimuthal-projection');
+	const discSlide = slides.find((s) => s.id === 'a-different-kind-of-map');
 	const curvatureSlide = slides.find((s) => s.id === 'negative-curvature');
 	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
 
@@ -180,11 +183,21 @@
 	const DRAG_FLOOR_VH = 180;
 
 	// Cumulative [progress, vh] breakpoints; scroll maps piecewise-linearly.
+	// The azimuthal scene's own captions, PLUS the one beat whose text lives in
+	// the left panel instead (the 'a-different-kind-of-map' subtitle). That beat
+	// has no on-canvas caption, so without this it would contribute no weight
+	// and the arrival of the Poincare disk would get almost no scroll -- while
+	// being exactly the stretch where the reader has the most to read.
+	const AZIMUTHAL_BEATS = [
+		...AZIMUTHAL_CAPTIONS,
+		{ start: ZOOM_END, end: DISC_END, text: discSlide.subtitle }
+	].sort((a, b) => a.start - b.start);
+
 	const AZIMUTHAL_PACING = (() => {
-		const weights = AZIMUTHAL_CAPTIONS.map(
+		const weights = AZIMUTHAL_BEATS.map(
 			(c) => VH_PER_CHAR * c.text.length + VH_PER_PROGRESS_UNIT * (c.end - c.start)
 		);
-		const isDrag = AZIMUTHAL_CAPTIONS.map((c) => c.start === TOUR_END);
+		const isDrag = AZIMUTHAL_BEATS.map((c) => c.start === TOUR_END);
 		const total = weights.reduce((a, b) => a + b, 0);
 		let heights = weights.map((w) => (w / total) * AZIMUTHAL_TOTAL_VH);
 
@@ -201,12 +214,29 @@
 
 		const stops = [{ progress: 0, vh: 0 }];
 		let cum = 0;
-		AZIMUTHAL_CAPTIONS.forEach((c, i) => {
+		AZIMUTHAL_BEATS.forEach((c, i) => {
 			cum += heights[i];
 			stops.push({ progress: c.end, vh: cum });
 		});
 		return stops;
 	})();
+
+	// Where a given progress falls in the scroll — the inverse of
+	// azimuthalProgressAt, used to size the first section's spacer so the
+	// sidebar changes over exactly where the beat does.
+	function azimuthalVhAt(progress) {
+		const stops = AZIMUTHAL_PACING;
+		for (let i = 1; i < stops.length; i++) {
+			if (stops[i].progress >= progress) {
+				const a = stops[i - 1];
+				const b = stops[i];
+				const t = (progress - a.progress) / (b.progress - a.progress);
+				return a.vh + t * (b.vh - a.vh);
+			}
+		}
+		return stops[stops.length - 1].vh;
+	}
+	const AZIMUTHAL_SPLIT_VH = azimuthalVhAt(ZOOM_END);
 
 	// Invert the table: scrolled distance -> progress.
 	function azimuthalProgressAt(traveledVh) {
@@ -355,22 +385,44 @@
 	</div>
 </main>
 
-<!-- azimuthal-projection: has a real scene-panel visual (AzimuthalProjectionScene),
-     but is the only slide in its own section, so it gets its own dedicated
-     sticky-text + trailing-spacer treatment directly rather than sharing
-     the <Scrolly>/<ScrollyStep> machinery above with parallel-postulate/
-     sphere (which exists specifically to arbitrate *between* multiple
-     slides sharing one section) -- same reasoning negative-curvature below
-     uses for skipping Scrolly entirely. -->
+<!-- azimuthal-projection + a-different-kind-of-map: TWO text sections over ONE
+     continuous visual. Both .stanza-part blocks sit in a single <main>, so the
+     scene panel stays sticky straight through the handover and the map never
+     unmounts or resets -- splitting these into two <main> elements would give
+     the second section its own scene instance, which would restart the whole
+     sequence from the globe.
+
+     Each part needs its OWN wrapper, though: two sticky headings sharing one
+     containing block would both pin to the top and overlap, since the first
+     only releases at the end of the block it lives in. A wrapper per part makes
+     each heading release exactly where its own section ends.
+
+     The first part's spacer is sized from the pacing table so the heading
+     changes over where the beat does (ZOOM_END). It runs a little long in
+     practice -- the sticky heading's own height is scroll too, and that is not
+     knowable from here -- which lands the new title just after the new beat
+     starts rather than just before. That is the right side to err on. -->
 <main class="layout">
 	<div class="text-panel">
 		<div class="euler-flow">
-			<div class="intro-spacer-lead"></div>
-			<div class="intro-sticky" bind:this={azimuthalTextEl}>
-				<h2>{azimuthalSlide.title}</h2>
-				<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
+			<div class="stanza-part">
+				<div class="intro-spacer-lead"></div>
+				<div class="intro-sticky" bind:this={azimuthalTextEl}>
+					<h2>{azimuthalSlide.title}</h2>
+					<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
+				</div>
+				<div class="trailing-spacer" style="height: {AZIMUTHAL_SPLIT_VH}vh"></div>
 			</div>
-			<div class="trailing-spacer" style="height: {spacerVh(AZIMUTHAL_TOTAL_VH)}vh"></div>
+			<div class="stanza-part">
+				<div class="intro-sticky">
+					<h2>{discSlide.title}</h2>
+					<p class="subtitle">{@html renderInline(discSlide.subtitle)}</p>
+				</div>
+				<div
+					class="trailing-spacer"
+					style="height: {spacerVh(AZIMUTHAL_TOTAL_VH - AZIMUTHAL_SPLIT_VH)}vh"
+				></div>
+			</div>
 		</div>
 	</div>
 	<div class="scene-panel">
@@ -545,6 +597,14 @@
 	   ScrollyStep's own flex root sees one child, not several separately
 	   flex-positioned siblings (see that file's comment on the same bug). */
 	.euler-flow {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+	}
+	/* One per text section that shares a scene. Exists purely to be the sticky
+	   containing block for its own heading, so heading N releases when section N
+	   ends instead of staying pinned over section N+1. */
+	.stanza-part {
 		display: flex;
 		flex-direction: column;
 		width: 100%;
