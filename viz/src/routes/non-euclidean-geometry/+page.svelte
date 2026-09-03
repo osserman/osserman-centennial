@@ -2,18 +2,17 @@
 	// Stanza I — Non-Euclidean Geometry. Same two-column scrollytelling
 	// shell as /minimal-surfaces (cover intro, sticky text-panel +
 	// scene-panel scrolly flow, cover outro). Most slides are still generic
-	// text+VisualPlaceholder — only the ones with a real visual (currently
+	// text-only — only the ones with a real visual (currently
 	// parallel-postulate) get their own branch, the same way minimal-surfaces
 	// grew CatenoidScene/CatenaryUnrollScene/MeanCurvatureScene out of
-	// VisualPlaceholder one slide at a time.
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
-	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
 	import ParallelPostulateScene from '$lib/components/ParallelPostulateScene.svelte';
+	import CurvatureExplorerScene from '$lib/components/CurvatureExplorerScene.svelte';
 	import SphereGeometryScene from '$lib/components/SphereGeometryScene.svelte';
 	import AzimuthalProjectionScene, {
 		CAPTIONS as AZIMUTHAL_CAPTIONS,
@@ -37,6 +36,7 @@
 	// activeIndex branch at all), which is what surfaced this.
 	const debugSphere = $derived(browser && page.url.searchParams.get('debug') === 'sphere');
 	const debugAzimuthal = $derived(browser && page.url.searchParams.get('debug') === 'azimuthal');
+	const debugCurvature = $derived(browser && page.url.searchParams.get('debug') === 'curvature');
 
 	// Same split as minimal-surfaces: first/last slides are standalone
 	// full-viewport cover screens (see .cover-section below), not part of
@@ -47,11 +47,11 @@
 	// <Scrolly> with siblings the way parallel-postulate/sphere do), so it
 	// gets its own dedicated <main> below with the same sticky-text +
 	// trailing-spacer mechanism but no <Scrolly>/<ScrollyStep> wrapper --
-	// same reasoning imaginary-curvature already uses for skipping Scrolly.
+	// negative-curvature below has the same shape.
 	const introSlide = slides[0];
 	const outroSlide = slides[slides.length - 1];
 	const azimuthalSlide = slides.find((s) => s.id === 'azimuthal-projection');
-	const imaginarySlide = slides.find((s) => s.id === 'imaginary-curvature');
+	const curvatureSlide = slides.find((s) => s.id === 'negative-curvature');
 	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
 
 	let activeIndex = $state(0);
@@ -236,23 +236,54 @@
 		azimuthalProgress = Math.max(0, Math.min(ESCHER_END, azimuthalProgressAt(traveledVh)));
 	}
 
+	// Fourth instance of the arrival/settle pattern above, driving
+	// CurvatureExplorerScene. Uniform pacing (unlike the azimuthal scene's
+	// caption-derived table) -- this scene's captions are close enough in
+	// length that a flat span keeps reading density inside 3x on its own.
+	let curvatureProgress = $state(0);
+	let curvatureTextEl = $state();
+	const CURVATURE_SPAN_VH = 10.0;
+	let curvatureSettleScrollY = null;
+
+	function CURVATURE_SPAN_PX() {
+		return CURVATURE_SPAN_VH * window.innerHeight;
+	}
+
+	function updateCurvatureProgress() {
+		if (!curvatureTextEl) return;
+		const rect = curvatureTextEl.getBoundingClientRect();
+		if (rect.top > STICKY_TOP_PX) {
+			curvatureProgress = 0;
+			curvatureSettleScrollY = null;
+			return;
+		}
+		if (curvatureSettleScrollY === null) curvatureSettleScrollY = window.scrollY;
+		const traveled = window.scrollY - curvatureSettleScrollY;
+		curvatureProgress = Math.max(0, Math.min(1, traveled / CURVATURE_SPAN_PX()));
+	}
+
 	onMount(() => {
 		updateParallelProgress();
 		updateSphereProgress();
 		updateAzimuthalProgress();
+		updateCurvatureProgress();
 		window.addEventListener('scroll', updateParallelProgress, { passive: true });
 		window.addEventListener('scroll', updateSphereProgress, { passive: true });
 		window.addEventListener('scroll', updateAzimuthalProgress, { passive: true });
+		window.addEventListener('scroll', updateCurvatureProgress, { passive: true });
 		window.addEventListener('resize', updateParallelProgress);
 		window.addEventListener('resize', updateSphereProgress);
 		window.addEventListener('resize', updateAzimuthalProgress);
+		window.addEventListener('resize', updateCurvatureProgress);
 		return () => {
 			window.removeEventListener('scroll', updateParallelProgress);
 			window.removeEventListener('scroll', updateSphereProgress);
 			window.removeEventListener('scroll', updateAzimuthalProgress);
+			window.removeEventListener('scroll', updateCurvatureProgress);
 			window.removeEventListener('resize', updateParallelProgress);
 			window.removeEventListener('resize', updateSphereProgress);
 			window.removeEventListener('resize', updateAzimuthalProgress);
+			window.removeEventListener('resize', updateCurvatureProgress);
 		};
 	});
 </script>
@@ -329,8 +360,8 @@
      sticky-text + trailing-spacer treatment directly rather than sharing
      the <Scrolly>/<ScrollyStep> machinery above with parallel-postulate/
      sphere (which exists specifically to arbitrate *between* multiple
-     slides sharing one section) -- same reasoning imaginary-curtaure below
-     already uses for skipping Scrolly entirely. -->
+     slides sharing one section) -- same reasoning negative-curvature below
+     uses for skipping Scrolly entirely. -->
 <main class="layout">
 	<div class="text-panel">
 		<div class="euler-flow">
@@ -351,25 +382,22 @@
 	</div>
 </main>
 
-<!-- imaginary-curvature has no scene-panel visual, but keeps the
-     two-column shell for now since a visual is more clearly planned for
-     it -- just without Scrolly/ScrollyStep, since there's only one slide
-     here and nothing to switch between. -->
+<!-- negative-curvature: same shape as azimuthal-projection above -- a real
+     scene-panel visual, alone in its section, so it gets its own sticky-text
+     + trailing-spacer treatment rather than <Scrolly>/<ScrollyStep>. -->
 <main class="layout">
 	<div class="text-panel">
-		<div class="slide-text solo-slide">
-			<h2>{imaginarySlide.title}</h2>
-			{#each imaginarySlide.body as para}
-				{#if para.startsWith('> ')}
-					<blockquote>{@html renderInline(para.slice(2))}</blockquote>
-				{:else}
-					<p>{@html renderInline(para)}</p>
-				{/if}
-			{/each}
+		<div class="euler-flow">
+			<div class="intro-spacer-lead"></div>
+			<div class="intro-sticky" bind:this={curvatureTextEl}>
+				<h2>{curvatureSlide.title}</h2>
+				<p class="subtitle">{@html renderInline(curvatureSlide.subtitle)}</p>
+			</div>
+			<div class="trailing-spacer" style="height: {spacerVh(CURVATURE_SPAN_VH * 100)}vh"></div>
 		</div>
 	</div>
 	<div class="scene-panel">
-		<VisualPlaceholder label={imaginarySlide.visualLabel ?? ''} />
+		<CurvatureExplorerScene progress={curvatureProgress} debug={debugCurvature} />
 	</div>
 </main>
 
@@ -480,23 +508,6 @@
 		flex-shrink: 0;
 		padding: 0 2.5rem;
 		border-right: 1px solid var(--surface-2);
-	}
-	.slide-text {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		width: 100%;
-	}
-	/* Same min-height/centering ScrollyStep normally provides -- needed
-	   here since imaginary-curvature's block isn't wrapped in one (it's
-	   alone, no Scrolly/active-index switching to do), but the sticky
-	   .scene-panel alongside it still needs the text column to be at
-	   least a viewport tall to hold properly while scrolling past. */
-	.solo-slide {
-		min-height: 90vh;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
 	}
 	h2 {
 		font-size: 1.7rem;

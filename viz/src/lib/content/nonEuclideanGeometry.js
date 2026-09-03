@@ -98,27 +98,18 @@ export const slides = [
 		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
 	},
 	{
-		id: 'imaginary-curvature',
-		title: 'Measuring Negative Curvature with Imaginary Numbers',
-		// This slide's copy is the least settled of the six (per the source
-		// doc, "still pretty vague") — kept short and close to the clearest
-		// parts of the draft rather than papering over the open questions.
-		// The source doc's own unresolved notes-to-self are preserved below
-		// for whoever revises this slide, not folded into the body text.
-		body: [
-			'[NOTE: This placeholder text needs to be updated based on a new flow introduced by the previous sequence... more coming soon]',
-			'Gaussian curvature can be negative or positive.',
-			"While negative curvature is very real — it's the curvature of a saddle, or a potato chip — it turned out that measuring it required imaginary numbers. Like negative numbers before them, imaginary numbers were once considered an abstract, impossible-to-exist concept.",
-			'Various mathematicians in the early 1800s proposed a surface of constant negative curvature that would violate the parallel postulate in a different way: there could be many straight lines passing through a point off another line that would never intersect it.'
-		],
-		visualLabel: 'Negative-curvature saddle / pseudosphere visual'
-		// Open questions from the source doc, still unresolved:
-		// - How to describe Gaussian curvature itself: principal curvatures
-		//   having the same sign vs. opposite signs? A more/less
-		//   mathematical definition? Possibly via a normal line and the
-		//   planes through it and their intersections with the surface.
-		// - The third paragraph's surface is probably the pseudosphere —
-		//   worth an explicit visual/example once this slide gets its animation.
+		id: 'negative-curvature',
+		title: 'What Negative Curvature Means',
+		// Replaces the old 'imaginary-curvature' slide (see
+		// scrollytelling-non-euclidean-revisions.md). That slide asserted what
+		// negative curvature was and flagged its own open questions -- how to
+		// define Gaussian curvature, whether to go via principal curvatures --
+		// which CurvatureExplorerScene now answers by showing it instead.
+		//
+		// The subtitle poses the question the scene spends its whole run
+		// answering, and points back at the disc the reader has just left.
+		subtitle:
+			'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.'
 	},
 	{
 		id: 'hyperbolic-outro',

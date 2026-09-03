@@ -31,6 +31,26 @@ git show e045889 -- viz/src/routes/non-euclidean-geometry/+page.svelte  # its ma
 Nothing referenced it by index — the page keys every slide by id — so
 restoring means re-adding the slide object plus its `<section class="cover-section">`.
 
+### Measuring Negative Curvature with Imaginary Numbers — the whole slide · `85b4ee9`
+
+Replaced by the `negative-curvature` slide + `CurvatureExplorerScene`, built
+from `scrollytelling-negative-curvature.md`. The old slide asserted that
+negative curvature is "the curvature of a saddle, or a potato chip" and that
+measuring it required imaginary numbers, and carried its own unresolved
+notes-to-self about how to define Gaussian curvature. The new scene shows the
+thing instead, so those questions are answered rather than deferred.
+
+The imaginary-numbers thread and the pseudosphere reference are **not**
+carried over anywhere — if either matters to the argument, they need a new
+home.
+
+```bash
+git show 85b4ee9^:viz/src/lib/content/nonEuclideanGeometry.js
+```
+
+Its `VisualPlaceholder` and the `.solo-slide` shell went with it: every slide
+in the stanza now has a real visual, so both were dead.
+
 ### The "will intersect ←/→" verdict · `6b5156a`
 
 A live readout under the parallel-postulate figure naming which side the two
