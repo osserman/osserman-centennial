@@ -9,11 +9,11 @@
 	// moment they are still working out which quantity is being pointed at.
 	export const WEDGES_END = 0.26;
 	export const ROTATE_END = 0.5; // rotation + live equation
-	// Between ROTATE_END and ALTERNATE_END: a brief hold at "won't
-	// intersect" (nothing changes), then the rotate-beat's own wedges/text
-	// fade fully out, *then* the second transversal fades in — sequential,
-	// not overlapping (an earlier version cross-faded them, which read as
-	// muddled since old and new content were both partially visible at once).
+	// Between ROTATE_END and ALTERNATE_END: a brief hold (nothing changes),
+	// then the co-interior angle and the equation fade out — handing off to
+	// the alternate angle at the top-left on that same window — and only
+	// *then* does the second transversal fade in. The bottom angle sits out
+	// all of this: it is the same 70° throughout and never redraws.
 	export const ALT_HOLD_END = 0.56;
 	export const ALT_FADEOUT_END = 0.63;
 	export const ALTERNATE_END = 0.72; // second transversal, 4 colored wedges
@@ -24,10 +24,10 @@
 
 <script>
 	// Slide 2's scene: Euclid's parallel postulate, worked through as one
-	// continuous scroll-scrubbed construction — two bare lines, a
-	// transversal, a continuously rotating top line with a live angle-sum
-	// readout showing which side (if either) the lines would meet on, a
-	// second transversal demonstrating alternate angles are equal, the two
+	// continuous scroll-scrubbed construction — two parallel lines drawing on
+	// off both edges of the frame, a transversal, that transversal sweeping
+	// through perpendicular and back with a live angle-sum readout that never
+	// leaves 180, a second transversal demonstrating alternate angles are equal, the two
 	// transversals sliding together to a shared point *on* the top line, and
 	// the classic straight-line proof that a triangle's angles sum to 180.
 	// Once scrolling completes the reader can drag the triangle's own
@@ -39,8 +39,11 @@
 	//    lines they cross — no overhang past either intersection.
 	//  - wedges render *behind* the black lines (painter's order below),
 	//    so the vertex itself stays crisp.
-	//  - the top line pivots at its own fixed crossing point with
-	//    transversal 1 (T1_FIXED below), not around some unrelated center.
+	//  - the lines stay parallel and fixed; the transversal is what moves,
+	//    pivoting on its own foot on the bottom line. (An earlier version
+	//    rotated the *top line* through parallel instead, framing the beat
+	//    as Euclid's less-than-180 inequality rather than as "what makes two
+	//    lines parallel" — see T1_FIXED, still the settled crossing point.)
 	//  - the two transversals *translate* toward each other (same angle,
 	//    same shape, just slid sideways) rather than bending/rotating — see
 	//    the shift1/shift2 math below. Both endpoints of each transversal
@@ -77,8 +80,8 @@
 	// The two lines are parallel from the start and never move. It's the
 	// *transversal* that sweeps -- far enough past perpendicular to make the
 	// two same-side angles visibly trade size, and back. Bounded so its
-	// crossing point stays comfortably on the top line's drawn extent
-	// (at 108 deg it sits at x=91, against a line starting at x=50).
+	// crossing point stays well inside the frame (at 108 deg it sits at
+	// x=91) and clear of the equation, which starts at x=294.
 	const TRANSVERSAL_ROTATE_TO = 108;
 	// Wide gap — the two transversals need real room to visibly slide
 	// together into a triangle, not just nudge inward.
@@ -369,10 +372,12 @@
 			angleB1Deg,
 			angleT1Deg,
 			sumRounded,
-			// rotate-beat wedges (single transversal, testing the top angle)
-			wedgeB1: wedgePath(B1_FIXED, bottomP2, T1, WEDGE_R_SMALL),
+			// The rotate beat's *top* wedge only — the co-interior angle under
+			// test. There is deliberately no matching bottom wedge here: the
+			// unified wedgeB1Base below is byte-identical to it at every angle
+			// of the sweep (verified), so a second copy would just stack on it,
+			// and .wedge is 0.88 opacity — two would read darker than one.
 			wedgeT1: wedgePath(T1, scriptedTopP2, B1_FIXED, WEDGE_R_SMALL),
-			labelB1: bisectorPoint(B1_FIXED, bottomP2, T1, WEDGE_R_SMALL + LABEL_PAD),
 			labelT1: bisectorPoint(T1, scriptedTopP2, B1_FIXED, WEDGE_R_SMALL + LABEL_PAD),
 			// B1/B2's own wedges — unified across the alternate-angle beat,
 			// the triangle forming, the scripted proof, *and* dragging.
@@ -398,7 +403,7 @@
 			// with apexWedgeRight (both wedge-b): same color, same numeric
 			// value, which *is* the "alternate interior angles are equal"
 			// claim made visible rather than just stated. Faded out as the
-			// triangle forms (altLabelOpacity below) rather than left on --
+			// triangle forms (see the three label opacities below) rather than left on --
 			// once the two vertices converge these four numbers would stack
 			// on top of each other and the single 180° proof label.
 			angleB1OwnDeg: angleBetween(currentB1, currentB2, currentApex1),
@@ -409,7 +414,16 @@
 			labelB2Own: bisectorPoint(currentB2, currentB1, currentApex2, WEDGE_R_SMALL + LABEL_PAD),
 			labelApexLeft: bisectorPoint(currentApex1, topP1, currentB1, WEDGE_R_SMALL + LABEL_PAD),
 			labelApexRight: bisectorPoint(currentApex2, currentB2, topP2, WEDGE_R_SMALL + LABEL_PAD),
-			altLabelOpacity: newFadeT * (1 - triT)
+			// Three fade windows, not one. The bottom angle rides in with the
+			// wedges and never leaves; the top-left alternate angle arrives on
+			// the *same* window the co-interior angle departs on; the second
+			// transversal's pair comes later, on its own.
+			bottomAltT: wedgeT,
+			leftAltT: oldFadeT,
+			rightAltT: newFadeT,
+			labelBottomOpacity: wedgeT * (1 - triT),
+			labelLeftOpacity: oldFadeT * (1 - triT),
+			labelRightOpacity: newFadeT * (1 - triT)
 		};
 	});
 
@@ -500,14 +514,18 @@
 	{@render baseLine(scene.bottomP1[1])}
 	{@render baseLine(scene.topP1[1])}
 
-	<!-- rotate/test-angle wedges — drawn *behind* the lines below (SVG
-	     paints in document order) so the crossing point itself stays crisp
-	     rather than getting buried under a filled wedge -->
+	<!-- The co-interior angle under test, plus the running total. All wedges
+	     are drawn *behind* the lines below (SVG paints in document order) so
+	     the crossing points stay crisp rather than getting buried under a
+	     filled wedge.
+
+	     This pair is what the rotate beat is about, and it is also the only
+	     part of it that leaves: the 110° fades out on exactly the window the
+	     alternate 70° fades in on at the top-left, so the reader watches one
+	     angle hand off to another rather than the figure clearing entirely. -->
 	{#if scene.wedgeT > 0 && scene.oldFadeT < 1}
 		<g style="opacity:{scene.wedgeT * (1 - scene.oldFadeT)}">
-			<path d={scene.wedgeB1} class="wedge wedge-a" />
 			<path d={scene.wedgeT1} class="wedge wedge-c" />
-			<text x={scene.labelB1[0]} y={scene.labelB1[1]} class="label label-a">{Math.round(scene.angleB1Deg)}°</text>
 			<text x={scene.labelT1[0]} y={scene.labelT1[1]} class="label label-c">{Math.round(scene.angleT1Deg)}°</text>
 			<text x={EQUATION_X} y={EQUATION_Y} class="label equation" text-anchor="middle">
 				<tspan class="eq-a">{Math.round(scene.angleT1Deg)}°</tspan>
@@ -518,38 +536,49 @@
 		</g>
 	{/if}
 
-	<!-- the two "carried" wedges — one per transversal, each sliding
-	     continuously with its own line from the moment it appears through
-	     the whole triangle-forming beat and into dragging, rather than
-	     disappearing and a separate pair reappearing once they meet. Fades
-	     in via newFadeT — only after the rotate-beat's own content has
-	     fully faded out (see oldFadeT above), not simultaneously. -->
-	{#if scene.newFadeT > 0}
-		<g style="opacity:{scene.newFadeT}">
-			<path d={scene.apexWedgeLeft} class="wedge wedge-a" />
-			<path d={scene.apexWedgeRight} class="wedge wedge-b" />
-		</g>
+	<!-- The bottom angle never leaves. It fades in with the rotate beat and
+	     stays through the alternate-angle beat, the triangle forming, the
+	     proof and dragging — it is the same 70° the whole way, so fading it
+	     out and back would be a lie about continuity. -->
+	{#if scene.bottomAltT > 0}
+		<path d={scene.wedgeB1Base} class="wedge wedge-a" style="opacity:{scene.bottomAltT}" />
 	{/if}
 
-	<!-- B1/B2's own wedges — unified across every later beat, drawn behind
-	     the transversal lines below. -->
-	{#if scene.newFadeT > 0}
-		<path d={scene.wedgeB1Base} class="wedge wedge-a" style="opacity:{scene.newFadeT}" />
-		<path d={scene.wedgeB2Base} class="wedge wedge-b" style="opacity:{scene.newFadeT}" />
+	<!-- The alternate angle at the top-left, arriving on the same window the
+	     co-interior angle departs on. That timing *is* the claim: the 70°
+	     doesn't turn up somewhere unrelated, it turns up where the 110° just
+	     was, at the other end of the same transversal. -->
+	{#if scene.leftAltT > 0}
+		<path d={scene.apexWedgeLeft} class="wedge wedge-a" style="opacity:{scene.leftAltT}" />
+	{/if}
+
+	<!-- The second transversal's own pair, later and on its own window. Both
+	     slide continuously with their line from first appearance through the
+	     triangle beat and into dragging, rather than disappearing and a
+	     separate pair reappearing once the two transversals meet. -->
+	{#if scene.rightAltT > 0}
+		<g style="opacity:{scene.rightAltT}">
+			<path d={scene.apexWedgeRight} class="wedge wedge-b" />
+			<path d={scene.wedgeB2Base} class="wedge wedge-b" />
+		</g>
 	{/if}
 
 	<!-- degree labels for the four alternate-angle wedges above -- same
 	     color pairing as the wedges (wedge-a/label-a at B1 and apex-left,
 	     wedge-b/label-b at B2 and apex-right) so the equal numbers read as
 	     the same claim the color-matching already makes. Fades out as the
-	     triangle forms (see altLabelOpacity) rather than persisting through
+	     triangle forms (see labelBottom/Left/RightOpacity) rather than persisting through
 	     the proof, where the apex pair would otherwise stack on the 180°
 	     label. -->
-	{#if scene.altLabelOpacity > 0}
-		<g style="opacity:{scene.altLabelOpacity}">
-			<text x={scene.labelB1Own[0]} y={scene.labelB1Own[1]} class="label label-a">{Math.round(scene.angleB1OwnDeg)}°</text>
+	{#if scene.labelBottomOpacity > 0}
+		<text x={scene.labelB1Own[0]} y={scene.labelB1Own[1]} class="label label-a" style="opacity:{scene.labelBottomOpacity}">{Math.round(scene.angleB1OwnDeg)}°</text>
+	{/if}
+	{#if scene.labelLeftOpacity > 0}
+		<text x={scene.labelApexLeft[0]} y={scene.labelApexLeft[1]} class="label label-a" style="opacity:{scene.labelLeftOpacity}">{Math.round(scene.angleApexLeftDeg)}°</text>
+	{/if}
+	{#if scene.labelRightOpacity > 0}
+		<g style="opacity:{scene.labelRightOpacity}">
 			<text x={scene.labelB2Own[0]} y={scene.labelB2Own[1]} class="label label-b">{Math.round(scene.angleB2OwnDeg)}°</text>
-			<text x={scene.labelApexLeft[0]} y={scene.labelApexLeft[1]} class="label label-a">{Math.round(scene.angleApexLeftDeg)}°</text>
 			<text x={scene.labelApexRight[0]} y={scene.labelApexRight[1]} class="label label-b">{Math.round(scene.angleApexRightDeg)}°</text>
 		</g>
 	{/if}
