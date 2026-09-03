@@ -2,22 +2,26 @@
 	// Stage boundaries — exported so +page.svelte can derive which scrolling
 	// prompt to highlight from the same numbers this scene animates against
 	// (same reasoning as MeanCurvatureScene's own exported boundaries).
-	export const LINES_END = 0.1; // two bare lines, no transversal yet
-	export const TRANSVERSAL_END = 0.18; // transversal fades in
-	// The two angle wedges fade fully in *before* anything starts moving --
+	export const LINES_END = 0.06; // two bare lines draw on, left to right
+	export const TRANSVERSAL_END = 0.15; // the third line, crossing them, fades in
+	// The setup gets its own caption and its own silence: nothing else appears
+	// until the reader has had the two lines and the crossing line named. The
+	// angles -- and the sentence about the angles -- arrive together after it.
+	export const INTRO_END = 0.2;
+	// The two angle wedges then fade fully in *before* anything starts moving --
 	// otherwise the reader is asked to watch a quantity change at the same
 	// moment they are still working out which quantity is being pointed at.
-	export const WEDGES_END = 0.26;
-	export const ROTATE_END = 0.5; // rotation + live equation
+	export const WEDGES_END = 0.3;
+	export const ROTATE_END = 0.52; // rotation + live equation
 	// Between ROTATE_END and ALTERNATE_END: a brief hold (nothing changes),
 	// then the co-interior angle and the equation fade out — handing off to
 	// the alternate angle at the top-left on that same window — and only
 	// *then* does the second transversal fade in. The bottom angle sits out
 	// all of this: it is the same 70° throughout and never redraws.
-	export const ALT_HOLD_END = 0.56;
-	export const ALT_FADEOUT_END = 0.63;
-	export const ALTERNATE_END = 0.72; // second transversal, 4 colored wedges
-	export const TRIANGLE_END = 0.92; // transversals converge to a point on the line
+	export const ALT_HOLD_END = 0.6;
+	export const ALT_FADEOUT_END = 0.66;
+	export const ALTERNATE_END = 0.79; // second transversal, 4 colored wedges
+	export const TRIANGLE_END = 0.93; // transversals converge to a point on the line
 	// Beyond TRIANGLE_END: the three wedges settle into the straight-line
 	// proof; at progress >= 1 the triangle's vertices become drag handles.
 </script>
@@ -275,7 +279,7 @@
 
 		const linesT = remap(p, 0, LINES_END);
 		const transversalT = remap(p, LINES_END, TRANSVERSAL_END);
-		const wedgeT = remap(p, TRANSVERSAL_END, WEDGES_END);
+		const wedgeT = remap(p, INTRO_END, WEDGES_END);
 		const rotateT = remap(p, WEDGES_END, ROTATE_END);
 		const altT = remap(p, ROTATE_END, ALTERNATE_END);
 		// Sequential, not simultaneous: old content is fully opaque through
@@ -450,12 +454,24 @@
 	// overlap them) so the second only takes over once the first has had
 	// its own dedicated stretch. Same `lerp` already used for the geometry
 	// above; adjust the 0.5 to give one half more time than the other.
-	const ROTATE_CAPTION_SPLIT = lerp(TRANSVERSAL_END, ALT_HOLD_END, 0.5);
+	// Weighted toward the condition rather than split down the middle -- that
+	// sentence is 166 characters against the swing beat's 104.
+	const ROTATE_CAPTION_SPLIT = lerp(INTRO_END, ALT_HOLD_END, 0.6);
 	const CAPTIONS = [
 		{
-			start: TRANSVERSAL_END,
+			// The setup, alone, while the two lines draw on and the crossing line
+			// arrives. It fades out over the hold that follows, so it is gone
+			// before the angles appear -- the reader is never asked to take in the
+			// cast and the claim about them at the same time.
+			start: 0,
+			end: INTRO_END,
+			text: 'In this world, Euclid starts with two lines and a third that intersects them.'
+		},
+		{
+			// The condition, arriving on the same window as the angles it is about.
+			start: INTRO_END,
 			end: ROTATE_CAPTION_SPLIT,
-			text: 'In this world, two lines are parallel — they never meet, however far you extend them — exactly when the angles on one side of a line crossing them add up to 180°.'
+			text: 'The lines are parallel — they never meet, however far you extend them — under exactly one condition: if the angles made by the crossing line on one side add up to 180°.'
 		},
 		{
 			start: ROTATE_CAPTION_SPLIT,

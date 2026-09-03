@@ -51,10 +51,10 @@
 	// choreography, not for reading time, and the two disagree by ~9x --
 	// pacing uniformly would flash the longest captions past the reader.
 	export const CAPTIONS = [
-		{ start: 0, end: MERIDIANS_START, text: 'There are many different ways to view the surface of a sphere in 2 dimensions.' },
-		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'One starts by making twelve cuts, pole to pole — like scoring an orange before peeling it.' },
-		{ start: MERIDIANS_END, end: TISSOT_END, text: "We can also add some equally sized circles on the surface that we'll track as we look at different versions of our map."},
-		{ start: TISSOT_END, end: SPLIT_START, text: "Now we'll peel each segment up towards the north pole, and press them flat." },
+		{ start: 0, end: MERIDIANS_START, text: 'To see an example, we can look at a map that maps represents the whole world within a single circle.' },
+		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'To make this map we start by making cuts from pole to pole — like scoring an orange before peeling it.' },
+		{ start: MERIDIANS_END, end: TISSOT_END, text: "As a visual aid - we'll add some equally sized circles on the surface that we'll track as we look at different versions of our map."},
+		{ start: TISSOT_END, end: SPLIT_START, text: "Now we unfold the sliced peels up towards the north pole, and press them flat." },
 		{ start: SPLIT_START, end: SPLIT_END, text: 'With the North Pole in the center we can make a circular map of the world...' },
 		{ start: SPLIT_END, end: FLATTEN_END, text: 'by stretching out each segment to meet each other. Look how increasingly distorted our reference circles are now.' },
 		{ start: FLATTEN_END, end: EQUATOR_END, text: 'The whole rim is the south pole. The equator (the blue circle) is spaced halfway from the center of our circular map to the edge.' },

@@ -94,7 +94,7 @@ export const slides = [
 		// side (how flattening a sphere distorts it); the hyperbolic-disk
 		// connection is a deliberately separate follow-up, not yet built.
 		subtitle:
-			"Flat maps of our curved world have been designed for centuries for practical purposes. But they can also be mathematically derived, with facinating geometric properties.",
+			"These geometric properties become particularly interesting when we attempt the impossible task pressing a curved surface onto a flat map.",
 		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
 	},
 	{

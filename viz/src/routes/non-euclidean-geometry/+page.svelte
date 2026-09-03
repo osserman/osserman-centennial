@@ -111,7 +111,12 @@
 	// narration is on-canvas captions now, not scrolling prompts -- see
 	// ParallelPostulateScene's CAPTIONS array -- so this no longer tracks
 	// a left-panel prompt budget).
-	const PARALLEL_SPAN_VH = 2.6;
+	// Raised from 2.6. At that span the opening caption got 20vh per 100
+	// characters -- against 95-353 across the azimuthal stanza and 80-235 in the
+	// curvature explorer. It was the tightest text in the piece by a factor of
+	// four, and splitting the opening in two would have made it worse. The
+	// trailing spacer is derived from this, so it follows automatically.
+	const PARALLEL_SPAN_VH = 5.5;
 	let parallelSettleScrollY = null;
 
 	function PARALLEL_SPAN_PX() {
