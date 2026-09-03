@@ -68,10 +68,15 @@
 	// --- geometry constants -------------------------------------------------
 	const L = 1.0; // half arc-length of each principal curve (constant, always)
 	const PATCH_R = 1.2; // radius of the local disc — a little past the curves' ends
-	const R_OPEN = 2.2; // opening sphere radius
-	const R_MIN = 1.15; // tightest sphere: steepest curves
+	// Sized so the WHOLE ball still fits the frame once it has rotated into
+	// the viewing position, and keeps fitting as it shrinks -- only once it
+	// grows past roughly R 2.2 does it start running off frame, which is
+	// exactly the beat where "the flatter the curves, the bigger the sphere"
+	// is the thing being said.
+	const R_OPEN = 1.6; // opening sphere radius
+	const R_MIN = 0.95; // tightest sphere: steepest curves
 	const R_MAX = 6.0; // flattest sphere, and where the quadratic handoff happens
-	const K_SADDLE = 0.55; // final |curvature| in each direction on the saddle
+	const K_SADDLE = 0.7; // final |curvature| in each direction on the saddle
 
 	const CURVE_SEGMENTS = 96;
 	const CURVE_TUBE_R = 0.022;
@@ -83,20 +88,28 @@
 	const DIR_EW = new THREE.Vector3(0, 0, 1);
 
 	// --- cameras ------------------------------------------------------------
-	// Opening: far enough back to read the whole ball, looking between its
-	// centre and the marked point on its equator.
+	// Opening: the whole ball, looking between its centre and the marked point
+	// on its equator (azimuth 35°, elevation 22°, distance 6).
 	const CAM_GLOBE = {
-		pos: new THREE.Vector3(3.2, 2.4, 5.6),
-		look: new THREE.Vector3(-1.2, 0, 0)
+		pos: new THREE.Vector3(2.191, 2.248, 4.557),
+		look: new THREE.Vector3(-1, 0, 0)
 	};
 	// Local patch: a stable three-quarter view (azimuth 40°, elevation 30°),
 	// inside the spec's suggested band and deliberately off both principal
 	// directions and off the normal — from any of those the saddle reads as a
 	// single curve rather than as two bends fighting each other.
+	//
+	// The POSITION is fixed from the end of the rotation onward; only the aim
+	// moves. That distinction matters: rotating the aim translates the image
+	// but cannot rescale it, so the curves keep their screen size through the
+	// whole radius sweep — the one thing this sequence cannot afford to lose.
+	// Aiming low frames the hanging ball; the aim rises to the marked point as
+	// the sphere grows past framing anyway.
 	const CAM_PATCH = {
-		pos: new THREE.Vector3(2.12, 1.9, 2.52),
+		pos: new THREE.Vector3(3.062, 2.75, 3.649),
 		look: new THREE.Vector3(0, 0, 0)
 	};
+	const LOOK_SPHERE = new THREE.Vector3(0, -0.55 * R_OPEN, 0);
 
 	let container;
 	let renderer, scene, camera, resizeObserver, animFrame;
@@ -154,9 +167,10 @@
 			// far below a pixel, so the swap is invisible.
 			useSphereCurves: p < GROW_END,
 			legendIn: smoothstep(remap(p, CURVES_END, ROTATE_END)),
-			// Once we are on a general patch these are no longer geodesics and
-			// no longer "north/south" — the labels change with the geometry.
-			labelsPatch: smoothstep(remap(p, GROW_END, HANDOFF_END))
+			// Aim rises from the hanging ball to the marked point across the
+			// growth beat — by the time it arrives the sphere is far too big to
+			// frame anyway, so nothing is lost by stopping tracking it.
+			aimT: smoothstep(remap(p, SHRINK_END, HANDOFF_END))
 		};
 	}
 
@@ -287,9 +301,9 @@
 
 		// --- camera: globe framing eases to the fixed patch three-quarter ---
 		if (!debug) {
-			const t = st.rotT;
-			camera.position.lerpVectors(CAM_GLOBE.pos, CAM_PATCH.pos, t);
-			camera.lookAt(new THREE.Vector3().lerpVectors(CAM_GLOBE.look, CAM_PATCH.look, t));
+			camera.position.lerpVectors(CAM_GLOBE.pos, CAM_PATCH.pos, st.rotT);
+			const aim = new THREE.Vector3().lerpVectors(CAM_GLOBE.look, LOOK_SPHERE, st.rotT);
+			camera.lookAt(aim.lerp(CAM_PATCH.look, st.aimT));
 		}
 	}
 
@@ -329,13 +343,13 @@
 		const st = stateAt(progress);
 		return {
 			opacity: st.legendIn,
+			// Unlabelled on purpose: colour already ties each profile to its own
+			// curve in the scene, and any wording would go wrong halfway
+			// through — on the sphere these are the meridian and the equator,
+			// but on a general patch they are neither geodesics nor compass
+			// directions.
 			ns: legendPath('', st, 'ns'),
-			ew: legendPath('', st, 'ew'),
-			// Terminology follows the geometry: on the sphere these are the
-			// meridian and the equator, both geodesics. On a general patch they
-			// are neither, so they stop being called north/south and east/west.
-			nsLabel: st.labelsPatch > 0.5 ? 'direction 1' : 'north–south',
-			ewLabel: st.labelsPatch > 0.5 ? 'direction 2' : 'east–west'
+			ew: legendPath('', st, 'ew')
 		};
 	});
 
@@ -521,14 +535,12 @@
 				<line class="axis" x1="6" y1={LEG_H / 2} x2={LEG_W - 6} y2={LEG_H / 2} />
 				<path class="curve" style="stroke: {legendPal.blue}" d={legend.ns} />
 			</svg>
-			<span class="legend-label" style="color: {legendPal.blue}">{legend.nsLabel}</span>
 		</div>
 		<div class="legend-item">
 			<svg viewBox="0 0 {LEG_W} {LEG_H}" aria-hidden="true">
 				<line class="axis" x1="6" y1={LEG_H / 2} x2={LEG_W - 6} y2={LEG_H / 2} />
 				<path class="curve" style="stroke: {legendPal.orange}" d={legend.ew} />
 			</svg>
-			<span class="legend-label" style="color: {legendPal.orange}">{legend.ewLabel}</span>
 		</div>
 	</div>
 {/if}
@@ -586,11 +598,6 @@
 		fill: none;
 		stroke-width: 2.5;
 		stroke-linecap: round;
-	}
-	.legend-label {
-		font-size: 0.72rem;
-		font-weight: 600;
-		letter-spacing: 0.01em;
 	}
 	.caption-overlay {
 		position: absolute;
