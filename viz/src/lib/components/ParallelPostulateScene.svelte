@@ -465,7 +465,7 @@
 			// cast and the claim about them at the same time.
 			start: 0,
 			end: INTRO_END,
-			text: 'In this world, Euclid starts with two lines and a third that intersects them.'
+			text: 'On this plane, Euclid draws two lines and a third that intersects them.'
 		},
 		{
 			// The condition, arriving on the same window as the angles it is about.
@@ -476,14 +476,14 @@
 		{
 			start: ROTATE_CAPTION_SPLIT,
 			end: ALT_HOLD_END,
-			text: 'With parallel lines you can swing that crossing line however you like; the two angles change values, but their sum never deviates from 180°.'
+			text: 'You can swing that crossing line however you like; the angles change values, but their sum remains 180°.'
 		},
 		{
 			start: ALT_FADEOUT_END,
 			end: ALTERNATE_END,
 			text: 'It follows that any line crossing two parallel lines creates alternate interior angles that are equal.'
 		},
-		{ start: ALTERNATE_END, end: TRIANGLE_END, text: 'And from here, he showed...' },
+		{ start: ALTERNATE_END, end: TRIANGLE_END, text: 'From here, Euclid showed...' },
 		{
 			start: TRIANGLE_END,
 			end: 1,

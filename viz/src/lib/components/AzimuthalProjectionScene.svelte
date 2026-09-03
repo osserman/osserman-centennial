@@ -51,12 +51,12 @@
 	// choreography, not for reading time, and the two disagree by ~9x --
 	// pacing uniformly would flash the longest captions past the reader.
 	export const CAPTIONS = [
-		{ start: 0, end: MERIDIANS_START, text: 'To see an example, we can look at a map that maps represents the whole world within a single circle.' },
+		{ start: 0, end: MERIDIANS_START, text: "To see an example, we'll construct a map that shows the whole world (not just one hemisphere at a time) within a single circle." },
 		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'To make this map we start by making cuts from pole to pole — like scoring an orange before peeling it.' },
 		{ start: MERIDIANS_END, end: TISSOT_END, text: "As a visual aid - we'll add some equally sized circles on the surface that we'll track as we look at different versions of our map."},
 		{ start: TISSOT_END, end: SPLIT_START, text: "Now we unfold the sliced peels up towards the north pole, and press them flat." },
-		{ start: SPLIT_START, end: SPLIT_END, text: 'With the North Pole in the center we can make a circular map of the world...' },
-		{ start: SPLIT_END, end: FLATTEN_END, text: 'by stretching out each segment to meet each other. Look how increasingly distorted our reference circles are now.' },
+		{ start: SPLIT_START, end: SPLIT_END, text: 'The North Pole is in the center...' },
+		{ start: SPLIT_END, end: FLATTEN_END, text: 'We can make a circular map of the world by stretching out each segment to meet each other. Look how increasingly distorted our reference circles are now.' },
 		{ start: FLATTEN_END, end: EQUATOR_END, text: 'The whole rim is the south pole. The equator (the blue circle) is spaced halfway from the center of our circular map to the edge.' },
 		{
 			start: EQUATOR_END,
@@ -394,6 +394,14 @@
 		const escherT = smoothstep(remap(prog, SHIFT_END + SETTLE, ESCHER_END));
 		const equatorT = smoothstep(remap(prog, FLATTEN_END, EQUATOR_END));
 		const focusT = smoothstep(remap(prog, EQUATOR_END, ANGLES_END));
+		// The other ten meridians clear out over the FIRST part of this beat
+		// rather than the whole of it. Fading them across the entire window meant
+		// they were still going as the caption describing what was left had begun
+		// to fade too -- so the isolated pair of lines was never actually on
+		// screen alongside the sentence about them. focusT still runs the full
+		// beat for the right-angle marks, which should arrive later, once there
+		// is something uncluttered for them to mark.
+		const seamFadeT = smoothstep(remap(prog, EQUATOR_END, lerp(EQUATOR_END, ANGLES_END, 0.4)));
 		// The right angles make their point while the view is still; once it
 		// starts turning they'd just be clutter riding along, so they go as
 		// the tour begins. The two great circles stay.
@@ -456,7 +464,7 @@
 		const globeLat = viewLat;
 		const flatLat = restoreT > 0 ? viewLat : guided ? viewLat : 90;
 		return {
-			viewLon, viewLat, globeLat, flatLat, splitT, wT, equatorT, focusT, rightAngleT,
+			viewLon, viewLat, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT,
 			restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha
 		};
 	}
@@ -572,7 +580,7 @@
 	}
 
 	function drawMap(proj, o) {
-		const { radiusPx, flat, alpha, shade, meridianGrow, tissotT, cx, cy, labelAlpha, focusT, equatorT } = o;
+		const { radiusPx, flat, alpha, shade, meridianGrow, tissotT, cx, cy, labelAlpha, focusT, seamFadeT, equatorT } = o;
 		if (alpha <= 0.01) return;
 		const pal = activePalette();
 		const path = geoPath(proj, ctx);
@@ -686,7 +694,7 @@
 			ctx.strokeStyle = pal.orange;
 			ctx.lineWidth = 2;
 			for (let k = 0; k < LOBES; k++) {
-				const a = alpha * 0.95 * seamAlpha(k, focusT, o.restoreT ?? 0);
+				const a = alpha * 0.95 * seamAlpha(k, seamFadeT ?? focusT, o.restoreT ?? 0);
 				if (a <= 0.01) continue;
 				ctx.globalAlpha = a;
 				if (flat) {
@@ -1252,7 +1260,7 @@
 		if (!ctx || !width || !height) return;
 		const prog = progress;
 		const pal = activePalette();
-		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha } = stageParams(prog);
+		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, geoT, shiftT, escherT, tourName, tourNameAlpha } = stageParams(prog);
 		const meridianGrow = smoothstep(remap(prog, MERIDIANS_START, MERIDIANS_END));
 		const tissotT = smoothstep(remap(prog, MERIDIANS_END, TISSOT_END));
 		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
@@ -1309,6 +1317,7 @@
 			cy,
 			labelAlpha: 1 - smoothstep(remap(splitT, 0.15, 0.5)),
 			focusT,
+			seamFadeT,
 			equatorT,
 			rightAngleT,
 			restoreT,
@@ -1336,6 +1345,7 @@
 				labelAlpha: goreAlpha * (1 - discT),
 				labelScale: zoomMul,
 				focusT,
+				seamFadeT,
 				equatorT,
 				rightAngleT,
 				restoreT,
