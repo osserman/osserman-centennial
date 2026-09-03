@@ -82,18 +82,6 @@ export const slides = [
 		// to measure the circumference of the earth.
 	},
 	{
-		id: 'gauss-survey',
-		title: "Gauss' Survey of a Curved Planet",
-		body: [
-			'[NOTE: This placeholder text needs to be updated based on the direction where the next sequence landed... more coming soon].',
-			'Advances in math require immense imagination and ingenuity, but they are not immaculately born in the head of a mathematician. They can be seeded by forebears and contemporaries, by keen observation, and sometimes by trying to find a more elegant way through a practical problem.',
-			'One such problem arrived in 1818, when Carl Friedrich Gauss, a famed mathematician, physicist, and astronomer, was given the task of surveying the Kingdom of Hannover. While no new math was needed to complete this task, the he brought a new perspective to the job, in the process making a great advance in the study of curved surfaces.',
-			'For centuries, triangles had been tools for surveying, for mapping the world. But he developed the math to understand the relationship between the sizes & angles of triangles and the curvature of the surfaces they are measured on. It enabled people, for the first time, to deduce the precise qualities of a surface\'s curvature from measurements taken on its surface.',
-			"While this could be used to confirm theories about how the earth deviates from a sphere — bulged at the equator, flattened at the poles — it could also be used to explore and explain much more theoretical surfaces."
-		],
-		visualLabel: 'Gauss survey-triangle / curvature-from-measurement visual'
-	},
-	{
 		id: 'azimuthal-projection',
 		title: 'Mapping a Curved World',
 		// Same pattern as parallel-postulate/sphere above: a sticky subtitle,

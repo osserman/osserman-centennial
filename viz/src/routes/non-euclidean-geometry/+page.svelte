@@ -41,13 +41,8 @@
 	// Same split as minimal-surfaces: first/last slides are standalone
 	// full-viewport cover screens (see .cover-section below), not part of
 	// the two-column flow — everything in between shares the
-	// text-panel/scene-panel layout. gauss-survey is a *third* kind: it has
-	// no scene-panel visual yet, so rather than sitting in the two-column
-	// flow next to an empty VisualPlaceholder, it gets the same full-bleed
-	// cover-card treatment as the intro/outro (see the standalone
-	// <section> for it below) -- which is why it's excluded from
-	// scrollySlides and the two-column <main> is split around it.
-	// azimuthal-projection is a *fourth* kind: it has a real scene-panel
+	// text-panel/scene-panel layout.
+	// azimuthal-projection is a *third* kind: it has a real scene-panel
 	// visual, but it's the only slide in its own section (not sharing a
 	// <Scrolly> with siblings the way parallel-postulate/sphere do), so it
 	// gets its own dedicated <main> below with the same sticky-text +
@@ -55,7 +50,6 @@
 	// same reasoning imaginary-curvature already uses for skipping Scrolly.
 	const introSlide = slides[0];
 	const outroSlide = slides[slides.length - 1];
-	const gaussSlide = slides.find((s) => s.id === 'gauss-survey');
 	const azimuthalSlide = slides.find((s) => s.id === 'azimuthal-projection');
 	const imaginarySlide = slides.find((s) => s.id === 'imaginary-curvature');
 	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
@@ -310,20 +304,6 @@
 	</div>
 </main>
 
-<!-- gauss-survey has no scene-panel visual yet, so it's a standalone
-     full-bleed card (same shape as the intro/outro screens) rather than
-     sitting in the two-column flow above next to an empty
-     VisualPlaceholder. Once it gets a real visual, move it back into
-     scrollySlides above instead. -->
-<section class="cover-section">
-	<div class="cover-card">
-		<h1>{gaussSlide.title}</h1>
-		{#each gaussSlide.body as para}
-			<p>{@html renderInline(para)}</p>
-		{/each}
-	</div>
-</section>
-
 <!-- azimuthal-projection: has a real scene-panel visual (AzimuthalProjectionScene),
      but is the only slide in its own section, so it gets its own dedicated
      sticky-text + trailing-spacer treatment directly rather than sharing
@@ -351,10 +331,10 @@
 	</div>
 </main>
 
-<!-- imaginary-curvature also has no scene-panel visual, but (unlike
-     gauss-survey) keeps the two-column shell for now since a visual is
-     more clearly planned for it -- just without Scrolly/ScrollyStep,
-     since there's only one slide here and nothing to switch between. -->
+<!-- imaginary-curvature has no scene-panel visual, but keeps the
+     two-column shell for now since a visual is more clearly planned for
+     it -- just without Scrolly/ScrollyStep, since there's only one slide
+     here and nothing to switch between. -->
 <main class="layout">
 	<div class="text-panel">
 		<div class="slide-text solo-slide">
