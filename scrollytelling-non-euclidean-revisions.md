@@ -31,7 +31,7 @@ git show e045889 -- viz/src/routes/non-euclidean-geometry/+page.svelte  # its ma
 Nothing referenced it by index — the page keys every slide by id — so
 restoring means re-adding the slide object plus its `<section class="cover-section">`.
 
-### Measuring Negative Curvature with Imaginary Numbers — the whole slide · `85b4ee9`
+### Measuring Negative Curvature with Imaginary Numbers — the whole slide · `6864ce2`
 
 Replaced by the `negative-curvature` slide + `CurvatureExplorerScene`, built
 from `scrollytelling-negative-curvature.md`. The old slide asserted that
@@ -45,7 +45,7 @@ carried over anywhere — if either matters to the argument, they need a new
 home.
 
 ```bash
-git show 85b4ee9^:viz/src/lib/content/nonEuclideanGeometry.js
+git show 6864ce2^:viz/src/lib/content/nonEuclideanGeometry.js
 ```
 
 Its `VisualPlaceholder` and the `.solo-slide` shell went with it: every slide
