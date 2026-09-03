@@ -2,14 +2,15 @@
 	// Stage boundaries — exported so +page.svelte can pace scroll against the
 	// same numbers this scene animates against (same convention as the other
 	// scroll-scrubbed scenes in this project).
-	export const CURVES_END = 0.11; // the two principal curves draw onto the globe
-	export const ROTATE_END = 0.2; // marked point rotates to face the camera; legend arrives
-	export const SHRINK_END = 0.3; // radius shrinks — same curves, steeper
-	export const GROW_END = 0.42; // radius grows — same curves, flatter
-	export const HANDOFF_END = 0.48; // sphere mesh gives way to a cap patch of the same shape
-	export const PLANE_END = 0.58; // the cap flattens, still full width
-	export const CLIP_END = 0.66; // and only THEN closes down to a local neighbourhood
-	export const PLANE_HOLD_END = 0.7; // a pause on the flat plane — the neutral hinge
+	export const CURVES_END = 0.1; // the two principal curves draw onto the globe
+	export const ROTATE_END = 0.18; // marked point rotates to face the camera; legend arrives
+	export const SHRINK_END = 0.26; // radius shrinks — same curves, steeper
+	export const GROW_END = 0.36; // radius grows — same curves, flatter
+	export const HANDOFF_END = 0.42; // sphere mesh gives way to a cap patch of the same shape
+	export const PLANE_END = 0.52; // the cap flattens, still full width
+	export const RING_END = 0.57; // a faint circle marks off the neighbourhood
+	export const CLIP_END = 0.64; // everything outside that circle fades away
+	export const PLANE_HOLD_END = 0.68; // a pause on the flat plane — the neutral hinge
 	export const SADDLE_END = 0.82; // one curvature up, the other down
 	// Beyond SADDLE_END: hold on the saddle for the two closing captions. The
 	// back half is deliberately roomier than the stage list suggests -- the
@@ -136,6 +137,7 @@
 	let sphereMesh, sphereMat, gridMesh, gridMat;
 	let patchMesh, patchMat, patchGeo;
 	let curveNSMesh, curveEWMesh, curveNSMat, curveEWMat;
+	let ringMesh, ringMat;
 	let pointMesh;
 
 	// --- the schedule -------------------------------------------------------
@@ -174,10 +176,14 @@
 		// swap happens between two identical surfaces, and only then does the
 		// shape start changing.
 		const morphT = smoothstep(remap(p, HANDOFF_END, PLANE_END));
-		// Width closes down only after the surface is already flat -- the
-		// neighbourhood is taken from a plane, not carved out of a sphere.
-		const capWidth = R_MAX * Math.sin(CAP_PHI);
-		const flatRadius = lerp(capWidth, PATCH_R_LOCAL, smoothstep(remap(p, PLANE_END, CLIP_END)));
+		// The plane keeps its full width to the end. Rather than shrinking it --
+		// which read as the whole surface retreating, as if the world got
+		// smaller -- a circle is drawn on it and everything outside that circle
+		// fades out. The surface does not move; we simply stop looking at most
+		// of it, which is what taking a local neighbourhood actually means.
+		const flatRadius = R_MAX * Math.sin(CAP_PHI);
+		const ringT = smoothstep(remap(p, PLANE_END, RING_END));
+		const clipT = smoothstep(remap(p, RING_END, CLIP_END));
 
 		return {
 			drawT,
@@ -189,6 +195,8 @@
 			// Which surface is on screen, and which curve generator is live.
 			morphT,
 			flatRadius,
+			ringT,
+			clipT,
 			sphereFade: 1 - handoffT,
 			patchFade: handoffT,
 			// The curve generator switches at GROW_END, where morphT is still 0
@@ -232,6 +240,19 @@
 			const x = lerp(capX, s, st.morphT);
 			const y = lerp(capY, -0.5 * k * x * x, st.morphT) + CURVE_EPS;
 			pts.push(new THREE.Vector3(x * dir.x, y, x * dir.z));
+		}
+		return pts;
+	}
+	// The circle marking off the neighbourhood. Built on the surface rather
+	// than as a flat ring, so once the saddle forms it rides up and down with
+	// the boundary instead of slicing through it.
+	function ringPoints(st, n = 120) {
+		const pts = [];
+		for (let i = 0; i <= n; i++) {
+			const th = (2 * Math.PI * i) / n;
+			const x = PATCH_R_LOCAL * Math.cos(th);
+			const z = PATCH_R_LOCAL * Math.sin(th);
+			pts.push(new THREE.Vector3(x, -0.5 * (st.k1 * x * x + st.k2 * z * z) + CURVE_EPS, z));
 		}
 		return pts;
 	}
@@ -279,6 +300,11 @@
 		}
 		const geo = new THREE.BufferGeometry();
 		geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+		// Four-component vertex colour: RGB stays white so the material's own
+		// grey shows through unchanged, and only the alpha is driven. This is
+		// what lets the plane keep its full extent while everything outside the
+		// neighbourhood circle fades out.
+		geo.setAttribute('color', new THREE.Float32BufferAttribute(new Array(positions.length / 3 * 4).fill(1), 4));
 		geo.setIndex(indices);
 		geo.computeVertexNormals();
 		return geo;
@@ -288,6 +314,7 @@
 	// at morphT = 0 the result is the sphere cap to machine precision.
 	function updatePatch(st) {
 		const pos = patchGeo.attributes.position;
+		const col = patchGeo.attributes.color;
 		for (let i = 0; i < pos.count; i++) {
 			const t = patchT[i];
 			const th = patchTheta[i];
@@ -299,8 +326,13 @@
 			const z = r * Math.sin(th);
 			const quadY = -0.5 * (st.k1 * x * x + st.k2 * z * z);
 			pos.setXYZ(i, x, lerp(capY, quadY, st.morphT), z);
+			// Opaque inside the circle, fading out beyond it. The soft band
+			// keeps the boundary from reading as a cookie-cutter edge while
+			// still letting the drawn circle be the visible boundary.
+			col.setW(i, 1 - st.clipT * smoothstep((r - PATCH_R_LOCAL) / 0.35));
 		}
 		pos.needsUpdate = true;
+		col.needsUpdate = true;
 		patchGeo.computeVertexNormals();
 	}
 
@@ -354,6 +386,17 @@
 		const curvesOn = st.drawT > 0.01;
 		curveNSMesh.visible = curvesOn;
 		curveEWMesh.visible = curvesOn;
+
+		// The circle only exists once the surface is a plane, and stays on as
+		// the quiet boundary of the neighbourhood while the saddle forms.
+		if (st.ringT > 0.01) {
+			ringMesh.visible = true;
+			ringMesh.geometry.dispose();
+			ringMesh.geometry = tubeFromPoints(ringPoints(st), 0.012);
+			ringMat.opacity = st.ringT * 0.55;
+		} else {
+			ringMesh.visible = false;
+		}
 
 		pointMesh.visible = st.drawT > 0.01;
 
@@ -440,11 +483,17 @@
 
 		// Unit sphere, scaled per frame — scaling avoids rebuilding sphere
 		// geometry on every scroll tick as R sweeps.
+		// FrontSide, not DoubleSide. A closed ball never needs its back faces,
+		// and drawing them was the source of the double silhouette: while the
+		// sphere is opaque its own front hides them, but the instant depthWrite
+		// goes off for the crossfade they render too and the dome gains a
+		// second edge. The same applies to the cap, whose far half faces away
+		// from the camera and should simply not be drawn.
 		sphereMat = new THREE.MeshStandardMaterial({
 			color: 0x9a9a94,
 			roughness: 0.92,
 			metalness: 0,
-			side: THREE.DoubleSide
+			side: THREE.FrontSide
 		});
 		sphereMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 72, 48), sphereMat);
 		pivot.add(sphereMesh);
@@ -464,7 +513,9 @@
 			color: 0x9a9a94,
 			roughness: 0.92,
 			metalness: 0,
-			side: THREE.DoubleSide
+			side: THREE.FrontSide,
+			transparent: true,
+			vertexColors: true
 		});
 		patchMesh = new THREE.Mesh(patchGeo, patchMat);
 		patchMesh.visible = false;
@@ -489,6 +540,17 @@
 		curveNSMesh.renderOrder = 3;
 		curveEWMesh.renderOrder = 3;
 		pivot.add(curveNSMesh, curveEWMesh);
+
+		ringMat = new THREE.MeshBasicMaterial({
+			color: pal.muted ?? 0x898781,
+			transparent: true,
+			opacity: 0,
+			depthWrite: false
+		});
+		ringMesh = new THREE.Mesh(tubeFromPoints(ringPoints({ k1: 0, k2: 0 }), 0.012), ringMat);
+		ringMesh.renderOrder = 2;
+		ringMesh.visible = false;
+		pivot.add(ringMesh);
 
 		// The marked point itself — aqua, well clear of both curve colours.
 		pointMesh = new THREE.Mesh(
@@ -530,6 +592,7 @@
 			envTexture.dispose();
 			curveNSMesh.geometry.dispose();
 			curveEWMesh.geometry.dispose();
+			ringMesh.geometry.dispose();
 			patchGeo.dispose();
 			renderer.dispose();
 		};
@@ -550,13 +613,18 @@
 		},
 		{
 			start: SHRINK_END,
-			end: 0.52,
+			end: 0.46,
 			text: 'The steeper the curves, the smaller the sphere. The flatter the curves, the bigger it is.'
 		},
 		{
-			start: 0.52,
-			end: PLANE_HOLD_END,
+			start: 0.46,
+			end: RING_END,
 			text: 'With no curvature at all in either direction, you have a flat plane.'
+		},
+		{
+			start: RING_END,
+			end: PLANE_HOLD_END,
+			text: 'From here, keep only the small patch of surface around our point.'
 		},
 		{
 			start: PLANE_HOLD_END,
