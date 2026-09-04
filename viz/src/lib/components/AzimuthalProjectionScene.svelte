@@ -406,19 +406,27 @@
 		// never carrying three separate ideas at once.
 		const SETTLE = 0.18;
 		// circles: in with the disc, out as the geodesics arrive
+		// The circles now arrive and leave WITH their caption. They used to finish
+		// arriving at DISC_END and start fading immediately -- which is the exact
+		// frame the caption about them begins -- so the text showed up to
+		// describe something already on its way out.
 		const circlesT =
-			smoothstep(remap(prog, ZOOM_END, DISC_END)) * (1 - smoothstep(remap(prog, DISC_END, DISC_END + SETTLE)));
-		// The two demonstration geodesics: in, held while the caption names them
-		// as arcs, then out -- the postulate sequence draws its own lines and
-		// these would only crowd them.
-		const geoT =
-			smoothstep(remap(prog, DISC_END + SETTLE * 0.5, GEODESIC_END)) *
-			(1 - smoothstep(remap(prog, ARCS_END, ARCS_END + SETTLE)));
+			smoothstep(remap(prog, DISC_END, lerp(DISC_END, GEODESIC_END, 0.4))) *
+			(1 - smoothstep(remap(prog, lerp(DISC_END, GEODESIC_END, 0.84), GEODESIC_END)));
+		// ONE line, for the whole rest of the sequence. It fades in as the circles
+		// leave, bows like any geodesic, then flattens into the horizontal
+		// diameter behind the caption that says a line only looks straight when
+		// it passes through the centre -- and then simply stays, becoming the
+		// reference line the postulate beats are about. Nothing is drawn twice
+		// and nothing overlaps: the earlier version faded two demonstration
+		// geodesics out only to draw a third line in the same place.
+		const lineT = smoothstep(remap(prog, lerp(DISC_END, GEODESIC_END, 0.72), GEODESIC_END));
+		const arcT = smoothstep(remap(prog, GEODESIC_END, ARCS_END));
 		// The postulate demonstration. The reference line and the point off it
 		// arrive first; then the family of lines through that point that never
 		// reach it; then the centre of the map slides onto that point, which is
 		// what turns every one of them straight.
-		const setupT = smoothstep(remap(prog, ARCS_END, POSTULATE_END));
+		const dotT = smoothstep(remap(prog, ARCS_END, POSTULATE_END));
 		const manyT = smoothstep(remap(prog, POSTULATE_END, MANY_END));
 		// This IS the old centre-shift beat, no longer a free-standing
 		// demonstration but the payoff of the two before it: it is doing work
@@ -497,7 +505,7 @@
 		const flatLat = restoreT > 0 ? viewLat : guided ? viewLat : 90;
 		return {
 			viewLon, viewLat, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT,
-			restoreT, stereoT, zoomT, discT, circlesT, geoT, setupT, manyT, shiftT, tourName, tourNameAlpha
+			restoreT, stereoT, zoomT, discT, circlesT, lineT, arcT, dotT, manyT, shiftT, tourName, tourNameAlpha
 		};
 	}
 
@@ -939,11 +947,15 @@
 	// when both of P's ideal endpoints stay in the upper arc, which holds for
 	// directions between about -48 and +39 degrees. These five sit inside that
 	// window with at least 6 degrees of clearance at the tightest.
+	// How bowed the line starts before it flattens. The marked point sits well
+	// clear of where it ends up (y = 0.4 against a diameter at y = 0), so the
+	// dot never lands on the line it is supposed to be off.
+	const ARC_H0 = 1.0;
 	const POSTULATE_P = [0.1, 0.4];
 	const POSTULATE_DIRS = [-42, -25, -8, 10, 30].map((d) => (d * Math.PI) / 180);
 
 	function drawPoincare(cx, cy, R, o) {
-		const { alpha, circlesT, geoT, setupT, manyT, shiftT } = o;
+		const { alpha, circlesT, lineT, arcT, dotT, manyT, shiftT } = o;
 		if (alpha <= 0.01) return;
 		const pal = activePalette();
 		// The centre slides onto P itself, rather than to an arbitrary offset:
@@ -995,35 +1007,22 @@
 			ctx.stroke();
 		}
 
-		// the straight lines of this world
-		if (geoT > 0.01) {
+		// The line of this world: bowed arc easing into the horizontal diameter.
+		// Endpoints are m +/- h with m = pi/2, so h -> pi/2 gives exactly (0, pi)
+		// -- which hypGeodesic reports as a diameter and drawGeodesic then draws
+		// as a straight line, by the same code path the flat map used for lines
+		// through its own centre. The straightening is real, not a redraw.
+		if (lineT > 0.01) {
+			const h = lerp(ARC_H0, Math.PI / 2, arcT);
 			ctx.strokeStyle = pal.blue;
-			ctx.lineWidth = 2;
-			ctx.globalAlpha = alpha * geoT;
-			for (const [p0, p1] of [
-				[0.5, 2.4],
-				[2.9, 4.9]
-			]) {
-				drawGeodesic(cx, cy, R, shiftAngle(p0, a), shiftAngle(p1, a), shiftT < 0.02);
-			}
-			// through the centre: the limiting case of the same construction,
-			// drawn straight -- exactly as on the map
-			if (geoT > 0.45) {
-				ctx.globalAlpha = alpha * smoothstep(remap(geoT, 0.45, 0.8));
-				drawGeodesic(cx, cy, R, shiftAngle(0, a), shiftAngle(Math.PI, a), false);
-			}
+			ctx.lineWidth = 2.4;
+			ctx.globalAlpha = alpha * lineT;
+			drawGeodesic(cx, cy, R, shiftAngle(Math.PI / 2 - h, a), shiftAngle(Math.PI / 2 + h, a), false);
 		}
 
 		// --- the parallel postulate, put to the test -------------------------
-		// The reference line is the horizontal diameter, so it starts out drawn
-		// straight; the marked point sits off it.
-		if (setupT > 0.01) {
-			ctx.strokeStyle = pal.blue;
-			ctx.lineWidth = 2.4;
-			ctx.globalAlpha = alpha * setupT;
-			drawGeodesic(cx, cy, R, shiftAngle(0, a), shiftAngle(Math.PI, a), false);
-		}
-
+		// No line is drawn here: the one above already IS the reference line,
+		// having just straightened into it.
 		// Lines through P that never reach it. A geodesic misses another exactly
 		// when their ideal endpoints do not interleave on the rim -- here, when
 		// both of its own ends stay in the upper arc. Euclid's plane allows one
@@ -1043,10 +1042,10 @@
 
 		// The point itself, drawn last of the three so neither line crosses over
 		// it. It rides the shift like everything else, ending at the centre.
-		if (setupT > 0.01) {
+		if (dotT > 0.01) {
 			const w = mobius(POSTULATE_P, a);
 			const pr = Math.max(4, R * 0.022);
-			ctx.globalAlpha = alpha * setupT;
+			ctx.globalAlpha = alpha * dotT;
 			ctx.beginPath();
 			ctx.arc(cx + w[0] * R, cy + w[1] * R, pr, 0, Math.PI * 2);
 			ctx.fillStyle = pal.aqua;
@@ -1085,7 +1084,7 @@
 		if (!ctx || !width || !height) return;
 		const prog = progress;
 		const pal = activePalette();
-		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, geoT, setupT, manyT, shiftT, tourName, tourNameAlpha } = stageParams(prog);
+		const { viewLon, globeLat, flatLat, splitT, wT, equatorT, focusT, seamFadeT, rightAngleT, restoreT, stereoT, zoomT, discT, circlesT, lineT, arcT, dotT, manyT, shiftT, tourName, tourNameAlpha } = stageParams(prog);
 		const meridianGrow = smoothstep(remap(prog, MERIDIANS_START, MERIDIANS_END));
 		const tissotT = smoothstep(remap(prog, MERIDIANS_END, TISSOT_END));
 		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
@@ -1185,8 +1184,9 @@
 			drawPoincare(width / 2, cy, Math.min(width, height) * 0.42, {
 				alpha: discT,
 				circlesT,
-				geoT,
-				setupT,
+				lineT,
+				arcT,
+				dotT,
 				manyT,
 				shiftT
 			});
