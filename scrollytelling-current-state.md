@@ -7,12 +7,76 @@ scenes are described in broad strokes only — for beat-by-beat detail see
 
 | | Route | Shape |
 |---|---|---|
+| **Front door** | `/` | static essay + stanza cards |
 | **Stanza I** | `/non-euclidean-geometry` | scrollytelling, 4 scenes |
 | **Stanza II** | `/minimal-surfaces` | scrollytelling, 4 scenes + placeholders |
 | **Stanza III** | `/beyond-mathematics` | scroll-driven citation graph |
 | aside | `/pseudosphere` | interactive, linked from I |
 | aside | `/circle-limit` | interactive, linked from I |
 | dev only | `/projection-lab` | unlisted scrubber |
+
+---
+
+# Front door — "A Mathematical Ode to My Father"
+
+`/` · *Written for the centennial of Robert Osserman*
+
+The personal frame the whole piece hangs on: why this subject, by someone who
+says outright he cannot follow the mathematics.
+
+> My father was a mathematician and a teacher. His most visible legacy is the
+> book *Poetry of the Universe*, a Mathematical Exploration of the Cosmos. On the
+> surface, it helps readers build an intuition for the curvature of space.[^1]
+>
+> Beneath the surface, it illuminates the interplay between imagination,
+> creativity, observation, and measurement in the centuries-long evolution of
+> scientific knowledge. **Theoretical math connects** here **not just to
+> applications** it eventually enables, **but also to poetry** — to the ability to
+> theorize about what lies beyond what we can touch and observe.
+>
+> He teaches these themes in the book alongside the geometry of curved surfaces.
+> This geometry's relevance extends far beyond the possible shape of the universe.
+> It is also foundational to the field of math he dedicated his career to:
+> **minimal surfaces**. **He chose this field not because it was seen as useful or
+> applicable**, or even fashionable within Math, but **because he found it
+> beautiful and elegant**, and because it required creativity and allowed for
+> playfulness.[^2]
+>
+> I do not have the depth of mathematical knowledge to understand the field and
+> his research. But as I've tried to understand a little more about the problems
+> he pondered, I felt more connected to him and the delight he took in
+> intellectual and creative pursuits. It has also led me to a story that echoes
+> those I loved reading in *Poetry of the Universe*. The story of how his own
+> field, developed by a community of researchers across a centuries-long dialogue
+> of theory and observation, has now made a leap to a fascinating and growing
+> range of fields in science and engineering that never could have been
+> anticipated.
+>
+> **Here is that story.**
+
+[^1]: While evidence has since mounted against the curvature of space, the book
+paints a concrete picture of what scientists mean by that when they try to
+determine the shape of the universe.
+
+[^2]: A search for "minimal surfaces" will quickly bring up soap bubbles, which I
+fondly remember my dad playing with for us, as he brought his work home.
+
+Then four cards into the stanzas:
+
+| | |
+|---|---|
+| Stanza I | Imagination, Reality, and Hyperbolic Geometry |
+| Stanza II | Minimal Surfaces, the Elegant Math of Soap Bubbles |
+| Stanza III | Beyond Mathematics: The Expansion of Minimal Surfaces |
+| Coda | *no page yet — renders disabled, "coming soon"* |
+
+**No scene.** Static prose, the only page in the piece without a visual.
+
+**Where the text lives.** Hand-written markup in `viz/src/routes/+page.svelte`,
+not a `body` array in a content file like every stanza — two paragraphs need an
+inline `<InfoTooltip>` footnote marker, which the string-based `{@html}` renderer
+cannot compose. `intro-text.md` at the repo root is the original draft it was
+built from and is **not read at build time**; editing it alone changes nothing.
 
 ---
 
@@ -72,7 +136,7 @@ that lines which "should" stay parallel meet anyway — twice.
 cuts pole to pole; the gores peel flat with gaps where the curvature was; the
 gaps close into an azimuthal equidistant map with the whole rim as one point.
 Great circles, right angles, then a tour of places Osserman worked, then free
-drag. Runs ~0–4.35 of a single progress value.
+drag. The shifted mach to pole and transition to stereographic, noting round tissot circles and South pole off to infinith. Runs ~0–4.35 of a single progress value. 
 
 ### A Different Kind of Map
 
@@ -85,10 +149,9 @@ drag. Runs ~0–4.35 of a single progress value.
 > *→ Aside: the grid under Escher's Circle Limit*
 
 **Scene** — the *same* visual, continuing. Two text sections over one uninterrupted
-panel, so the map never resets. The projection morphs to stereographic and floods
-past the frame; zoom out; hand over to the Poincaré disc, where equal circles
+panel, so the map never resets. Then hand over to the Poincaré disc, where equal Tissot circles
 shrink instead of growing. One line bows like any geodesic and then flattens into
-a diameter. Then the postulate returns: a point off that line, many lines through
+a diameter. Then the postulate returns (as Playfair stated): a point off that line, many lines through
 it that never reach it, and finally the map's centre slides onto the point and
 every one of them straightens. Runs 4.35–7.2.
 
@@ -271,6 +334,10 @@ prints are in copyright.
   hold two versions of the same paragraphs in one `body` array; both render.
 - **Four Stanza II slides still show `VisualPlaceholder`**: soap-film,
   field-grows (×2), two-centuries.
+- **`intro-text.md` has drifted from the live front door.** The prose still
+  matches, but the draft ends in a plain stanza list where the page now renders
+  cards, and keeps its two footnotes as numbered items rather than tooltips. The
+  page is authoritative; the .md is a stale source.
 - **Typos in live copy**: "an similarly robust", "reseaarch", "dependning",
   "Euclidian".
 - **Stanza II's opening** is the weakest seam — it asserts the link to Stanza I
