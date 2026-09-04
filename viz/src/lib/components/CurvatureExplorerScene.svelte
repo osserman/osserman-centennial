@@ -689,7 +689,7 @@
 		{
 			start: 0,
 			end: ROTATE_END,
-			text: 'The curvature of a surface can be described by two curves through a single point. Starting at the equator of a sphere: one runs east–west, the other north–south.'
+			text: 'The curvature of a surface at a given point can be described by two curves crossing at that point. Starting at the equator of a sphere: one runs east–west, the other north–south.'
 		},
 		{
 			start: ROTATE_END,
