@@ -67,7 +67,7 @@ export const slides = [
 		// equator", each leg of the triangle walk, the 270 sum, and the
 		// whole parallel-lines beat -- is carried by on-canvas captions in
 		// SphereGeometryScene itself; see that component's CAPTIONS array.
-		subtitle: "While geometry on a flat plane could largely be derived from Euclid, developing an similarly robust geometry of curved surfaces took decidedly longer. On surfaces that aren't flat, Euclidian geometry doesn't quite work out.",
+		subtitle: "Geometry on a flat plane can be derived from Euclid. But curved surfaces have a different logic, and require a different geometry.",
 		visualLabel: 'Spherical-triangle / parallel-lines-meet-twice animation'
 		// Closing paragraph from the source doc, not yet placed as a stage —
 		// reads more like a wrap-up than something the scene has a beat for:
@@ -94,7 +94,7 @@ export const slides = [
 		// side (how flattening a sphere distorts it); the hyperbolic-disk
 		// connection is a deliberately separate follow-up, not yet built.
 		subtitle:
-			"These geometric properties become particularly interesting when we attempt the impossible task pressing a curved surface onto a flat map.",
+			'Mapmakers had faced a related impossible task for centuries: how to represent the surface of a sphere on a flat page.',
 		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
 	},
 	{
@@ -137,5 +137,40 @@ export const slides = [
 		// This is the outro (see .cover-section in +page.svelte) — no
 		// visualLabel, it doesn't sit in the scene-panel flow the slides
 		// before it use.
+	}
+];
+
+// A third kind of narrative space, alongside the sidebar (title + one-line
+// subtitle, paired to a scene) and the on-canvas captions (short, timed to an
+// animation). An interstitial is neither: a few sentences of connective
+// prose, standing on its own, that a reader pauses on rather than glances at.
+// It exists for beats that need more room than a subtitle but aren't tied to
+// any single scene's timeline -- here, the two pieces of intellectual history
+// that motivate what's about to happen rather than describing what's on
+// screen. Rendered by $lib/components/Interstitial.svelte.
+export const interstitials = [
+	{
+		id: 'straight-in-curved-geometry',
+		// Sits between 'sphere' and 'azimuthal-projection': the sphere scene
+		// just showed lines that "should" be parallel meeting twice. This is
+		// the missing premise for why that isn't already a contradiction of
+		// Euclid, and the reframing (arc in 3D / straight line in a curved
+		// geometry) that the next scene's map is built to make vivid.
+		body: [
+			"These properties of spheres had been known for centuries. But they weren't necessarily seen as incompatible with Euclid, because Euclid spoke of straight lines, not arcs in three dimensions.",
+			"The 19th century brought a conceptual shift. Mathematicians including Carl Friedrich Gauss began studying what geometry would look like if you were confined to the curved surface itself. On the surface of the Earth, we are confined to two dimensions, and a great circle is the straightest path available to us. Is it a curved line in three dimensions — or a straight line in a curved geometry?"
+		]
+	},
+	{
+		id: 'imaginary-geometry',
+		// Sits mid-sequence inside the azimuthal-projection scene, between the
+		// stereographic zoom-out and the arrival of the Poincare disk -- the
+		// history that explains why the map is about to become a circle at
+		// all, read while the just-finished flat map sits still alongside it.
+		body: [
+			'These maps begin with a world we can picture: the surface of a sphere. The maps may distort its geometry, but we can always return to the globe to see what they represent.',
+			'In the early nineteenth century, Nikolai Lobachevsky took a stranger step. He developed what he called an "imaginary geometry" in which Euclid\'s parallel postulate no longer held — without starting from a familiar physical surface.',
+			'After decades of mathematical controversy about this "imaginary geometry," in 1868 Eugenio Beltrami showed that it was internally consistent. And a little over a decade later, Henri Poincaré developed a remarkable circular model that made this otherwise hard-to-picture geometry concrete enough to see and work with.'
+		]
 	}
 ];

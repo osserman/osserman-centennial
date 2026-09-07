@@ -63,7 +63,7 @@
 			Beneath the surface, it illuminates the interplay between imagination, creativity, observation,
 			and measurement in the centuries-long evolution of scientific knowledge.
 			<strong>Theoretical math connects</strong> here <strong>not just to applications</strong> it eventually
-			enables, <strong>but also to poetry</strong> -- to the ability to theorize about what lies beyond
+			enables, <strong>but also to poetry</strong> -- to the ability to imagine and reason about what lies beyond
 			what we can touch and observe.
 		</p>
 
@@ -91,7 +91,7 @@
 			engineering that never could have been anticipated.
 		</p>
 
-		<p class="lead-in">Here is that story.</p>
+		<p class="lead-in">Here is this story.</p>
 	</article>
 
 	<div class="cards">

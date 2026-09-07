@@ -23,7 +23,8 @@
 		RECENTRE_END
 	} from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
-	import { slides } from '$lib/content/nonEuclideanGeometry.js';
+	import Interstitial from '$lib/components/Interstitial.svelte';
+	import { slides, interstitials } from '$lib/content/nonEuclideanGeometry.js';
 
 	// Camera debugging aid for SphereGeometryScene/AzimuthalProjectionScene --
 	// visit this page with ?debug=sphere or ?debug=azimuthal to get free-fly
@@ -55,6 +56,8 @@
 	const azimuthalSlide = slides.find((s) => s.id === 'azimuthal-projection');
 	const discSlide = slides.find((s) => s.id === 'a-different-kind-of-map');
 	const curvatureSlide = slides.find((s) => s.id === 'negative-curvature');
+	const interstitialStraight = interstitials.find((s) => s.id === 'straight-in-curved-geometry');
+	const interstitialImaginary = interstitials.find((s) => s.id === 'imaginary-geometry');
 	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
 
 	let activeIndex = $state(0);
@@ -205,6 +208,11 @@
 	// The drag beat is interactive: the reader has to notice the invitation and
 	// act on it, which its 51 characters badly under-price.
 	const DRAG_FLOOR_VH = 180;
+	// Scroll given to the 'imaginary-geometry' interstitial mid-sequence (see
+	// AZIMUTHAL_PACING below). Three short paragraphs of pure reading, nothing
+	// else on screen competing for attention -- tuned visually, same as every
+	// other hold constant on this page.
+	const INTERSTITIAL_2_HOLD_VH = 320;
 
 	// Cumulative [progress, vh] breakpoints; scroll maps piecewise-linearly.
 	// The azimuthal scene's own captions, PLUS the one beat whose text lives in
@@ -242,6 +250,23 @@
 			cum += heights[i];
 			stops.push({ progress: c.end, vh: cum });
 		});
+
+		// A pure reading hold spliced in at ZOOM_END, for the 'imaginary-geometry'
+		// interstitial that sits there (see the markup below): every stop from
+		// this point on is pushed back by INTERSTITIAL_2_HOLD_VH, and a second
+		// stop is inserted at the SAME progress (ZOOM_END) that many vh later.
+		// Between those two stops azimuthalProgressAt holds flat at ZOOM_END --
+		// the scene sits still on the just-finished flat map while the
+		// interstitial's own sticky block scrolls past beside it, and only once
+		// clear does progress resume toward the disc. Unlike every other beat
+		// here, this vh is a plain tuned constant rather than derived from text
+		// length: it isn't competing with an animation for the reader's
+		// attention, so it doesn't need the same padding CAPTIONS gets.
+		const zoomIdx = stops.findIndex((s) => s.progress === ZOOM_END);
+		if (zoomIdx !== -1) {
+			for (let i = zoomIdx + 1; i < stops.length; i++) stops[i].vh += INTERSTITIAL_2_HOLD_VH;
+			stops.splice(zoomIdx + 1, 0, { progress: ZOOM_END, vh: stops[zoomIdx].vh + INTERSTITIAL_2_HOLD_VH });
+		}
 		return stops;
 	})();
 
@@ -434,6 +459,15 @@
 	</div>
 </main>
 
+<!-- An interstitial: plain connective prose, not paired to any scene, sitting
+     in ordinary document flow between the two <main> sections. Nothing tracks
+     its height or position -- it just scrolls past once, like a paragraph on
+     any page, which is the whole point of using this kind of space here
+     rather than stretching either scene to cover the gap. -->
+<section class="interstitial-standalone">
+	<Interstitial body={interstitialStraight.body} />
+</section>
+
 <!-- azimuthal-projection + a-different-kind-of-map: TWO text sections over ONE
      continuous visual. Both .stanza-part blocks sit in a single <main>, so the
      scene panel stays sticky straight through the handover and the map never
@@ -462,6 +496,19 @@
 				</div>
 				<div class="trailing-spacer" style="height: {AZIMUTHAL_SPLIT_VH}vh"></div>
 			</div>
+			<!-- The 'imaginary-geometry' interstitial. Same .stanza-part shape as
+			     its neighbours -- an own bounding box so its sticky content
+			     releases at the end of ITS OWN spacer rather than either
+			     heading's -- but the sticky child is the interstitial's prose,
+			     not a title. Its spacer height is exactly the hold spliced into
+			     AZIMUTHAL_PACING above, so the two can never drift apart: change
+			     one and the other silently breaks. -->
+			<div class="stanza-part">
+				<div class="interstitial-sticky">
+					<Interstitial body={interstitialImaginary.body} standalone={false} />
+				</div>
+				<div class="trailing-spacer" style="height: {INTERSTITIAL_2_HOLD_VH}vh"></div>
+			</div>
 			<div class="stanza-part">
 				<div class="intro-sticky">
 					<h2>{discSlide.title}</h2>
@@ -469,7 +516,7 @@
 				</div>
 				<div
 					class="trailing-spacer"
-					style="height: {spacerVh(AZIMUTHAL_TOTAL_VH - AZIMUTHAL_SPLIT_VH)}vh"
+					style="height: {spacerVh(AZIMUTHAL_TOTAL_VH - AZIMUTHAL_SPLIT_VH + INTERSTITIAL_2_HOLD_VH)}vh"
 				></div>
 			</div>
 		</div>
@@ -684,6 +731,24 @@
 		background: var(--surface-1);
 		padding: 2rem 0 1.25rem;
 		border-bottom: 1px solid var(--surface-2);
+	}
+	/* Same sticky positioning as .intro-sticky -- pins for exactly the height
+	   of its own .stanza-part, same as a heading would -- but no border or
+	   title-shaped padding: an interstitial isn't announcing the next scene,
+	   it's a pause, and shouldn't look like one more heading in the list. */
+	.interstitial-sticky {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: var(--surface-1);
+		padding: 2rem 0;
+	}
+	/* The standalone placement, used between two <main> sections rather than
+	   inside either one's sticky flow -- see Interstitial.svelte for what's
+	   shared between the two placements and why. */
+	.interstitial-standalone {
+		display: flex;
+		justify-content: center;
 	}
 	/* Slack after the sticky title+subtitle so the outer Scrolly (whose
 	   trigger band sits at viewport center) doesn't move on to the next
