@@ -58,7 +58,7 @@
 	// pacing uniformly would flash the longest captions past the reader.
 	export const CAPTIONS = [
 		{ start: 0, end: MERIDIANS_START, text: "To see an example, we'll construct a map that shows the whole world (not just one hemisphere at a time) within a single circle." },
-		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'To make this map we start by making cuts from pole to pole — like scoring an orange before peeling it.' },
+		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'To make this map we start drawing lines from pole to pole — like scoring an orange before peeling it.' },
 		{ start: MERIDIANS_END, end: TISSOT_END, text: "As a visual aid - we'll add some equally sized circles on the surface that we'll track as we look at different versions of our map."},
 		{ start: TISSOT_END, end: SPLIT_START, text: "Now we unfold the sliced peels up towards the north pole, and press them flat." },
 		{ start: SPLIT_START, end: SPLIT_END, text: 'The North Pole is in the center...' },
@@ -69,8 +69,8 @@
 			end: ANGLES_END,
 			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the South Pole.'
 		},
-		{ start: ANGLES_END, end: TOUR_END, text: 'But these lines - both the equator and "parallel lines" - shift as we rotate the center of the map to some places Osserman spent time.' },
-		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either view to put yourself at the center.' },
+		{ start: ANGLES_END, end: TOUR_END, text: 'But the equator and lines - all "great circles" that wrap the earth - shift as we rotate the center of the map to some places Osserman spent time.' },
+		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either visual to rotate your view.' },
 		{
 			start: DRAG_END,
 			end: STEREO_END,
@@ -80,7 +80,7 @@
 		{
 			start: STEREO_END,
 			end: ZOOM_END,
-			text: "But stretching until the circles are truly round makes our map is no longer finite. The South Pole moves off the map to infinity."
+			text: "But stretching until the circles are truly round makes our map no longer finite. The South Pole moves off the map to infinity."
 		},
 		// NOTE: there is deliberately no caption for ZOOM_END..DISC_END. That
 		// beat's text became the sidebar for the 'a-different-kind-of-map'
@@ -92,7 +92,7 @@
 		{
 			start: DISC_END,
 			end: GEODESIC_END,
-			text: 'Here, instead of reference circles (all of the same size on actual surface) growing as they extend from the center, here they shrink. The outer rim of the circle, instead of representing a pole opposite the center, represents all points that are infinitely far away in the space.'
+			text: 'Our reference circle stay circular, but now shrink, rather than grow as we move away from the center. The disk\'s outer rim, instead of representing single point, represents all points that are infinitely far away from the center.'
 		},
 		{
 			start: GEODESIC_END,

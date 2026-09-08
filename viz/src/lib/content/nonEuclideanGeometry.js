@@ -20,8 +20,9 @@
 export const slides = [
 	{
 		id: 'intro',
-		title: 'Non-Euclidean Geometry',
+		title: 'Imagination, Reality and Hyperbolic Geometry',
 		body: [
+			//"One of the threads woven through *Poetry of the Universe* is the evolution of geometry.",
 			"Alexandria, founded by the Greeks on the coast of Egypt, was one of the ancient world's great centers of learning. There, drawing on centuries of mathematical developments from around the region, Euclid produced *The Elements*. ",
 			'> "Starting from a very few explicitly laid out assumptions, Euclid produced a dazzling series of consequences." - Robert Osserman, *Poetry of the Universe*',
 			"The assumptions Euclid offered take the form of five axioms and five postulates. Of them, the parallel postulate was the least self-evident, and is the one mathematicians wrestled with most over the next two thousand years."
@@ -94,19 +95,20 @@ export const slides = [
 		// side (how flattening a sphere distorts it); the hyperbolic-disk
 		// connection is a deliberately separate follow-up, not yet built.
 		subtitle:
-			'Mapmakers had faced a related impossible task for centuries: how to represent the surface of a sphere on a flat page.',
+			'Mapmakers had faced a related challenge for centuries: how to represent the surface of a sphere on a flat page.',
 		visualLabel: 'Azimuthal Equidistant projection: rotating globe, peel-open, distortion coloring, draggable center'
 	},
 	{
 		id: 'a-different-kind-of-map',
-		title: 'A Different Kind of Map',
+		title: 'The Poincaré Disk',
 		// Second half of the azimuthal sequence, which runs as ONE continuous
 		// visual across two text sections -- see the .stanza-part pair in
 		// +page.svelte. This subtitle was an on-canvas caption until the split;
 		// it is long, and it reads far better held still in the sidebar while
 		// the map transforms than flashed over the top of it.
 		subtitle:
-			"We are looking at a view of a finite world that requires infinite paper to show in its entirety. Next, we turn to an inverse of this map — one that shows an infinite surface within a simple circle. Like Euclid's plane, this disk requires thinking abstractly, not using geometry to represent or measure real world objects, but developing a geometry of an imaginary world."
+			"Our last map required infinite paper to show all of our finite sphere. Poincaré's disk fits an infinite surface into a simple circle. In many respects it is essentially the inverse of the last map we explored."
+			//"We are looking at a view of a finite world that requires infinite paper to show in its entirety. Next, we turn to an inverse of this map — one that shows an infinite surface within a simple circle. Like Euclid's plane, this disk requires thinking abstractly, not using geometry to represent or measure real world objects, but developing a geometry of an imaginary world."
 	},
 	{
 		id: 'negative-curvature',
@@ -120,7 +122,8 @@ export const slides = [
 		// The subtitle poses the question the scene spends its whole run
 		// answering, and points back at the disc the reader has just left.
 		subtitle:
-			'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.',
+			'To find out lets start with curvature on a sphere.',
+			//'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.',
 		// Optional side door, rendered under the subtitle. Not part of the
 		// narrative -- the stanza reads correctly without ever following it.
 		aside: {
@@ -132,7 +135,8 @@ export const slides = [
 		id: 'hyperbolic-outro',
 		title: 'Hyperbolic Geometry',
 		body: [
-			"In *Poetry of the Universe* Osserman goes further into these surfaces, showing their connections to Escher's Heaven and Earth, for example. But here we move in a different direction; towards the field of mathematics Osserman researched and contributed to most significantly."
+			'In *Poetry of the Universe*, my father taught this geometry to build an intuition for curvature in higher dimensions and for the possible shape of the universe.',
+			'But this foundational understanding of curvature also set the stage for the field of mathematics he spent his career studying: Minimal Surfaces.'
 		]
 		// This is the outro (see .cover-section in +page.svelte) — no
 		// visualLabel, it doesn't sit in the scene-panel flow the slides
@@ -157,8 +161,8 @@ export const interstitials = [
 		// Euclid, and the reframing (arc in 3D / straight line in a curved
 		// geometry) that the next scene's map is built to make vivid.
 		body: [
-			"These properties of spheres had been known for centuries. But they weren't necessarily seen as incompatible with Euclid, because Euclid spoke of straight lines, not arcs in three dimensions.",
-			"The 19th century brought a conceptual shift. Mathematicians including Carl Friedrich Gauss began studying what geometry would look like if you were confined to the curved surface itself. On the surface of the Earth, we are confined to two dimensions, and a great circle is the straightest path available to us. Is it a curved line in three dimensions — or a straight line in a curved geometry?"
+			"These properties of spheres had been known for centuries. But they weren't necessarily seen as incompatible with Euclid, because Euclid spoke of straight lines, whereas our lines on a sphere could just be considered arcs in three dimensions, rather than lines at all.",
+			"The 19th century brought a conceptual shift. Mathematicians including Carl Friedrich Gauss began studying what geometry would look like if you were confined to the curved surface itself. On the surface of the Earth, we essentially are confined to two dimensions, and the arcs from the previous visual are the straightest paths available to us. So are they curved lines in three dimensions, or a straight line in a curved geometry?"
 		]
 	},
 	{
@@ -168,9 +172,24 @@ export const interstitials = [
 		// history that explains why the map is about to become a circle at
 		// all, read while the just-finished flat map sits still alongside it.
 		body: [
-			'These maps begin with a world we can picture: the surface of a sphere. The maps may distort its geometry, but we can always return to the globe to see what they represent.',
-			'In the early nineteenth century, Nikolai Lobachevsky took a stranger step. He developed what he called an "imaginary geometry" in which Euclid\'s parallel postulate no longer held — without starting from a familiar physical surface.',
-			'After decades of mathematical controversy about this "imaginary geometry," in 1868 Eugenio Beltrami showed that it was internally consistent. And a little over a decade later, Henri Poincaré developed a remarkable circular model that made this otherwise hard-to-picture geometry concrete enough to see and work with.'
+			'These geometries of the plane and the sphere, while not always intuitive, are based on surfaces that are familiar with us.',
+			'In the early nineteenth century, Nikolai Lobachevsky took a different approach. He developed what he called an "imaginary geometry" - in part because of it\'s close relations to imaginary numbers. This geometry was inspired not from a familiar physical surface, but from mathmatical abstration. It is a geometry in which most of Euclid\'s assumptions remain, but not the parallel postulate.',
+			'After decades of mathematical controversy about this "imaginary geometry," in 1868 Eugenio Beltrami showed that it was in fact internally consistent. And a little over a decade later, Henri Poincaré developed a circular model that made this otherwise hard-to-picture geometry concrete enough to see and work with.'
+		]
+	},
+	{
+		id: 'curvature-is-measurable',
+		// Standalone placement, like 'straight-in-curved-geometry': sits in
+		// ordinary document flow between the azimuthal-projection <main> and the
+		// negative-curvature <main>, nothing tracking its height. Closes the disc
+		// sequence by naming what made it the inverse of the sphere (constant
+		// negative vs positive curvature) and asserts that "negative curvature"
+		// is concrete and measurable -- the handoff into the scene that shows it.
+		body: [
+			"The reason the Poincaré Disk is essentially an inverse of our last map is because the geometry Lobachevsky imagined is in some ways the inverse of a sphere. While a sphere has constant positive curvature, Lobachevsky's geometry maps to a surface with constant negative curvature.",
+			"But while Lobachevsky started with mathematical abstraction, that doesn't mean \"negative curvature\" itself is fuzzy. Or that it can't be visualized or measured.",
+			"When tasked with surveying the Kingdom of Hanover in the 1820's, Gauss developed a new way to define and measure curvature. And it applies equally well to negative curvature as it does positive curvature.",
+			"But what is negative curvature?"
 		]
 	}
 ];

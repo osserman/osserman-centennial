@@ -471,7 +471,7 @@
 			// The condition, arriving on the same window as the angles it is about.
 			start: INTRO_END,
 			end: ROTATE_CAPTION_SPLIT,
-			text: 'The lines are parallel — they never meet, however far you extend them — under exactly one condition: if the angles made by the crossing line on one side add up to 180°.'
+			text: 'He reasoned that the lines are parallel under exactly one condition: if the angles on one side of the intersection line add up to 180°. Under this condition the lines will never meet, no matter how far you extend them.'
 		},
 		{
 			start: ROTATE_CAPTION_SPLIT,

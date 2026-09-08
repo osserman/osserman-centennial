@@ -58,6 +58,7 @@
 	const curvatureSlide = slides.find((s) => s.id === 'negative-curvature');
 	const interstitialStraight = interstitials.find((s) => s.id === 'straight-in-curved-geometry');
 	const interstitialImaginary = interstitials.find((s) => s.id === 'imaginary-geometry');
+	const interstitialCurvature = interstitials.find((s) => s.id === 'curvature-is-measurable');
 	const scrollySlides = [slides.find((s) => s.id === 'parallel-postulate'), slides.find((s) => s.id === 'sphere')];
 
 	let activeIndex = $state(0);
@@ -182,115 +183,102 @@
 		sphereProgress = Math.max(0, Math.min(1, traveled / SPHERE_SPAN_PX()));
 	}
 
-	// Third, independent instance of the same arrival/settle pattern above,
-	// driving AzimuthalProjectionScene, which runs one long scripted sequence
-	// from a shaded globe through the gore peel and the stereographic morph to
-	// Escher's Circle Limit tiling.
+	// AzimuthalProjectionScene renders as a pure function of its `progress`
+	// prop, so it is mounted TWICE. Instance A runs 0..ZOOM_END (globe -> gore
+	// peel -> flat map -> stereographic zoom-out) in the first <main>; instance
+	// B runs DISC_END..RECENTRE_END (the Poincare disc and the parallel-
+	// postulate beat) in a second <main>. The ZOOM_END..DISC_END morph between
+	// them is deliberately dropped -- the map fades out behind the interstitial
+	// that sits between the two sections instead of compressing into the disc.
+	// Each instance gets its own copy of the arrival/settle pattern above.
 	let azimuthalProgress = $state(0);
 	let azimuthalTextEl = $state();
 	let azimuthalSettleScrollY = null;
 
-	// Unlike the two scenes above, this one is NOT paced uniformly. Its stage
-	// boundaries were tuned for choreography (the tour is a long slow rotation;
-	// the peel is quick), while its captions vary from 51 to 389 characters --
-	// so scroll-per-progress-unit and scroll-per-word disagree by about 9x. Flat
-	// pacing either flashes the longest captions past unread or leaves the
-	// shortest ones parked on screen for hundreds of vh.
+	let discProgress = $state(DISC_END);
+	let discTextEl = $state();
+	let discSettleScrollY = null;
+
+	// Opacity of instance A's panel. Driven down as the interstitial that
+	// follows it (inside the same <main>) scrolls off the top, so the finished
+	// flat map holds behind the interstitial and then fades as the reader
+	// clears it -- rather than the disc cutting in over a live map.
+	let mapFade = $state(1);
+	let interludeEl = $state();
+
+	// Neither instance is paced uniformly. The stage boundaries were tuned for
+	// choreography (the tour is a long slow rotation; the peel is quick), while
+	// the captions vary from ~20 to ~390 characters -- so scroll-per-progress
+	// and scroll-per-word disagree by ~9x. Flat pacing either flashes the long
+	// captions past unread or parks the short ones for hundreds of vh.
 	//
-	// So each caption gets scroll of its own: a term for its text (reading time)
-	// plus a term for its animation span (so a long dissolve is not rushed just
-	// because it is captioned briefly), normalised to a fixed total page height.
-	// Deriving this from CAPTIONS rather than hardcoding a table means editing
-	// the narrative re-paces the scroll automatically.
-	const AZIMUTHAL_TOTAL_VH = 2900;
+	// So each caption gets its own scroll: a reading-time term (text length) +
+	// an animation-span term, then FLOORED so even a very short caption gets
+	// enough scroll to be noticed, then normalised to a fixed total. Deriving
+	// this from CAPTIONS means editing the narrative re-paces the scroll.
 	const VH_PER_CHAR = 1;
 	const VH_PER_PROGRESS_UNIT = 300;
+	// No caption gets less than this, however short its text. Below roughly a
+	// screen and a bit, a brief caption flicks past between two scroll notches
+	// before it registers. Applied in FINAL vh (after normalising), like the
+	// drag floor, so it isn't just scaled straight back out.
+	const MIN_CAPTION_VH = 120;
 	// The drag beat is interactive: the reader has to notice the invitation and
-	// act on it, which its 51 characters badly under-price.
+	// act on it, which its ~40 characters badly under-price.
 	const DRAG_FLOOR_VH = 180;
-	// Scroll given to the 'imaginary-geometry' interstitial mid-sequence (see
-	// AZIMUTHAL_PACING below). Three short paragraphs of pure reading, nothing
-	// else on screen competing for attention -- tuned visually, same as every
-	// other hold constant on this page.
-	const INTERSTITIAL_2_HOLD_VH = 320;
+	// Scroll budgeted to each scene's caption run.
+	const AZIMUTHAL_A_TOTAL_VH = 2100;
+	const DISC_TOTAL_VH = 1100;
+	// Reading hold for the 'imaginary-geometry' interstitial inside instance
+	// A's <main> -- set as .interlude's min-height below. Instance A's progress
+	// is clamped at ZOOM_END, so this scroll is free: it just holds the
+	// finished map on screen while the card rides past, tied to no pacing table
+	// (that coupling is what splitting the scene into two <main>s removed).
+	const INTERLUDE_HOLD_VH = 170;
 
-	// Cumulative [progress, vh] breakpoints; scroll maps piecewise-linearly.
-	// The azimuthal scene's own captions, PLUS the one beat whose text lives in
-	// the left panel instead (the 'a-different-kind-of-map' subtitle). That beat
-	// has no on-canvas caption, so without this it would contribute no weight
-	// and the arrival of the Poincare disk would get almost no scroll -- while
-	// being exactly the stretch where the reader has the most to read.
-	const AZIMUTHAL_BEATS = [
-		...AZIMUTHAL_CAPTIONS,
-		{ start: ZOOM_END, end: DISC_END, text: discSlide.subtitle }
-	].sort((a, b) => a.start - b.start);
-
-	const AZIMUTHAL_PACING = (() => {
-		const weights = AZIMUTHAL_BEATS.map(
+	// Build a [progress, vh] breakpoint table from {start, end, text} beats;
+	// scroll maps piecewise-linearly between stops. `floorFor` optionally
+	// returns an extra per-beat floor (used for the drag beat).
+	function buildPacing(beats, totalVh, floorFor) {
+		const weights = beats.map(
 			(c) => VH_PER_CHAR * c.text.length + VH_PER_PROGRESS_UNIT * (c.end - c.start)
 		);
-		const isDrag = AZIMUTHAL_BEATS.map((c) => c.start === TOUR_END);
 		const total = weights.reduce((a, b) => a + b, 0);
-		let heights = weights.map((w) => (w / total) * AZIMUTHAL_TOTAL_VH);
+		let heights = weights.map((w) => (w / total) * totalVh);
 
-		// Apply the drag floor in *final* vh, not to the raw weight -- raising a
-		// weight before normalising just scales the increase back out again.
-		// Whatever the floor adds is taken proportionally from the other beats so
-		// the page keeps its budgeted total height.
-		const dragIndex = isDrag.indexOf(true);
-		if (dragIndex >= 0 && heights[dragIndex] < DRAG_FLOOR_VH) {
-			const others = AZIMUTHAL_TOTAL_VH - heights[dragIndex];
-			const shrink = (AZIMUTHAL_TOTAL_VH - DRAG_FLOOR_VH) / others;
-			heights = heights.map((h, i) => (i === dragIndex ? DRAG_FLOOR_VH : h * shrink));
+		// Floors applied in final vh. Whatever a floor adds is taken
+		// proportionally from the beats still above their own floor, so the
+		// table keeps its budgeted total. Iterated, since lifting several short
+		// beats at once can push a fourth under -- converges in a pass or two.
+		const floors = beats.map((c, i) =>
+			Math.max(MIN_CAPTION_VH, floorFor ? floorFor(c, i) : 0)
+		);
+		for (let pass = 0; pass < 6; pass++) {
+			const deficit = heights.reduce((s, h, i) => s + Math.max(0, floors[i] - h), 0);
+			if (deficit < 0.5) break;
+			const slack = heights.reduce((s, h, i) => s + Math.max(0, h - floors[i]), 0);
+			if (slack <= deficit) {
+				heights = floors.slice();
+				break;
+			}
+			const shrink = (slack - deficit) / slack;
+			heights = heights.map((h, i) =>
+				h <= floors[i] ? floors[i] : floors[i] + (h - floors[i]) * shrink
+			);
 		}
 
-		const stops = [{ progress: 0, vh: 0 }];
+		const stops = [{ progress: beats[0].start, vh: 0 }];
 		let cum = 0;
-		AZIMUTHAL_BEATS.forEach((c, i) => {
+		beats.forEach((c, i) => {
 			cum += heights[i];
 			stops.push({ progress: c.end, vh: cum });
 		});
-
-		// A pure reading hold spliced in at ZOOM_END, for the 'imaginary-geometry'
-		// interstitial that sits there (see the markup below): every stop from
-		// this point on is pushed back by INTERSTITIAL_2_HOLD_VH, and a second
-		// stop is inserted at the SAME progress (ZOOM_END) that many vh later.
-		// Between those two stops azimuthalProgressAt holds flat at ZOOM_END --
-		// the scene sits still on the just-finished flat map while the
-		// interstitial's own sticky block scrolls past beside it, and only once
-		// clear does progress resume toward the disc. Unlike every other beat
-		// here, this vh is a plain tuned constant rather than derived from text
-		// length: it isn't competing with an animation for the reader's
-		// attention, so it doesn't need the same padding CAPTIONS gets.
-		const zoomIdx = stops.findIndex((s) => s.progress === ZOOM_END);
-		if (zoomIdx !== -1) {
-			for (let i = zoomIdx + 1; i < stops.length; i++) stops[i].vh += INTERSTITIAL_2_HOLD_VH;
-			stops.splice(zoomIdx + 1, 0, { progress: ZOOM_END, vh: stops[zoomIdx].vh + INTERSTITIAL_2_HOLD_VH });
-		}
 		return stops;
-	})();
-
-	// Where a given progress falls in the scroll — the inverse of
-	// azimuthalProgressAt, used to size the first section's spacer so the
-	// sidebar changes over exactly where the beat does.
-	function azimuthalVhAt(progress) {
-		const stops = AZIMUTHAL_PACING;
-		for (let i = 1; i < stops.length; i++) {
-			if (stops[i].progress >= progress) {
-				const a = stops[i - 1];
-				const b = stops[i];
-				const t = (progress - a.progress) / (b.progress - a.progress);
-				return a.vh + t * (b.vh - a.vh);
-			}
-		}
-		return stops[stops.length - 1].vh;
 	}
-	const AZIMUTHAL_SPLIT_VH = azimuthalVhAt(ZOOM_END);
 
-	// Invert the table: scrolled distance -> progress.
-	function azimuthalProgressAt(traveledVh) {
-		const stops = AZIMUTHAL_PACING;
-		if (traveledVh <= 0) return 0;
+	// Invert a pacing table: scrolled vh -> progress.
+	function progressAtVh(stops, traveledVh) {
+		if (traveledVh <= 0) return stops[0].progress;
 		const last = stops[stops.length - 1];
 		if (traveledVh >= last.vh) return last.progress;
 		let i = 1;
@@ -301,6 +289,18 @@
 		return a.progress + t * (b.progress - a.progress);
 	}
 
+	const AZIMUTHAL_A_PACING = buildPacing(
+		AZIMUTHAL_CAPTIONS.filter((c) => c.end <= ZOOM_END + 1e-6),
+		AZIMUTHAL_A_TOTAL_VH,
+		(c) => (c.start === TOUR_END ? DRAG_FLOOR_VH : 0)
+	);
+	const DISC_PACING = buildPacing(
+		AZIMUTHAL_CAPTIONS.filter((c) => c.start >= DISC_END - 1e-6),
+		DISC_TOTAL_VH
+	);
+	const AZIMUTHAL_A_SPACER_VH = AZIMUTHAL_A_PACING[AZIMUTHAL_A_PACING.length - 1].vh;
+	const DISC_SPACER_VH = DISC_PACING[DISC_PACING.length - 1].vh;
+
 	function updateAzimuthalProgress() {
 		if (!azimuthalTextEl) return;
 		const rect = azimuthalTextEl.getBoundingClientRect();
@@ -310,9 +310,33 @@
 			return;
 		}
 		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
-		const traveled = window.scrollY - azimuthalSettleScrollY;
-		const traveledVh = (traveled / window.innerHeight) * 100;
-		azimuthalProgress = Math.max(0, Math.min(RECENTRE_END, azimuthalProgressAt(traveledVh)));
+		const traveledVh = ((window.scrollY - azimuthalSettleScrollY) / window.innerHeight) * 100;
+		azimuthalProgress = Math.max(0, Math.min(ZOOM_END, progressAtVh(AZIMUTHAL_A_PACING, traveledVh)));
+	}
+
+	function updateDiscProgress() {
+		if (!discTextEl) return;
+		const rect = discTextEl.getBoundingClientRect();
+		if (rect.top > STICKY_TOP_PX) {
+			discProgress = DISC_END;
+			discSettleScrollY = null;
+			return;
+		}
+		if (discSettleScrollY === null) discSettleScrollY = window.scrollY;
+		const traveledVh = ((window.scrollY - discSettleScrollY) / window.innerHeight) * 100;
+		discProgress = Math.max(DISC_END, Math.min(RECENTRE_END, progressAtVh(DISC_PACING, traveledVh)));
+	}
+
+	// As the interstitial's bottom edge rises past the top of the viewport,
+	// fade the still-pinned instance-A map out under it; once it's gone the map
+	// stays hidden and the disc section takes over.
+	function updateMapFade() {
+		if (!interludeEl) {
+			mapFade = 1;
+			return;
+		}
+		const bottom = interludeEl.getBoundingClientRect().bottom;
+		mapFade = Math.max(0, Math.min(1, bottom / window.innerHeight));
 	}
 
 	// Fourth instance of the arrival/settle pattern above, driving
@@ -345,29 +369,29 @@
 		updateParallelProgress();
 		updateSphereProgress();
 		updateAzimuthalProgress();
+		updateDiscProgress();
+		updateMapFade();
 		updateCurvatureProgress();
 		updateSceneHandover();
-		window.addEventListener('scroll', updateParallelProgress, { passive: true });
-		window.addEventListener('scroll', updateSphereProgress, { passive: true });
-		window.addEventListener('scroll', updateAzimuthalProgress, { passive: true });
-		window.addEventListener('scroll', updateCurvatureProgress, { passive: true });
-		window.addEventListener('scroll', updateSceneHandover, { passive: true });
-		window.addEventListener('resize', updateParallelProgress);
-		window.addEventListener('resize', updateSphereProgress);
-		window.addEventListener('resize', updateAzimuthalProgress);
-		window.addEventListener('resize', updateCurvatureProgress);
-		window.addEventListener('resize', updateSceneHandover);
+		const passive = { passive: true };
+		const updates = [
+			updateParallelProgress,
+			updateSphereProgress,
+			updateAzimuthalProgress,
+			updateDiscProgress,
+			updateMapFade,
+			updateCurvatureProgress,
+			updateSceneHandover
+		];
+		for (const fn of updates) {
+			window.addEventListener('scroll', fn, passive);
+			window.addEventListener('resize', fn);
+		}
 		return () => {
-			window.removeEventListener('scroll', updateParallelProgress);
-			window.removeEventListener('scroll', updateSphereProgress);
-			window.removeEventListener('scroll', updateAzimuthalProgress);
-			window.removeEventListener('scroll', updateCurvatureProgress);
-			window.removeEventListener('scroll', updateSceneHandover);
-			window.removeEventListener('resize', updateParallelProgress);
-			window.removeEventListener('resize', updateSphereProgress);
-			window.removeEventListener('resize', updateAzimuthalProgress);
-			window.removeEventListener('resize', updateCurvatureProgress);
-			window.removeEventListener('resize', updateSceneHandover);
+			for (const fn of updates) {
+				window.removeEventListener('scroll', fn);
+				window.removeEventListener('resize', fn);
+			}
 		};
 	});
 </script>
@@ -430,12 +454,15 @@
 		</Scrolly>
 	</div>
 
-	<!-- Two scenes, one panel, crossfaded rather than switched. Each is mounted
-	     only while it has something to show, so there is at most a moment where
-	     both exist; the sphere's WebGL context is not created until its heading
-	     is actually on its way in. Pointer events go to whichever is in front,
-	     so the triangle's drag handles stop responding once it is more than
-	     half faded out. -->
+	<!-- Two scenes, one panel, crossfaded rather than switched. The sphere is
+	     three.js with a live render loop, so it is NOT mounted at page load --
+	     but it IS mounted the moment the reader enters the parallel scene
+	     (parallelProgress > 0), a good five viewports of scroll before the
+	     crossfade starts. That warm-up window is the fix for the old bug where
+	     the sphere's context was created only as the handover began and raced
+	     the scroll, popping in half-animated. Pointer events go to whichever
+	     scene is in front, so the triangle's drag handles stop responding once
+	     it is more than half faded out. -->
 	<div class="scene-panel">
 		{#if sceneHandover < 1}
 			<div
@@ -448,7 +475,7 @@
 				/>
 			</div>
 		{/if}
-		{#if sceneHandover > 0}
+		{#if parallelProgress > 0 || sceneHandover > 0}
 			<div
 				class="scene-layer"
 				style="opacity: {sceneHandover}; pointer-events: {sceneHandover >= 0.5 ? 'auto' : 'none'}"
@@ -468,67 +495,67 @@
 	<Interstitial body={interstitialStraight.body} />
 </section>
 
-<!-- azimuthal-projection + a-different-kind-of-map: TWO text sections over ONE
-     continuous visual. Both .stanza-part blocks sit in a single <main>, so the
-     scene panel stays sticky straight through the handover and the map never
-     unmounts or resets -- splitting these into two <main> elements would give
-     the second section its own scene instance, which would restart the whole
-     sequence from the globe.
-
-     Each part needs its OWN wrapper, though: two sticky headings sharing one
-     containing block would both pin to the top and overlap, since the first
-     only releases at the end of the block it lives in. A wrapper per part makes
-     each heading release exactly where its own section ends.
-
-     The first part's spacer is sized from the pacing table so the heading
-     changes over where the beat does (ZOOM_END). It runs a little long in
-     practice -- the sticky heading's own height is scroll too, and that is not
-     knowable from here -- which lands the new title just after the new beat
-     starts rather than just before. That is the right side to err on. -->
-<main class="layout">
+<!-- azimuthal-projection: instance A of AzimuthalProjectionScene, 0..ZOOM_END
+     (globe -> gore peel -> flat map -> stereographic zoom-out). A custom grid
+     rather than .layout so the scene panel can span BOTH grid rows and stay
+     pinned through row 2 -- the 'imaginary-geometry' interstitial, which rides
+     full-width over the held map as a card and then fades it out (mapFade) as it
+     clears the top. Instance A's progress is clamped at ZOOM_END, so the
+     interstitial's scroll costs nothing in any pacing table -- the coupling the
+     old single-<main> version needed is gone. -->
+<main class="azimuthal-a">
 	<div class="text-panel">
 		<div class="euler-flow">
-			<div class="stanza-part">
-				<div class="intro-spacer-lead"></div>
-				<div class="intro-sticky" bind:this={azimuthalTextEl}>
-					<h2>{azimuthalSlide.title}</h2>
-					<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
-				</div>
-				<div class="trailing-spacer" style="height: {AZIMUTHAL_SPLIT_VH}vh"></div>
+			<div class="intro-spacer-lead"></div>
+			<div class="intro-sticky" bind:this={azimuthalTextEl}>
+				<h2>{azimuthalSlide.title}</h2>
+				<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
 			</div>
-			<!-- The 'imaginary-geometry' interstitial. Same .stanza-part shape as
-			     its neighbours -- an own bounding box so its sticky content
-			     releases at the end of ITS OWN spacer rather than either
-			     heading's -- but the sticky child is the interstitial's prose,
-			     not a title. Its spacer height is exactly the hold spliced into
-			     AZIMUTHAL_PACING above, so the two can never drift apart: change
-			     one and the other silently breaks. -->
-			<div class="stanza-part">
-				<div class="interstitial-sticky">
-					<Interstitial body={interstitialImaginary.body} standalone={false} />
-				</div>
-				<div class="trailing-spacer" style="height: {INTERSTITIAL_2_HOLD_VH}vh"></div>
-			</div>
-			<div class="stanza-part">
-				<div class="intro-sticky">
-					<h2>{discSlide.title}</h2>
-					<p class="subtitle">{@html renderInline(discSlide.subtitle)}</p>
-				</div>
-				<div
-					class="trailing-spacer"
-					style="height: {spacerVh(AZIMUTHAL_TOTAL_VH - AZIMUTHAL_SPLIT_VH + INTERSTITIAL_2_HOLD_VH)}vh"
-				></div>
-			</div>
+			<div class="trailing-spacer" style="height: {spacerVh(AZIMUTHAL_A_SPACER_VH)}vh"></div>
 		</div>
 	</div>
-	<div class="scene-panel">
+	<div class="scene-panel" style="opacity: {mapFade}">
 		<AzimuthalProjectionScene
 			progress={azimuthalProgress}
 			dragEnabled={azimuthalProgress >= TOUR_END && azimuthalProgress < DRAG_END}
 			debug={debugAzimuthal}
 		/>
 	</div>
+	<section
+		class="interlude"
+		bind:this={interludeEl}
+		style="min-height: {INTERLUDE_HOLD_VH}vh"
+	>
+		<Interstitial body={interstitialImaginary.body} standalone={false} />
+	</section>
 </main>
+
+<!-- a-different-kind-of-map: instance B, DISC_END..RECENTRE_END. A second,
+     independent AzimuthalProjectionScene in its own <main> -- the disc just
+     appears, no morph from the flat map (dropped deliberately). Same shape as
+     the negative-curvature section below. -->
+<main class="layout">
+	<div class="text-panel">
+		<div class="euler-flow">
+			<div class="intro-spacer-lead"></div>
+			<div class="intro-sticky" bind:this={discTextEl}>
+				<h2>{discSlide.title}</h2>
+				<p class="subtitle">{@html renderInline(discSlide.subtitle)}</p>
+			</div>
+			<div class="trailing-spacer" style="height: {spacerVh(DISC_SPACER_VH)}vh"></div>
+		</div>
+	</div>
+	<div class="scene-panel">
+		<AzimuthalProjectionScene progress={discProgress} dragEnabled={false} debug={debugAzimuthal} />
+	</div>
+</main>
+
+<!-- Standalone interstitial between the disc sequence and the curvature scene --
+     same placement as the 'straight-in-curved-geometry' one above: ordinary
+     document flow between two <main> sections, nothing tracking its height. -->
+<section class="interstitial-standalone">
+	<Interstitial body={interstitialCurvature.body} />
+</section>
 
 <!-- negative-curvature: same shape as azimuthal-projection above -- a real
      scene-panel visual, alone in its section, so it gets its own sticky-text
@@ -700,14 +727,6 @@
 		flex-direction: column;
 		width: 100%;
 	}
-	/* One per text section that shares a scene. Exists purely to be the sticky
-	   containing block for its own heading, so heading N releases when section N
-	   ends instead of staying pinned over section N+1. */
-	.stanza-part {
-		display: flex;
-		flex-direction: column;
-		width: 100%;
-	}
 	.intro-spacer-lead {
 		height: 15vh;
 	}
@@ -732,23 +751,44 @@
 		padding: 2rem 0 1.25rem;
 		border-bottom: 1px solid var(--surface-2);
 	}
-	/* Same sticky positioning as .intro-sticky -- pins for exactly the height
-	   of its own .stanza-part, same as a heading would -- but no border or
-	   title-shaped padding: an interstitial isn't announcing the next scene,
-	   it's a pause, and shouldn't look like one more heading in the list. */
-	.interstitial-sticky {
-		position: sticky;
-		top: 0;
-		z-index: 2;
-		background: var(--surface-1);
-		padding: 2rem 0;
-	}
 	/* The standalone placement, used between two <main> sections rather than
 	   inside either one's sticky flow -- see Interstitial.svelte for what's
 	   shared between the two placements and why. */
 	.interstitial-standalone {
 		display: flex;
 		justify-content: center;
+	}
+	/* azimuthal-projection's <main> (instance A). Two columns like .layout, but
+	   a grid so the scene panel can be told to span both rows -- row 1 is the
+	   sidebar heading + spacer, row 2 is the full-width interstitial interlude.
+	   Spanning both rows is what lets the panel stay position:sticky straight
+	   through the interlude (a grid item's sticky range is its grid area). */
+	.azimuthal-a {
+		display: grid;
+		grid-template-columns: min(28vw, 24rem) 1fr;
+		align-items: start;
+	}
+	.azimuthal-a > .text-panel {
+		grid-column: 1;
+		grid-row: 1;
+	}
+	.azimuthal-a > .scene-panel {
+		grid-column: 2;
+		grid-row: 1 / -1;
+	}
+	/* The 'imaginary-geometry' interstitial, full width beneath both columns,
+	   riding OVER the still-pinned map (hence z-index and the card's own
+	   surface in Interstitial.svelte). Its min-height -- the reading hold -- is
+	   set inline from INTERLUDE_HOLD_VH in the script. */
+	.azimuthal-a > .interlude {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		position: relative;
+		z-index: 3;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		padding: 12vh 2rem 0;
 	}
 	/* Slack after the sticky title+subtitle so the outer Scrolly (whose
 	   trigger band sits at viewport center) doesn't move on to the next
@@ -776,6 +816,19 @@
 	@media (max-width: 900px) {
 		.layout {
 			flex-direction: column;
+		}
+		.azimuthal-a {
+			grid-template-columns: 1fr;
+		}
+		.azimuthal-a > .scene-panel {
+			grid-column: 1;
+			grid-row: auto;
+		}
+		.azimuthal-a > .interlude {
+			grid-column: 1;
+			grid-row: auto;
+			min-height: 0;
+			padding: 4.5rem 1rem;
 		}
 		.text-panel {
 			width: auto;

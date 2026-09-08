@@ -46,12 +46,23 @@
 		justify-content: center;
 		padding: 4.5rem 2rem;
 	}
-	.interstitial.standalone .interstitial-inner {
-		max-width: 30rem;
+	/* The card. Same in both placements -- between two sections it sits on the
+	   page background; ridden over a held scene (the azimuthal interlude) it
+	   needs its own surface to stay readable, hence the near-opaque fill and
+	   the blur. This is the fourth narrative surface: not a heading, not a
+	   caption, a thing you stop and read. */
+	.interstitial-inner {
+		max-width: 34rem;
+		/* Centres the card in the embedded placement, where .interstitial is a
+		   full-width block rather than a flex parent. */
+		margin-inline: auto;
+		padding: 1.9rem 2.1rem;
+		border: 1px solid var(--surface-2);
+		border-radius: 14px;
+		background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+		backdrop-filter: blur(8px);
+		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
 	}
-	/* Embedded: fills whatever column it's placed in (a scene's own text
-	   panel) with no extra centring -- see the mid-sequence use in
-	   non-euclidean-geometry/+page.svelte. */
 	.interstitial-rule {
 		display: block;
 		width: 2.25rem;
