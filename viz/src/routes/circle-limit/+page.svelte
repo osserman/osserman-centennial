@@ -2,6 +2,7 @@
 	// Aside off the non-Euclidean stanza. It used to be the closing beat of the
 	// azimuthal sequence; the narrative now ends on the parallel postulate
 	// instead, which is the argument it had been building toward all along.
+	import { base } from '$app/paths';
 	import CircleLimitScene from '$lib/components/CircleLimitScene.svelte';
 </script>
 
@@ -15,7 +16,7 @@
 
 <article class="aside-page">
 	<header>
-		<a class="back" href="/non-euclidean-geometry">← Non-Euclidean Geometry</a>
+		<a class="back" href="{base}/non-euclidean-geometry">← Non-Euclidean Geometry</a>
 		<p class="kicker">An aside</p>
 		<h1>The Grid Under Circle Limit</h1>
 		<p class="lede">
@@ -59,7 +60,7 @@
 			construction underneath them, not the work.
 		</p>
 
-		<p class="return"><a href="/non-euclidean-geometry">← Back to the narrative</a></p>
+		<p class="return"><a href="{base}/non-euclidean-geometry">← Back to the narrative</a></p>
 	</section>
 </article>
 

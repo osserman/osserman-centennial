@@ -568,7 +568,7 @@
 				<h2>{curvatureSlide.title}</h2>
 				<p class="subtitle">{@html renderInline(curvatureSlide.subtitle)}</p>
 				{#if curvatureSlide.aside}
-					<a class="aside-link" href={curvatureSlide.aside.href}>{curvatureSlide.aside.label} →</a>
+					<a class="aside-link" href="{base}{curvatureSlide.aside.href}">{curvatureSlide.aside.label} →</a>
 				{/if}
 			</div>
 			<div class="trailing-spacer" style="height: {spacerVh(CURVATURE_SPAN_VH * 100)}vh"></div>

@@ -2,6 +2,7 @@
 	// An aside off the non-Euclidean stanza, not part of its scroll flow. Linked
 	// from the negative-curvature slide for readers who want the surface behind
 	// the saddle; the narrative stands without it.
+	import { base } from '$app/paths';
 	import PseudosphereScene from '$lib/components/PseudosphereScene.svelte';
 </script>
 
@@ -15,7 +16,7 @@
 
 <article class="aside-page">
 	<header>
-		<a class="back" href="/non-euclidean-geometry">← Non-Euclidean Geometry</a>
+		<a class="back" href="{base}/non-euclidean-geometry">← Non-Euclidean Geometry</a>
 		<p class="kicker">An aside</p>
 		<h1>The Surface That Saddle Sits On</h1>
 		<p class="lede">
@@ -64,7 +65,7 @@
 			model in the space we live in — which is precisely why it had to be drawn as a map.
 		</p>
 
-		<p class="return"><a href="/non-euclidean-geometry">← Back to the narrative</a></p>
+		<p class="return"><a href="{base}/non-euclidean-geometry">← Back to the narrative</a></p>
 	</section>
 </article>
 
