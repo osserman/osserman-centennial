@@ -4,6 +4,7 @@
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import VisualPlaceholder from '$lib/components/VisualPlaceholder.svelte';
+	import Interstitial from '$lib/components/Interstitial.svelte';
 	import CatenoidScene from '$lib/components/CatenoidScene.svelte';
 	import CatenaryUnrollScene from '$lib/components/CatenaryUnrollScene.svelte';
 	import MeanCurvatureScene from '$lib/components/MeanCurvatureScene.svelte';
@@ -21,7 +22,7 @@
 		maxPossibleArea,
 		surfaceArea
 	} from '$lib/catenoidProfile.js';
-	import { slides } from '$lib/content/minimalSurfaces.js';
+	import { slides, interstitials } from '$lib/content/minimalSurfaces.js';
 
 	// First and last slides are standalone full-viewport cover screens (see
 	// .cover-section below) bookending the stanza, not part of the
@@ -31,18 +32,33 @@
 	const introSlide = slides[0];
 	const outroSlide = slides[slides.length - 1];
 	const scrollySlides = slides.slice(1, -1);
+	const interstitialSoapFilm = interstitials.find((s) => s.id === 'soap-film');
+	const interstitialFieldGrows = interstitials.find((s) => s.id === 'field-grows');
 
-	let activeIndex = $state(0);
-	const eulerIndex = scrollySlides.findIndex((s) => s.id === 'euler-question');
-	const catenaryAnswerIndex = scrollySlides.findIndex((s) => s.id === 'euler-answer');
-	const curvatureIndex = scrollySlides.findIndex((s) => s.id === 'defining-property');
-	const explorerIndex = scrollySlides.findIndex((s) => s.id === 'surface-explorer');
+	// The 'soap-film' interstitial sits between 'defining-property' and
+	// 'field-grows' as a standalone card in ordinary document flow (see the
+	// markup below), not inside either scene's scroll-scrubbed sequence -- so
+	// the sequence splits into two independent <Scrolly> groups here, each
+	// with its own active-index state and its own <main>. Nothing here needs
+	// a scene to survive the split (unlike non-euclidean-geometry's azimuthal
+	// map): every slide on both sides already mounts and unmounts its own
+	// scene freely as activeIndex changes.
+	const splitAt = scrollySlides.findIndex((s) => s.id === 'defining-property') + 1;
+	const scrollySlidesA = scrollySlides.slice(0, splitAt);
+	const scrollySlidesB = scrollySlides.slice(splitAt);
+
+	let activeIndexA = $state(0);
+	let activeIndexB = $state(0);
+	const eulerIndex = scrollySlidesA.findIndex((s) => s.id === 'euler-question');
+	const catenaryAnswerIndex = scrollySlidesA.findIndex((s) => s.id === 'euler-answer');
+	const curvatureIndex = scrollySlidesA.findIndex((s) => s.id === 'defining-property');
+	const explorerIndex = scrollySlidesB.findIndex((s) => s.id === 'surface-explorer');
 	// The euler-question slide's copy has two extra fields (`stages`) the
 	// generic slides don't — see the comment on it in minimalSurfaces.js.
 	// Pulled out here since the scene-panel section below needs it too, but
-	// isn't inside the `{#each scrollySlides as slide}` loop that would
+	// isn't inside the `{#each scrollySlidesA as slide}` loop that would
 	// otherwise put `slide` in scope.
-	const eulerSlide = scrollySlides[eulerIndex];
+	const eulerSlide = scrollySlidesA[eulerIndex];
 
 	// Minimal inline-markdown support, same convention as StepText.svelte —
 	// **bold** only, plus *italic* (used for book titles in this copy).
@@ -50,6 +66,15 @@
 		return text
 			.replace(/\*\*(.+?)\*\*/g, '<strong class="stat">$1</strong>')
 			.replace(/\*(.+?)\*/g, '<em>$1</em>');
+	}
+
+	// Same convention as non-euclidean-geometry's own opening epigraph: the
+	// intro's quoted paragraph is one string ('"quote" - attribution'), split
+	// at the dash right after the closing quote mark so the two can get their
+	// own distinct styling (see .epigraph below) instead of running together.
+	function splitQuote(text) {
+		const m = text.match(/^(.*?")\s*-\s*(.+)$/s);
+		return m ? { quote: m[1], attribution: m[2] } : { quote: text, attribution: '' };
 	}
 
 	// --- Everything below (through updateScrollProgress) started as a port
@@ -432,17 +457,28 @@
 		<p class="kicker">Stanza II</p>
 		<h1>{introSlide.title}</h1>
 		{#each introSlide.body as para}
-			<p>{@html renderInline(para)}</p>
+			{#if para.startsWith('> ')}
+				{@const { quote, attribution } = splitQuote(para.slice(2))}
+				<blockquote class="epigraph">
+					<p>{@html renderInline(quote)}</p>
+					{#if attribution}<footer>{@html renderInline(attribution)}</footer>{/if}
+				</blockquote>
+			{:else}
+				<p>{@html renderInline(para)}</p>
+			{/if}
 		{/each}
 		<div class="scroll-cue">Scroll to begin ↓</div>
 	</div>
 </section>
 
+<!-- euler-question / euler-answer / defining-property: their own <Scrolly>
+     group, in its own <main> -- see the 'soap-film' interstitial split note
+     in the script above. -->
 <main class="layout">
 	<div class="text-panel">
-		<Scrolly bind:active={activeIndex}>
-			{#each scrollySlides as slide, i}
-				<ScrollyStep index={i} active={i === activeIndex}>
+		<Scrolly bind:active={activeIndexA}>
+			{#each scrollySlidesA as slide, i}
+				<ScrollyStep index={i} active={i === activeIndexA}>
 					{#if slide.id === 'euler-question'}
 						<!-- ScrollyStep's own container is `display:flex` (row) with
 						     align-items:center — a single wrapper here (instead of
@@ -572,7 +608,79 @@
 							</div>
 							<div class="curvature-spacer-trail"></div>
 						</div>
-					{:else if slide.id === 'surface-explorer'}
+					{/if}
+				</ScrollyStep>
+			{/each}
+		</Scrolly>
+	</div>
+
+	<div class="scene-panel">
+		{#if activeIndexA === eulerIndex}
+			<CatenoidScene
+				{profile}
+				R={ringR}
+				L={ringL}
+				{revealProgress}
+				onAreaChange={handleAreaChange}
+				onCameraChange={(pos) => (catenoidCameraPos = pos)}
+			/>
+			{#if sandboxVisible}
+				<!-- No card/border on purpose — sits directly over the 3D view
+				     rather than in a boxed-off container, per explicit request.
+				     ProfileEditor itself lost its own reference-line "frame" (the
+				     ring-guide/axis ticks) at the same time — those read as an
+				     unwanted little chart-within-a-chart once this moved onto the
+				     open scene rather than sitting in the narrow text column. -->
+				<div class="editor-overlay">
+					{#if dragCaption}
+						<p class="drag-caption">{dragCaption}</p>
+					{/if}
+					<ProfileEditor
+						R={ringR}
+						L={ringL}
+						bind:midR
+						bind:spread
+						mode={stage === 'cinch' ? 'v' : 'curve'}
+						showSpreadHandle={stage === 'curve'}
+						frozen={stage === 'catenary'}
+						overlayProfile={stage === 'catenary' ? profile : null}
+					/>
+				</div>
+			{/if}
+		{:else if activeIndexA === catenaryAnswerIndex}
+			<CatenaryUnrollScene
+				R={ringR}
+				L={ringL}
+				progress={catenaryProgress}
+				startCameraPos={catenoidCameraPos}
+			/>
+		{:else if activeIndexA === curvatureIndex}
+			<MeanCurvatureScene R={ringR} L={ringL} progress={curvatureProgress} />
+		{/if}
+	</div>
+</main>
+
+<!-- The 'soap-film' and 'field-grows' interstitials: plain connective prose,
+     not paired to any scene, sitting one after the other in ordinary document
+     flow between the two <main> sections -- same placement and card as
+     non-euclidean-geometry's own between-scene interstitials. No visual sits
+     between them yet; a possible future addition, in which case it would
+     become its own <main> here, splitting this into three sections. -->
+<section class="interstitial-standalone">
+	<Interstitial body={interstitialSoapFilm.body} />
+</section>
+
+<section class="interstitial-standalone">
+	<Interstitial body={interstitialFieldGrows.body} />
+</section>
+
+<!-- surface-explorer: its own <Scrolly> group, in its own <main>. -->
+<main class="layout">
+	<div class="text-panel">
+		<Scrolly bind:active={activeIndexB}>
+			{#each scrollySlidesB as slide, i}
+				<ScrollyStep index={i} active={i === activeIndexB}>
+					{#if slide.id === 'surface-explorer'}
 						<!-- Same shape as defining-property above (sticky intro, then a
 						     nested <Scrolly> of per-stage triggers), but all three
 						     sentences are visible from the start (dimmed except the
@@ -641,51 +749,10 @@
 	</div>
 
 	<div class="scene-panel">
-		{#if activeIndex === eulerIndex}
-			<CatenoidScene
-				{profile}
-				R={ringR}
-				L={ringL}
-				{revealProgress}
-				onAreaChange={handleAreaChange}
-				onCameraChange={(pos) => (catenoidCameraPos = pos)}
-			/>
-			{#if sandboxVisible}
-				<!-- No card/border on purpose — sits directly over the 3D view
-				     rather than in a boxed-off container, per explicit request.
-				     ProfileEditor itself lost its own reference-line "frame" (the
-				     ring-guide/axis ticks) at the same time — those read as an
-				     unwanted little chart-within-a-chart once this moved onto the
-				     open scene rather than sitting in the narrow text column. -->
-				<div class="editor-overlay">
-					{#if dragCaption}
-						<p class="drag-caption">{dragCaption}</p>
-					{/if}
-					<ProfileEditor
-						R={ringR}
-						L={ringL}
-						bind:midR
-						bind:spread
-						mode={stage === 'cinch' ? 'v' : 'curve'}
-						showSpreadHandle={stage === 'curve'}
-						frozen={stage === 'catenary'}
-						overlayProfile={stage === 'catenary' ? profile : null}
-					/>
-				</div>
-			{/if}
-		{:else if activeIndex === catenaryAnswerIndex}
-			<CatenaryUnrollScene
-				R={ringR}
-				L={ringL}
-				progress={catenaryProgress}
-				startCameraPos={catenoidCameraPos}
-			/>
-		{:else if activeIndex === curvatureIndex}
-			<MeanCurvatureScene R={ringR} L={ringL} progress={curvatureProgress} />
-		{:else if activeIndex === explorerIndex}
+		{#if activeIndexB === explorerIndex}
 			<MinimalSurfaceExplorer bind:selectedFamilyId={explorerFamilyId} />
 		{:else}
-			<VisualPlaceholder label={scrollySlides[activeIndex]?.visualLabel ?? ''} />
+			<VisualPlaceholder label={scrollySlidesB[activeIndexB]?.visualLabel ?? ''} />
 		{/if}
 	</div>
 </main>
@@ -751,6 +818,48 @@
 		font-size: 0.8rem;
 		letter-spacing: 0.04em;
 		color: var(--text-muted);
+	}
+	/* Same treatment as non-euclidean-geometry's opening epigraph -- a large
+	   faded quotation mark, serif italic quote, small-caps-weight attribution. */
+	.epigraph {
+		position: relative;
+		margin: 0.3rem 0;
+		padding: 0.2rem 1.8rem;
+	}
+	.epigraph::before {
+		content: '“';
+		position: absolute;
+		top: -1.6rem;
+		left: -0.2rem;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 4.5rem;
+		line-height: 1;
+		color: var(--accent);
+		opacity: 0.25;
+	}
+	.epigraph p {
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 1.3rem;
+		font-style: italic;
+		line-height: 1.45;
+		color: var(--text-primary);
+	}
+	.epigraph footer {
+		margin-top: 0.6rem;
+		font-size: 0.8rem;
+		font-style: normal;
+		letter-spacing: 0.03em;
+		color: var(--text-muted);
+	}
+	.epigraph footer::before {
+		content: '— ';
+	}
+	/* The 'soap-film' interstitial, used between the two <main> sections rather
+	   than inside either one's scrolly flow -- same class and treatment as
+	   non-euclidean-geometry's own between-scene interstitials. */
+	.interstitial-standalone {
+		display: flex;
+		justify-content: center;
 	}
 	.layout {
 		display: flex;
