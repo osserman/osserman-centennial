@@ -723,7 +723,7 @@
 		{
 			start: PLANE_HOLD_END,
 			end: SADDLE_END,
-			text: "But there is possibility -- that the one curve one way, and the other the opposite way."
+			text: "But there is another possibility -- that the one curve one way, and the other the opposite way."
 		},
 		{
 			start: SADDLE_END,
