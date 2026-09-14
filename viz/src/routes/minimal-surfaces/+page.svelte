@@ -9,6 +9,7 @@
 	import CatenaryUnrollScene from '$lib/components/CatenaryUnrollScene.svelte';
 	import MeanCurvatureScene from '$lib/components/MeanCurvatureScene.svelte';
 	import MinimalSurfaceExplorer from '$lib/components/MinimalSurfaceExplorer.svelte';
+	import GyroidScene from '$lib/components/GyroidScene.svelte';
 	import ProfileEditor from '$lib/components/ProfileEditor.svelte';
 	import SurfaceAreaBars from '$lib/components/SurfaceAreaBars.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
@@ -53,6 +54,7 @@
 	const catenaryAnswerIndex = scrollySlidesA.findIndex((s) => s.id === 'euler-answer');
 	const curvatureIndex = scrollySlidesA.findIndex((s) => s.id === 'defining-property');
 	const explorerIndex = scrollySlidesB.findIndex((s) => s.id === 'surface-explorer');
+	const gyroidIndex = scrollySlidesB.findIndex((s) => s.id === 'gyroid-growth');
 	// The euler-question slide's copy has two extra fields (`stages`) the
 	// generic slides don't — see the comment on it in minimalSurfaces.js.
 	// Pulled out here since the scene-panel section below needs it too, but
@@ -378,6 +380,32 @@
 		curvatureProgress = Math.max(0, Math.min(1, traveled / CURVATURE_SPAN_PX()));
 	}
 
+	// Same arrival/settle pattern again, driving GyroidScene's lattice growth
+	// (0 = just the center cell, 1 = the full 5x5x5 block -- see its own
+	// MAX_SHELL). A flat span, not caption-derived -- there's no on-canvas
+	// text to pace against, just a scene the reader watches fill in.
+	let gyroidProgress = $state(0);
+	let gyroidTextEl = $state();
+	const GYROID_SPAN_VH = 3.2;
+	let gyroidSettleScrollY = null;
+
+	function GYROID_SPAN_PX() {
+		return GYROID_SPAN_VH * window.innerHeight;
+	}
+
+	function updateGyroidProgress() {
+		if (!gyroidTextEl) return;
+		const rect = gyroidTextEl.getBoundingClientRect();
+		if (rect.top > STICKY_TOP_PX) {
+			gyroidProgress = 0;
+			gyroidSettleScrollY = null;
+			return;
+		}
+		if (gyroidSettleScrollY === null) gyroidSettleScrollY = window.scrollY;
+		const traveled = window.scrollY - gyroidSettleScrollY;
+		gyroidProgress = Math.max(0, Math.min(1, traveled / GYROID_SPAN_PX()));
+	}
+
 	// Which of defining-property's 5 stage prompts is showing — bound from
 	// its own nested <Scrolly> (see the template), same mechanism/precedent
 	// as eulerSlide's stageIndex: a separate, independently-paced
@@ -429,21 +457,26 @@
 		updateScrollProgress();
 		updateCatenaryProgress();
 		updateCurvatureProgress();
+		updateGyroidProgress();
 		window.addEventListener('scroll', updateScrollProgress, { passive: true });
 		window.addEventListener('scroll', updateCatenaryProgress, { passive: true });
 		window.addEventListener('scroll', updateCurvatureProgress, { passive: true });
+		window.addEventListener('scroll', updateGyroidProgress, { passive: true });
 		window.addEventListener('scroll', maybeAutoNudge, { passive: true });
 		window.addEventListener('resize', updateScrollProgress);
 		window.addEventListener('resize', updateCatenaryProgress);
 		window.addEventListener('resize', updateCurvatureProgress);
+		window.addEventListener('resize', updateGyroidProgress);
 		return () => {
 			window.removeEventListener('scroll', updateScrollProgress);
 			window.removeEventListener('scroll', updateCatenaryProgress);
 			window.removeEventListener('scroll', updateCurvatureProgress);
+			window.removeEventListener('scroll', updateGyroidProgress);
 			window.removeEventListener('scroll', maybeAutoNudge);
 			window.removeEventListener('resize', updateScrollProgress);
 			window.removeEventListener('resize', updateCatenaryProgress);
 			window.removeEventListener('resize', updateCurvatureProgress);
+			window.removeEventListener('resize', updateGyroidProgress);
 		};
 	});
 </script>
@@ -731,6 +764,24 @@
 							</div>
 							<div class="explorer-spacer-trail"></div>
 						</div>
+					{:else if slide.id === 'gyroid-growth'}
+						<!-- Same sticky-title/trailing-spacer shape as defining-property
+						     above, minus its nested <Scrolly> -- this slide is plain body
+						     text, no per-stage prompts, just something to read while the
+						     lattice fills in beside it. Its own spacer class (not
+						     .curvature-spacer-trail) since that one assumes an extra ~390vh
+						     from a .stage-steps block this slide doesn't have -- reusing it
+						     would end the section long before gyroidProgress reaches 1. -->
+						<div class="euler-flow">
+							<div class="intro-spacer-lead"></div>
+							<div class="intro-sticky" bind:this={gyroidTextEl}>
+								<h2>{slide.title}</h2>
+								{#each slide.body as para}
+									<p>{@html renderInline(para)}</p>
+								{/each}
+							</div>
+							<div class="gyroid-spacer-trail"></div>
+						</div>
 					{:else}
 						<div class="slide-text">
 							<h2>{slide.title}</h2>
@@ -751,6 +802,8 @@
 	<div class="scene-panel">
 		{#if activeIndexB === explorerIndex}
 			<MinimalSurfaceExplorer bind:selectedFamilyId={explorerFamilyId} />
+		{:else if activeIndexB === gyroidIndex}
+			<GyroidScene progress={gyroidProgress} />
 		{:else}
 			<VisualPlaceholder label={scrollySlidesB[activeIndexB]?.visualLabel ?? ''} />
 		{/if}
@@ -1016,6 +1069,13 @@
 	   height) since the 5 ScrollyStep prompts already carry most of the load. */
 	.curvature-spacer-trail {
 		height: 100vh;
+	}
+	/* Sized against GYROID_SPAN_VH (320vh) plus a panel-height's worth of
+	   slack for the sticky heading's own release, same reasoning as every
+	   other span/spacer pairing in this file -- gyroidProgress should reach 1
+	   comfortably before this section hands off to the next. */
+	.gyroid-spacer-trail {
+		height: 420vh;
 	}
 	/* Same "outer Scrolly's trigger line sits at viewport center" slack
 	   reasoning as .curvature-spacer-trail above -- 3 ScrollyStep triggers

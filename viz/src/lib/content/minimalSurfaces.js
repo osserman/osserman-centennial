@@ -124,8 +124,8 @@ export const slides = [
 		id: 'gyroid-growth',
 		title: 'The catalogue kept growing.',
 		body: [
-			'A hundred years later, in 1970, Alan Schoen described a new collection of minimal surfaces whose patterns repeat endlessly in all three dimensions. Among them was one he called the gyroid.',
-			'At the time Schoen was working at NASA, outside the small community of geometers then actively studying minimal surfaces. He later recalled my father as one of the mathematicians who welcomed him into that community, and as someone he consulted as he settled on the name "gyroid."'
+			'A century later, in 1970, Alan Schoen published a collection that included several new minimal surfaces whose patterns repeat endlessly in all three dimensions. One that would become particularly influential he called the gyroid.',
+			'At the time, Schoen was working at NASA, not in the small community of university-based geometers actively studying minimal surfaces. He later recalled my father as one of the mathematicians who helped welcome him into that community — and someone whose opinion he sought as he settled on the name “gyroid.”'
 		],
 		visualLabel: 'A gyroid cell growing in three dimensions'
 	},
