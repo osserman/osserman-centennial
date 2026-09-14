@@ -34,7 +34,16 @@
 		timeDomain = [1970, 2025],
 		theme = 'auto',
 		sizeMetric = 'citations',
-		onSelectNode
+		onSelectNode,
+		// 0..1 — how much of the graph has "arrived" yet. Nodes pop in roughly
+		// left-to-right (oldest first), jittered per-node (see revealKeyById)
+		// so it reads as papers individually arriving rather than a wall
+		// sliding across the graph, while still drifting toward "citations
+		// accumulating over the decades since 1969" overall. 1 (the default)
+		// draws every node, i.e. every other stanza's/step's normal behavior is
+		// unaffected; the intro step is the only one that ever passes less. See
+		// beyond-mathematics/+page.svelte's graphRevealProgress.
+		revealProgress = 1
 	} = $props();
 
 	// Each node carries a precomputed width/height/y *per size metric* (see
@@ -69,6 +78,53 @@
 		const [minYear, maxYear] = timeDomain;
 		const t = (year - minYear) / (maxYear - minYear || 1);
 		return xExtent[0] + t * (xExtent[1] - xExtent[0]);
+	}
+
+	// Cheap, stable string hash (FNV-1a) -> [0, 1). Used to jitter each node's
+	// reveal moment -- Math.random() would re-shuffle the order on every
+	// re-render, which for a value read every scroll-driven redraw would make
+	// nodes flicker in and out rather than reveal once and stay.
+	function hashUnit(str) {
+		let h = 2166136261;
+		for (let i = 0; i < str.length; i++) {
+			h ^= str.charCodeAt(i);
+			h = Math.imul(h, 16777619);
+		}
+		return (h >>> 0) / 4294967296;
+	}
+
+	// How scattered the reveal order is around each node's chronological slot,
+	// as a fraction of the full timeline. A pure x-sweep (jitter 0) reads as a
+	// wall sliding across the graph rather than papers individually arriving --
+	// this randomizes each paper's pop-in moment while keeping the *overall*
+	// drift left-to-right, so it still reads as "citations accumulating over
+	// the decades" rather than a shuffled free-for-all. Clamped into [0, 1]
+	// per node below, so the very earliest/latest papers still roughly bookend
+	// the sweep rather than a jitter pushing them out of range.
+	const REVEAL_JITTER = 0.35;
+	const revealKeyById = new Map(
+		nodes.map((n) => {
+			const t = (n.x - xExtent[0]) / (xExtent[1] - xExtent[0] || 1);
+			const jitter = (hashUnit(n.id) - 0.5) * REVEAL_JITTER;
+			return [n.id, Math.max(0, Math.min(1, t + jitter))];
+		})
+	);
+	// Soft edge width, in the same normalized [0, 1] units as revealKeyById --
+	// short, so a paper snaps in close to its jittered moment ("pops") rather
+	// than gradually fading, but not zero, which would strobe on every
+	// scroll-driven redraw.
+	const REVEAL_FEATHER = 0.015;
+
+	// 0 (invisible) .. 1 (fully in) for one node at the current revealProgress.
+	// revealProgress === 1 short-circuits to "everything visible" without
+	// touching revealKeyById at all, so every non-intro step (and every other
+	// page that might one day use this component) behaves exactly as before.
+	function revealAlphaFor(n) {
+		if (revealProgress >= 1) return 1;
+		const key = revealKeyById.get(n.id) ?? 0;
+		if (key <= revealProgress) return 1;
+		if (key >= revealProgress + REVEAL_FEATHER) return 0;
+		return 1 - (key - revealProgress) / REVEAL_FEATHER;
 	}
 
 	// --------------------------------------------------------------- camera
@@ -170,6 +226,7 @@
 		for (let i = nodes.length - 1; i >= 0; i--) {
 			const n = nodes[i];
 			if (isDimmed(n)) continue; // faded-out papers aren't interactive while a spotlight is active
+			if (revealAlphaFor(n) <= 0) continue; // not yet revealed, during the intro's populate sweep
 			const g = geom(n);
 			const p = toScreen(n);
 			const halfW = (g.width * transform.scale) / 2 + 3;
@@ -260,6 +317,9 @@
 		const highlightSet = new Set(viewSpec.highlightIds || []);
 
 		for (const n of nodes) {
+			const revealAlpha = revealAlphaFor(n);
+			if (revealAlpha <= 0) continue;
+
 			const g = geom(n);
 			const p = toScreen(n);
 			const w = g.width * transform.scale;
@@ -273,7 +333,7 @@
 			const rh = isHighlighted ? h + 3 : h;
 			const radius = Math.min(3, rw / 4, rh / 4);
 
-			ctx.globalAlpha = dimmed ? 0.15 : 0.9;
+			ctx.globalAlpha = (dimmed ? 0.15 : 0.9) * revealAlpha;
 
 			ctx.beginPath();
 			ctx.roundRect(p.x - rw / 2, p.y - rh / 2, rw, rh, radius);
@@ -290,7 +350,7 @@
 			// this outline ring — with hundreds of simultaneous matches, a ring
 			// around each one reads as noise, not emphasis.
 			if (isHighlighted && viewSpec.colorBy !== 'filter') {
-				ctx.globalAlpha = 1;
+				ctx.globalAlpha = revealAlpha;
 				ctx.lineWidth = 2;
 				ctx.strokeStyle = pal.textPrimary;
 				ctx.beginPath();
@@ -352,6 +412,13 @@
 	$effect(() => {
 		// Theme changes just recolor in place — no camera movement.
 		theme;
+		untrack(() => draw());
+	});
+
+	$effect(() => {
+		// The intro's populate sweep redraws on every scroll tick, same as
+		// theme -- no camera movement, just which nodes are visible.
+		revealProgress;
 		untrack(() => draw());
 	});
 

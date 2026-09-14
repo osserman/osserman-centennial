@@ -3,7 +3,12 @@
 	// parent's IntersectionObserver via context; unregisters on destroy.
 	import { getContext } from 'svelte';
 
-	let { index, active = false, children } = $props();
+	// `stepEl` is optional and bindable — most callers don't need the DOM node,
+	// but a caller that wants to derive its own scroll progress through one
+	// specific step (rather than just its boolean active/inactive state) needs
+	// a ref to measure, same idea as every stanza page's own bound sticky-text
+	// elements. See beyond-mathematics/+page.svelte's graph-reveal progress.
+	let { index, active = false, stepEl = $bindable(), children } = $props();
 
 	const { registerStep } = getContext('scrolly');
 
@@ -12,7 +17,7 @@
 	}
 </script>
 
-<div class="scrolly-step" class:active use:register>
+<div class="scrolly-step" class:active bind:this={stepEl} use:register>
 	{@render children()}
 </div>
 

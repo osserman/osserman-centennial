@@ -33,13 +33,12 @@ export const steps = [
 	{
 		id: 'intro',
 		kicker: null,
-		heading: 'Minimal surfaces beyond mathematics',
-		subheading: 'Tracing the unexpected journeys from math theory to other fields',
+		heading: 'Roots and branches',
+		//subheading: 'Tracing the unexpected journeys from math theory to other fields',
 		body: [
-			'In 1969, Robert Osserman published <strong>A Survey of Minimal Surfaces</strong>, a graduate-level textbook that became the standard introduction to this rapidly growing area of geometry.',
+			'First published in 1969, <strong>A Survey of Minimal Surfaces</strong> is a graduate-level textbook that became the standard introduction to this rapidly growing area of geometry.',
 			'More than fifty years later, the book has been cited by over **1,000** scholarly publications.',
-			'Within these citations we can see an continually-evolving range of fields where the mathematics of minimal surfaces have proved relevant.',
-			"Scroll down to learn more."
+			//'Within these citations we can see the still-evolving range of fields where this field of math has proved relevant.',
 		],
 		openQuestion: null,
 		view: NONE_VIEW
@@ -48,7 +47,7 @@ export const steps = [
 		id: 'work-types',
 		kicker: null,
 		heading: 'Types of work',
-		body: ['These 1,000+ citing works span several kinds of scholarly output. Including:'],
+		body: ['Based on OpenAlex classifications, we see these 1,000+ citing works span several kinds of scholarly output:'],
 		typeBreakdown: [
 			{ label: 'Journal articles', count: 684, swatch: 'aqua' },
 			{ label: 'Preprints', count: 162, swatch: 'yellow' },
@@ -385,3 +384,22 @@ export const steps = [
 		view: NONE_VIEW
 	}*/
 ];
+
+// The stanza's cover -- same shape and role as introSlide in the other two
+// stanzas' content files (nonEuclideanGeometry.js, minimalSurfaces.js): a
+// full-viewport card the reader scrolls past before the two-column layout
+// begins, rendered by .cover-section/.cover-card in +page.svelte. Distinct
+// from steps[0] above (id 'intro'), which is the first sidebar step of the
+// scrollytelling sequence itself, paired to the graph's initial view -- this
+// is the frame before any of that starts. The epigraph paragraph (starting
+// with "> ") renders as a blockquote styled like the other stanzas' openings;
+// split at " - " so splitQuote in +page.svelte can find the attribution.
+export const intro = {
+	title: 'Beyond Mathematics',
+	body: [
+		'Two decades before Heinrich Hertz first experimentally demonstrated electromagnetic waves, James Clerk Maxwell developed a set of equations that predicted their existence.',
+		'Hertz wrote of Maxwell\'s work: "One cannot escape the feeling that these mathematical formulas have an independent existence and an intelligence of their own ... that we get more out of them than was originally put into them." [as cited in *Poetry of the Universe*]',
+		'> "Neither Maxwell nor Hertz nor anyone else at the time would have dreamed that out of those few equations would grow the future industries of radio, television, radar, as well as countless other scientific and technological applications." - Robert Osserman, *Poetry of the Universe*',
+		"My father's own field subtly echoes this story. To see how, we begin with another book he wrote: *A Survey of Minimal Surfaces*."
+	]
+};

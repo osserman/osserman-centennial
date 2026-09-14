@@ -7,12 +7,68 @@
 	import PaperDetail from '$lib/components/PaperDetail.svelte';
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
-	import { steps } from '$lib/content/narrative.js';
+	import { steps, intro } from '$lib/content/narrative.js';
 
 	let { data } = $props();
 	const citerNodes = data.nodes.filter((n) => !n.isSeed);
 
+	// Minimal inline-markdown support, same convention as the other two
+	// stanza pages' own renderInline — **bold** only, plus *italic* (used for
+	// book titles).
+	function renderInline(text) {
+		return text
+			.replace(/\*\*(.+?)\*\*/g, '<strong class="stat">$1</strong>')
+			.replace(/\*(.+?)\*/g, '<em>$1</em>');
+	}
+
+	// Same convention as the other two stanzas' own opening epigraph: the
+	// quoted paragraph is one string ('"quote" - attribution'), split at the
+	// dash right after the closing quote mark so the two get their own
+	// distinct styling (see .epigraph below) instead of running together.
+	function splitQuote(text) {
+		const m = text.match(/^(.*?")\s*-\s*(.+)$/s);
+		return m ? { quote: m[1], attribution: m[2] } : { quote: text, attribution: '' };
+	}
+
 	let activeIndex = $state(0);
+
+	// The citation graph populates chronologically as the 'intro' step scrolls
+	// by, rather than arriving already fully drawn -- see CitationGraph's own
+	// `revealProgress` prop. Same arrival/settle-style progress calc every
+	// stanza page uses, but measured against the intro ScrollyStep's own DOM
+	// node (bound via ScrollyStep's `stepEl`) rather than a sticky text panel,
+	// since this page's steps aren't sticky -- the graph panel is.
+	//
+	// REVEAL_FRACTION < 1 so the sweep finishes with room to spare before the
+	// Scrolly trigger band would ever hand off to 'work-types': the intro
+	// step's own text only starts fading (ScrollyStep's opacity transition)
+	// once the reader has scrolled it essentially off-screen, well past where
+	// this reaches 1 — so the graph is always fully populated before that text
+	// fades, never after.
+	let introStepEl = $state();
+	let graphRevealProgress = $state(0);
+	const REVEAL_FRACTION = 0.8;
+
+	function updateGraphReveal() {
+		if (!introStepEl) {
+			graphRevealProgress = 0;
+			return;
+		}
+		const rect = introStepEl.getBoundingClientRect();
+		const line = window.innerHeight / 2; // matches Scrolly's own trigger line
+		const traveled = line - rect.top;
+		graphRevealProgress = Math.max(0, Math.min(1, traveled / (rect.height * REVEAL_FRACTION)));
+	}
+
+	onMount(() => {
+		updateGraphReveal();
+		window.addEventListener('scroll', updateGraphReveal, { passive: true });
+		window.addEventListener('resize', updateGraphReveal);
+		return () => {
+			window.removeEventListener('scroll', updateGraphReveal);
+			window.removeEventListener('resize', updateGraphReveal);
+		};
+	});
 
 	// Filters (FilterPanel, rendered inside the free-exploration step) apply
 	// from that step onward — index comparison, not a single-step id check,
@@ -143,6 +199,25 @@
 	<title>Beyond Mathematics</title>
 </svelte:head>
 
+<section class="cover-section">
+	<div class="cover-card">
+		<p class="kicker">Stanza III</p>
+		<h1>{intro.title}</h1>
+		{#each intro.body as para}
+			{#if para.startsWith('> ')}
+				{@const { quote, attribution } = splitQuote(para.slice(2))}
+				<blockquote class="epigraph">
+					<p>{@html renderInline(quote)}</p>
+					{#if attribution}<footer>{@html renderInline(attribution)}</footer>{/if}
+				</blockquote>
+			{:else}
+				<p>{@html renderInline(para)}</p>
+			{/if}
+		{/each}
+		<div class="scroll-cue">Scroll to begin ↓</div>
+	</div>
+</section>
+
 <main class="layout">
 	<div class="text-panel">
 		<Scrolly bind:active={activeIndex}>
@@ -152,9 +227,15 @@
 						<div class="topic-header">{group.kicker}</div>
 					{/if}
 					{#each group.items as { step, index }}
-						<ScrollyStep index={index} active={index === activeIndex}>
-							<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
-						</ScrollyStep>
+						{#if step.id === 'intro'}
+							<ScrollyStep index={index} active={index === activeIndex} bind:stepEl={introStepEl}>
+								<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
+							</ScrollyStep>
+						{:else}
+							<ScrollyStep index={index} active={index === activeIndex}>
+								<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
+							</ScrollyStep>
+						{/if}
 					{/each}
 				</div>
 			{/each}
@@ -205,6 +286,7 @@
 			viewSpec={activeView}
 			{theme}
 			{sizeMetric}
+			revealProgress={graphRevealProgress}
 			onSelectNode={(node) => (selectedId = node?.id ?? null)}
 		/>
 	</div>
@@ -215,6 +297,97 @@
 {/if}
 
 <style>
+	/* Same cover treatment as the other two stanzas' own .cover-section --
+	   full-viewport, centred card the reader scrolls past before the
+	   two-column layout (here, <main class="layout"> with the citation graph)
+	   begins. This stanza had no cover at all before; ported verbatim rather
+	   than reinvented so all three stanzas open the same way. */
+	.cover-section {
+		min-height: 100vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		box-sizing: border-box;
+	}
+	.cover-card {
+		max-width: 34rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1.1rem;
+		text-align: center;
+		padding: 3rem 2.75rem;
+		border: 1px solid var(--surface-2);
+		border-radius: 16px;
+		background: var(--surface-2);
+	}
+	.kicker {
+		margin: 0;
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.cover-card h1 {
+		margin: 0;
+		font-size: 2.2rem;
+		font-weight: 700;
+		line-height: 1.15;
+		letter-spacing: -0.01em;
+		color: var(--text-primary);
+	}
+	.cover-card p {
+		margin: 0;
+		font-size: 1.05rem;
+		line-height: 1.6;
+		color: var(--text-secondary);
+	}
+	.epigraph {
+		position: relative;
+		margin: 0.3rem 0;
+		padding: 0.2rem 1.8rem;
+	}
+	.epigraph::before {
+		content: '“';
+		position: absolute;
+		top: -1.6rem;
+		left: -0.2rem;
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 4.5rem;
+		line-height: 1;
+		color: var(--accent);
+		opacity: 0.25;
+	}
+	.epigraph p {
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 1.3rem;
+		font-style: italic;
+		line-height: 1.45;
+		color: var(--text-primary);
+	}
+	.epigraph footer {
+		margin-top: 0.6rem;
+		font-size: 0.8rem;
+		font-style: normal;
+		letter-spacing: 0.03em;
+		color: var(--text-muted);
+	}
+	.epigraph footer::before {
+		content: '— ';
+	}
+	.scroll-cue {
+		margin-top: 0.75rem;
+		font-size: 0.8rem;
+		letter-spacing: 0.04em;
+		color: var(--text-muted);
+	}
+	:global(.stat) {
+		color: var(--accent);
+		font-weight: 700;
+		font-style: normal;
+	}
 	.layout {
 		display: flex;
 		align-items: flex-start;
