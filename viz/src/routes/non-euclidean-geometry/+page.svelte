@@ -107,9 +107,14 @@
 	// Slides whose interaction unlocks at the END of the scripted run need
 	// materially more: the reader has to notice the handles and use them,
 	// and every bit of that happens after progress hits 1.
-	const DRAG_HOLD_VH = 260;
+	const DRAG_HOLD_VH = 140;
 	const spacerVh = (spanVh, holdVh = HOLD_VH) => spanVh + holdVh + PANEL_VH;
 	let parallelProgress = $state(0);
+	// 0..1 through the post-unlock hold (DRAG_HOLD_VH) -- drives the
+	// triangle's idle scroll-scrubbed wiggle in ParallelPostulateScene, see
+	// its own comment. Plain scroll fraction, same shape as parallelProgress
+	// itself, just for the span after progress hits 1 instead of before.
+	let parallelHoldT = $state(0);
 	let parallelTextEl = $state();
 	// Tuned visually against the animation itself (most of this beat's
 	// narration is on-canvas captions now, not scrolling prompts -- see
@@ -132,12 +137,40 @@
 		const rect = parallelTextEl.getBoundingClientRect();
 		if (rect.top > STICKY_TOP_PX) {
 			parallelProgress = 0;
+			parallelHoldT = 0;
 			parallelSettleScrollY = null;
+			parallelHoldSkipped = false;
 			return;
 		}
 		if (parallelSettleScrollY === null) parallelSettleScrollY = window.scrollY;
 		const traveled = window.scrollY - parallelSettleScrollY;
 		parallelProgress = Math.max(0, Math.min(1, traveled / PARALLEL_SPAN_PX()));
+		const holdTraveled = traveled - PARALLEL_SPAN_PX();
+		parallelHoldT = Math.max(0, Math.min(1, holdTraveled / ((DRAG_HOLD_VH / 100) * window.innerHeight)));
+	}
+
+	// DRAG_HOLD_VH exists so a reader who hasn't noticed the triangle's
+	// handles yet has room to find them -- but that same 260vh becomes dead
+	// scroll for a reader who already HAS interacted, with nothing left to
+	// discover. The instant a handle is actually grabbed, jump most of that
+	// buffer behind them so the next scroll tick starts moving into the
+	// sphere scene again, instead of making an already-engaged reader keep
+	// scrolling through a hold meant for someone else. Leaves
+	// PARALLEL_SKIP_BUFFER_VH of hold in place so the handoff doesn't begin
+	// the instant they let go of the handle.
+	const PARALLEL_SKIP_BUFFER_VH = 60;
+	let parallelHoldSkipped = false;
+
+	function skipParallelHold() {
+		if (parallelHoldSkipped || parallelSettleScrollY === null) return;
+		parallelHoldSkipped = true;
+		const target =
+			parallelSettleScrollY +
+			PARALLEL_SPAN_PX() +
+			((DRAG_HOLD_VH - PARALLEL_SKIP_BUFFER_VH) / 100) * window.innerHeight;
+		// Never scroll backward -- a reader who grabs the triangle after
+		// already scrolling partway through the hold shouldn't be yanked up.
+		if (target > window.scrollY) window.scrollTo(0, target);
 	}
 
 	// Second, independent instance of the same arrival/settle pattern above,
@@ -307,11 +340,31 @@
 		if (rect.top > STICKY_TOP_PX) {
 			azimuthalProgress = 0;
 			azimuthalSettleScrollY = null;
+			azimuthalDragHoldSkipped = false;
 			return;
 		}
 		if (azimuthalSettleScrollY === null) azimuthalSettleScrollY = window.scrollY;
 		const traveledVh = ((window.scrollY - azimuthalSettleScrollY) / window.innerHeight) * 100;
 		azimuthalProgress = Math.max(0, Math.min(ZOOM_END, progressAtVh(AZIMUTHAL_A_PACING, traveledVh)));
+	}
+
+	// Same idea as skipParallelHold, for the azimuthal scene's own drag beat
+	// (TOUR_END..DRAG_END): DRAG_FLOOR_VH exists so a reader who hasn't found
+	// the handles yet has room to, but is dead scroll for one who already
+	// has. Jump to just short of where AZIMUTHAL_A_PACING reaches DRAG_END --
+	// reusing that exact stop rather than re-deriving it, so this can never
+	// drift out of step with the pacing table it's skipping through.
+	const AZIMUTHAL_DRAG_SKIP_BUFFER_VH = 40;
+	let azimuthalDragHoldSkipped = false;
+
+	function skipAzimuthalDragHold() {
+		if (azimuthalDragHoldSkipped || azimuthalSettleScrollY === null) return;
+		azimuthalDragHoldSkipped = true;
+		const dragEndStop = AZIMUTHAL_A_PACING.find((s) => s.progress === DRAG_END);
+		if (!dragEndStop) return;
+		const target =
+			azimuthalSettleScrollY + ((dragEndStop.vh - AZIMUTHAL_DRAG_SKIP_BUFFER_VH) / 100) * window.innerHeight;
+		if (target > window.scrollY) window.scrollTo(0, target);
 	}
 
 	function updateDiscProgress() {
@@ -472,6 +525,8 @@
 				<ParallelPostulateScene
 					progress={parallelProgress}
 					dragEnabled={parallelProgress >= 1 && sceneHandover < 0.5}
+					holdT={parallelHoldT}
+					onDragStart={skipParallelHold}
 				/>
 			</div>
 		{/if}
@@ -519,6 +574,7 @@
 			progress={azimuthalProgress}
 			dragEnabled={azimuthalProgress >= TOUR_END && azimuthalProgress < DRAG_END}
 			debug={debugAzimuthal}
+			onDragStart={skipAzimuthalDragHold}
 		/>
 	</div>
 	<section
@@ -748,7 +804,10 @@
 		flex-direction: column;
 		gap: 1rem;
 		background: var(--surface-1);
-		padding: 2rem 0 1.25rem;
+		/* Top padding bumped from 2rem to clear GlobalNav's fixed corner icon
+		   (top:0.85rem, 2rem square) -- this heading pins flush to the same
+		   y:0 the icon sits near, and used to render right under it. */
+		padding: 3.5rem 0 1.25rem;
 		border-bottom: 1px solid var(--surface-2);
 	}
 	/* The standalone placement, used between two <main> sections rather than

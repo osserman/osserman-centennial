@@ -162,7 +162,8 @@ export const interstitials = [
 		// geometry) that the next scene's map is built to make vivid.
 		body: [
 			"These properties of spheres had been known for centuries. But they weren't necessarily seen as incompatible with Euclid, because Euclid spoke of straight lines, whereas our lines on a sphere could just be considered arcs in three dimensions, rather than lines at all.",
-			"The 19th century brought a conceptual shift. Mathematicians including Carl Friedrich Gauss began studying what geometry would look like if you were confined to the curved surface itself. On the surface of the Earth, we essentially are confined to two dimensions, and the arcs from the previous visual are the straightest paths available to us. So are they curved lines in three dimensions, or a straight line in a curved geometry?"
+			"The 19th century brought a conceptual shift. Mathematicians including Carl Friedrich Gauss began studying what geometry would look like if you were confined to the curved surface itself.",
+			"On the surface of the Earth, we essentially are confined to two dimensions, since flying up or boring down removes us from the surface. With this constraint the arcs from the previous visual are the straightest paths available to us. So are they curved lines in three dimensions, or a straight line in a curved geometry?"
 		]
 	},
 	{
@@ -173,7 +174,7 @@ export const interstitials = [
 		// all, read while the just-finished flat map sits still alongside it.
 		body: [
 			'These geometries of the plane and the sphere, while not always intuitive, are based on surfaces that are familiar with us.',
-			'In the early nineteenth century, Nikolai Lobachevsky took a different approach. He developed what he called an "imaginary geometry" - in part because of it\'s close relations to imaginary numbers. This geometry was inspired not from a familiar physical surface, but from mathmatical abstration. It is a geometry in which most of Euclid\'s assumptions remain, but not the parallel postulate.',
+			'In the early nineteenth century, Nikolai Lobachevsky took a different approach. He developed what he called an "imaginary geometry" - in part because of its close relations to imaginary numbers. This geometry was inspired not from a familiar physical surface, but from mathematical abstration. It is a geometry in which most of Euclid\'s assumptions remain, but not the parallel postulate.',
 			'After decades of mathematical controversy about this "imaginary geometry," in 1868 Eugenio Beltrami showed that it was in fact internally consistent. And a little over a decade later, Henri Poincaré developed a circular model that made this otherwise hard-to-picture geometry concrete enough to see and work with.'
 		]
 	},

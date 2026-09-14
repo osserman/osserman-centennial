@@ -728,7 +728,7 @@
 		{
 			start: SADDLE_END,
 			end: 0.89,
-			text: 'You might recognize it a saddle, or a Pringles potato chip, or the waist of an hourglass.'
+			text: 'You might recognize it as a saddle, or a Pringles potato chip, or the waist of an hourglass.'
 		},
 		{
 			// The bridge back to the disc the reader has just left. Deliberately

@@ -1,5 +1,6 @@
 <script>
 	import favicon from '$lib/assets/favicon.svg';
+	import GlobalNav from '$lib/components/GlobalNav.svelte';
 
 	let { children } = $props();
 </script>
@@ -8,6 +9,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+<GlobalNav />
 {@render children()}
 
 <style>

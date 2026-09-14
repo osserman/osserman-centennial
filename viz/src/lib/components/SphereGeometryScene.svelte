@@ -9,15 +9,24 @@
 	export const SUM_END = 0.49; // "270 deg" settles, triangle holds
 	export const BEAT_END = 0.54; // a pure pause -- nothing moves -- before turning to the next idea
 	export const EXPLAIN_END = 0.62; // camera arrives at the equator baseline; the "90+90=180" diagram fades in
-	export const EXPLAIN_HOLD_END = 0.66; // hold on that diagram briefly, then the lines start growing
-	// Beyond EXPLAIN_HOLD_END: two meridians grow as one continuous loop
+	export const EXPLAIN_HOLD_END = 0.66; // the "90+90=180" diagram itself holds until here, then fades
+	// The lines actually start growing a little before EXPLAIN_HOLD_END --
+	// see GROWTH_START -- while the "Draw two lines perpendicular..." caption
+	// above is still dissolving (its own fade-out, per captionOpacity's
+	// formula, spans roughly [0.6474, 0.66]), rather than only once that
+	// caption is fully gone and the diagram has already faded out too.
+	export const GROWTH_START = 0.652;
+	// Beyond GROWTH_START: two meridians grow as one continuous loop
 	// (north pole -> far side -> south pole -> back to start). These three
 	// aren't independent knobs -- they're exact fractions of that same
 	// growth (1/4, 1/2, 3/4 of the way around) so the on-canvas captions
-	// below always line up with where the geometry actually is.
-	export const NORTH_MEET_END = EXPLAIN_HOLD_END + 0.25 * (1 - EXPLAIN_HOLD_END);
-	export const FAR_EQUATOR_END = EXPLAIN_HOLD_END + 0.5 * (1 - EXPLAIN_HOLD_END);
-	export const SOUTH_MEET_END = EXPLAIN_HOLD_END + 0.75 * (1 - EXPLAIN_HOLD_END);
+	// below always line up with where the geometry actually is. Growth is
+	// ONE linear ramp from GROWTH_START to 1 (see growthT) -- moving its
+	// start earlier didn't change its shape, so these fractions still land
+	// exactly on the geometry.
+	export const NORTH_MEET_END = GROWTH_START + 0.25 * (1 - GROWTH_START);
+	export const FAR_EQUATOR_END = GROWTH_START + 0.5 * (1 - GROWTH_START);
+	export const SOUTH_MEET_END = GROWTH_START + 0.75 * (1 - GROWTH_START);
 </script>
 
 <script>
@@ -189,7 +198,7 @@
 	let wedgeStartMat, wedgePoleMat, wedgeSecondMat;
 	let sumLabelGroup;
 	let meridianAMesh, meridianBMesh;
-	let meridianMat;
+	let meridianMatA, meridianMatB;
 	let explainWedgeAMat, explainWedgeBMat;
 	let explainLabelGroup;
 
@@ -391,7 +400,7 @@
 		const e2T = remap(prog, EDGE1_END, EDGE2_END);
 		const e3T = remap(prog, EDGE2_END, EDGE3_END);
 		const sumT = remap(prog, EDGE3_END, SUM_END);
-		const growthT = remap(prog, EXPLAIN_HOLD_END, 1);
+		const growthT = remap(prog, GROWTH_START, 1);
 
 		// --- camera: track the point currently being drawn (radially, so
 		// it's always dead-center and never on the sphere's silhouette)
@@ -533,7 +542,8 @@
 		// viewpoints (see GROWTH_CAM_KEYFRAMES), one per caption, which
 		// reads as a deliberate flight past the globe rather than an
 		// aimless orbit around the growing line. ---
-		meridianMat.opacity = growthT > 0 ? 1 : 0;
+		meridianMatA.opacity = growthT > 0 ? 1 : 0;
+		meridianMatB.opacity = growthT > 0 ? 1 : 0;
 		meridianAMesh.visible = growthT > 0;
 		meridianBMesh.visible = growthT > 0;
 		if (growthT > 0) {
@@ -677,10 +687,15 @@
 		explainLabelGroup.visible = false;
 		scene.add(explainLabelGroup);
 
-		// --- two great circles for the "meet twice" beat ---
-		meridianMat = new THREE.MeshBasicMaterial({ color: activePalette().blue, transparent: true, opacity: 0, depthWrite: false });
-		meridianAMesh = new THREE.Mesh(tubeFromPoints(greatCircleArcPoints(Q_A, 0, 0.01), 0.012), meridianMat);
-		meridianBMesh = new THREE.Mesh(tubeFromPoints(greatCircleArcPoints(Q_B, 0, 0.01), 0.012), meridianMat);
+		// --- two great circles for the "meet twice" beat -- each colored to
+		// match its own right-angle wedge from the explain diagram just before
+		// it (explainWedgeAMat/explainWedgeBMat, aqua/violet), so the line
+		// growing from each equator point visibly continues that same point's
+		// wedge rather than reading as two identical, unrelated lines. ---
+		meridianMatA = new THREE.MeshBasicMaterial({ color: activePalette().aqua, transparent: true, opacity: 0, depthWrite: false });
+		meridianMatB = new THREE.MeshBasicMaterial({ color: activePalette().violet, transparent: true, opacity: 0, depthWrite: false });
+		meridianAMesh = new THREE.Mesh(tubeFromPoints(greatCircleArcPoints(Q_A, 0, 0.01), 0.012), meridianMatA);
+		meridianBMesh = new THREE.Mesh(tubeFromPoints(greatCircleArcPoints(Q_B, 0, 0.01), 0.012), meridianMatB);
 		meridianAMesh.visible = false;
 		meridianBMesh.visible = false;
 		scene.add(meridianAMesh, meridianBMesh);
@@ -760,7 +775,11 @@
 			end: EXPLAIN_HOLD_END,
 			text: 'Draw two lines perpendicular to the equator. Their base angles add up to 180° — on a flat surface, that guarantees they never meet.'
 		},
-		{ start: EXPLAIN_HOLD_END, end: NORTH_MEET_END, text: 'But here, they meet — at the north pole.' },
+		{
+			start: EXPLAIN_HOLD_END,
+			end: NORTH_MEET_END,
+			text: 'But our 90° turn north from the equator points you due north. Follow the lines and they meet at the north pole.'
+		},
 		{ start: NORTH_MEET_END, end: FAR_EQUATOR_END, text: 'Crossing to the far side, they run parallel again at the equator.' },
 		{ start: FAR_EQUATOR_END, end: SOUTH_MEET_END, text: 'Then they meet a second time, at the south pole.' },
 		{ start: SOUTH_MEET_END, end: 1, text: '...before closing the loop back where they began.' }

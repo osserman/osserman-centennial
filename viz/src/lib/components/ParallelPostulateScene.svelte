@@ -68,7 +68,16 @@
 	// this file means "0 = horizontal, positive = tilts up on screen" (the
 	// everyday reading of a slope), converted to y-down math internally by
 	// negating the sine term wherever it's used — see angleToDir.
-	let { progress = 0, dragEnabled = false } = $props();
+	// onDragStart: fired the instant any handle is grabbed (not on hover or
+	// release) -- the page uses it to fast-forward past the rest of the
+	// trailing hold's dead scroll the moment a reader actually interacts,
+	// rather than making them keep scrolling through it regardless. See
+	// non-euclidean-geometry/+page.svelte's skipParallelHold.
+	// holdT: 0..1 scroll position through the post-drag-unlock hold (0 right
+	// as it starts, 1 at its end) -- drives the idle wiggle below purely off
+	// scroll, no timer. See non-euclidean-geometry/+page.svelte's
+	// parallelHoldT.
+	let { progress = 0, dragEnabled = false, holdT = 0, onDragStart } = $props();
 
 	const VIEW_W = 600;
 	// Drawn extent of the two parallel lines: past both edges of the frame,
@@ -210,7 +219,11 @@
 	// derivation below).
 	function makeApexDragHandlers(setter) {
 		return {
-			onpointerdown: (e) => e.currentTarget.setPointerCapture(e.pointerId),
+			onpointerdown: (e) => {
+				e.currentTarget.setPointerCapture(e.pointerId);
+				userGrabbedHandle = true;
+				onDragStart?.();
+			},
 			onpointermove: (e) => {
 				if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
 				const [x, y] = clientToLocal(e.clientX, e.clientY);
@@ -226,7 +239,11 @@
 	// one-time snapshot) so B1 can never drag past B2 or vice versa.
 	function makeBaseDragHandlers(setter, isLeft, getOtherX) {
 		return {
-			onpointerdown: (e) => e.currentTarget.setPointerCapture(e.pointerId),
+			onpointerdown: (e) => {
+				e.currentTarget.setPointerCapture(e.pointerId);
+				userGrabbedHandle = true;
+				onDragStart?.();
+			},
 			onpointermove: (e) => {
 				if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
 				const [x] = clientToLocal(e.clientX, e.clientY);
@@ -270,6 +287,30 @@
 			dragB2 = null;
 			dragApex = null;
 		}
+	});
+
+	// Scroll-scrubbed wiggle: while the triangle is draggable but before the
+	// reader has actually grabbed a handle, slide B1 back and forth as a
+	// function of scroll position DURING the hold (holdT, 0..1 across it) --
+	// not a timer. It moves while the reader scrolls and freezes the instant
+	// they stop, same as everything else in this piece; nothing here ever
+	// animates on its own. The scroll hold exists so a reader has room to
+	// notice the handles and try them, but a perfectly still triangle reads
+	// as nothing happening, which is exactly what makes an impatient reader
+	// scroll straight past. Motion says "this responds," and as a side
+	// effect quietly demonstrates the angle-sum invariance the interaction
+	// is here to teach, for a reader who never touches it at all. Stops the
+	// instant any handle is grabbed (userGrabbedHandle, set in the drag
+	// handlers below) and hands full control to the reader.
+	let userGrabbedHandle = false;
+	const WIGGLE_AMPLITUDE = 45; // px in the 600-wide view -- a gentle drift, not a full sweep
+	const WIGGLE_CYCLES = 1; // one there-and-back swing across the full hold
+	$effect(() => {
+		if (!dragEnabled || userGrabbedHandle) return;
+		const wave = Math.sin(holdT * WIGGLE_CYCLES * Math.PI * 2);
+		const maxX = (dragB2 ?? B2_POST_SLIDE)[0] - BASE_DRAG_MARGIN;
+		const x = Math.max(BOTTOM_X_MIN, Math.min(maxX, B1_POST_SLIDE[0] + WIGGLE_AMPLITUDE * wave));
+		dragB1 = [x, BOTTOM_Y];
 	});
 
 	// --- one continuous derivation, driven by `progress` and (once

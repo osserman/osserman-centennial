@@ -50,30 +50,28 @@
 
 		<p>
 			My father was a mathematician and a teacher. His most visible legacy is the book <em>Poetry of
-				the Universe</em>, a Mathematical Exploration of the Cosmos. On the surface, it helps readers
-			build an intuition for the curvature of space.<InfoTooltip
+				the Universe, a Mathematical Exploration of the Cosmos</em>. 
+		</p>
+
+		<p>
+			<strong>On the surface</strong>, it helps readers build an intuition for the curvature of space.<InfoTooltip
 				superscript
 				symbol="1"
 				label="Footnote 1"
 				message="While evidence has since mounted against the curvature of space, the book paints a concrete picture of what scientists mean by that when they try to determine the shape of the universe."
 			/>
-		</p>
-
-		<p>
-			Beneath the surface, it illuminates the interplay between imagination, creativity, observation,
+			<strong>Beneath the surface</strong>, it illuminates the interplay between imagination, creativity, observation,
 			and measurement in the centuries-long evolution of scientific knowledge.
 			<strong>Theoretical math connects</strong> here <strong>not just to applications</strong> it eventually
-			enables, <strong>but also to poetry</strong> -- to the ability to imagine and reason about what lies beyond
-			what we can touch and observe.
+			enables, <strong>but also to poetry</strong>, to the ability to imagine and reason about what lies beyond
+			what we can observe.
 		</p>
 
 		<p>
-			He teaches these themes in the book alongside the geometry of curved surfaces. This geometry's
-			relevance extends far beyond the possible shape of the universe. It is also foundational to the
-			field of math he dedicated his career to: <strong>minimal surfaces</strong>.
-			<strong>He chose this field not because it was seen as useful or applicable</strong>, or even
-			fashionable within Math, but <strong>because he found it beautiful and elegant</strong>, and
-			because it required creativity and allowed for playfulness.<InfoTooltip
+			The math field he researched - <strong><em>minimal surfaces</em></strong> - is not present his book. 
+			But his delight in mathematical discovery is palpable throughout. <strong>He chose this field not because 
+			it was seen as useful or applicable</strong>, or even fashionable within math, but <strong>because he found 
+			it beautiful and elegant</strong>, and because it required creativity and allowed for playfulness.<InfoTooltip
 				superscript
 				symbol="2"
 				label="Footnote 2"
@@ -82,16 +80,16 @@
 		</p>
 
 		<p>
-			I do not have the depth of mathematical knowledge to understand the field and his research. But
-			as I've tried to understand a little more about the problems he pondered, I felt more connected
-			to him and the delight he took in intellectual and creative pursuits. It has also led me to a
-			story that echoes those I loved reading in <em>Poetry of the Universe</em>. The story of how his
-			own field, developed by a community of researchers across a centuries-long dialogue of theory and
-			observation, has now made a leap to a fascinating and growing range of fields in science and
-			engineering that never could have been anticipated.
+			I do not have the depth of knowledge to understand his mathematical research. But <strong>with the tools 
+			of my own field, information design, I hope to honor him</strong>: offering a glimpse of minimal surfaces, 
+			the curved geometry beneath them, and their surprising and still-unfolding reverberations beyond 
+			mathematics.
+		</p>
+		<p>
+			In making this ode, I've found deep delight in exploring bits and pieces of the mathematics he pondered 
+			and the broader themes he taught. I hope you will too.
 		</p>
 
-		<p class="lead-in">Here is this story.</p>
 	</article>
 
 	<div class="cards">
@@ -114,7 +112,12 @@
 
 <style>
 	.page {
-		max-width: 42rem;
+		/* Widened from 42rem -- at that width the five essay paragraphs wrap
+		   to enough lines that the stanza cards below sat well past the fold
+		   on most screens. Wider lines mean fewer wraps per paragraph, so the
+		   whole essay (and the cards after it) sits shorter without touching
+		   its type size or line-height. */
+		max-width: 48rem;
 		margin: 0 auto;
 		padding: 5rem 2rem 6rem;
 		box-sizing: border-box;

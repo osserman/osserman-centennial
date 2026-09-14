@@ -10,16 +10,12 @@
 	// genuinely the same markup+behavior repeated verbatim on every stanza,
 	// with no page-specific quirks to diverge on.
 	import { base } from '$app/paths';
+	import { NAV_ITEMS } from '$lib/navItems.js';
 
 	let { current, next = null } = $props(); // current: 'intro' | 'I' | 'II' | 'III'; next: { href, title } | { title, disabled: true } | null
 
-	const ITEMS = [
-		{ key: 'intro', label: 'Intro', href: `${base}/` },
-		{ key: 'I', label: 'Stanza I', href: `${base}/non-euclidean-geometry` },
-		{ key: 'II', label: 'Stanza II', href: `${base}/minimal-surfaces` },
-		{ key: 'III', label: 'Stanza III', href: `${base}/beyond-mathematics` },
-		{ key: 'coda', label: 'Coda', href: null }
-	];
+	// Same list GlobalNav's corner menu uses — see navItems.js.
+	const ITEMS = NAV_ITEMS.map((item) => ({ ...item, href: item.path ? `${base}${item.path}` : null }));
 </script>
 
 <div class="stanza-nav">

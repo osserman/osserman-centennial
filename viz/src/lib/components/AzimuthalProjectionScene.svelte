@@ -92,7 +92,7 @@
 		{
 			start: DISC_END,
 			end: GEODESIC_END,
-			text: 'Our reference circle stay circular, but now shrink, rather than grow as we move away from the center. The disk\'s outer rim, instead of representing single point, represents all points that are infinitely far away from the center.'
+			text: 'Our reference circle stay circular, but now shrink, rather than grow as we move away from the center. The disk\'s outer rim, instead of representing a single point, represents all points that are infinitely far away from the center.'
 		},
 		{
 			start: GEODESIC_END,
@@ -151,6 +151,12 @@
 		progress = 0,
 		dragEnabled = false,
 		debug = false,
+		// Fired the instant a panel is actually grabbed (not on hover) -- the
+		// page uses it to fast-forward past the rest of this beat's dead scroll
+		// the moment a reader interacts, rather than making them keep scrolling
+		// through the drag floor regardless. See non-euclidean-geometry/
+		// +page.svelte's skipAzimuthalDragHold.
+		onDragStart,
 		// how far out the map is clipped once fully stereographic (deg from
 		// the centre). Lower = less of the far hemisphere, so less Antarctica.
 		// Must stay ABOVE the deepest land colatitude (175.5) or Antarctica
@@ -1251,6 +1257,7 @@
 		const [x, y] = pointer(evt, canvas);
 		const which = panelAt(x, y);
 		if (!which) return;
+		onDragStart?.();
 		const { viewLon, globeLat, flatLat, splitT, wT, stereoT, zoomT } = stageParams(progress);
 		const { goreR, globeR, globeX, goreX, cy } = layout(splitT);
 		// Rebuild the SAME projection render() is drawing -- including the

@@ -947,7 +947,10 @@
 		   past underneath; the border gives the transition a visible edge
 		   instead of text just vanishing mid-air beneath it. */
 		background: var(--surface-1);
-		padding: 2rem 0 1.25rem;
+		/* Top padding bumped from 2rem to clear GlobalNav's fixed corner icon
+		   (top:0.85rem, 2rem square) -- this heading pins flush to the same
+		   y:0 the icon sits near, and used to render right under it. */
+		padding: 3.5rem 0 1.25rem;
 		border-bottom: 1px solid var(--surface-2);
 	}
 	/* Text settles within roughly one viewport (90vh, centered like
