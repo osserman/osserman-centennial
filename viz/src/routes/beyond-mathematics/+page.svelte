@@ -3,6 +3,7 @@
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import StepText from '$lib/components/StepText.svelte';
+	import PaperList from '$lib/components/PaperList.svelte';
 	import CitationGraph from '$lib/components/CitationGraph.svelte';
 	import PaperDetail from '$lib/components/PaperDetail.svelte';
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
@@ -86,6 +87,21 @@
 	const missingPercentileIds = citerNodes.filter((n) => n.citationPctile == null).map((n) => n.id);
 	let highlightMissingPercentile = $state(false);
 
+	// Which curated papers currently have their <details> expanded (see
+	// PaperList.svelte's onToggle) — a field step's own `view` spotlights all
+	// of its papers together, but expanding one narrows that down to just the
+	// paper(s) currently open, a small confirmation that this dot on the graph
+	// is the one just read about. Keyed by paperId directly rather than by
+	// step, since ids are unique across every field's papers.
+	let expandedPaperIds = $state(new Set());
+
+	function togglePaper(paperId, isOpen) {
+		const next = new Set(expandedPaperIds);
+		if (isOpen) next.add(paperId);
+		else next.delete(paperId);
+		expandedPaperIds = next;
+	}
+
 	let activeView = $derived.by(() => {
 		if (highlightMissingPercentile) {
 			return { colorBy: 'none', highlightIds: missingPercentileIds, dimBackground: true };
@@ -93,7 +109,16 @@
 		if (activeIndex >= freeExplorationIndex && filteredIds !== null) {
 			return { colorBy: 'filter', highlightIds: filteredIds, dimBackground: true };
 		}
-		return steps[activeIndex]?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
+		// Narrow the current field's spotlight to just the paper(s) expanded
+		// within it — filtered against this step's own papers so an id left
+		// expanded in a field the reader has since scrolled away from can't
+		// leak into an unrelated field's view.
+		const currentStep = steps[activeIndex];
+		if (currentStep?.papers?.length && expandedPaperIds.size) {
+			const ids = currentStep.papers.map((p) => p.paperId).filter((id) => expandedPaperIds.has(id));
+			if (ids.length) return { colorBy: 'none', highlightIds: ids, dimBackground: true };
+		}
+		return currentStep?.view ?? { colorBy: 'none', highlightIds: [], dimBackground: false };
 	});
 
 	// The filter panel lives over the graph (plenty of width there) rather
@@ -233,7 +258,20 @@
 							</ScrollyStep>
 						{:else}
 							<ScrollyStep index={index} active={index === activeIndex}>
-								<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
+								<!-- Single wrapper so ScrollyStep's own flex root (row,
+								     align-items:center) sees one child, not two separately
+								     flex-positioned siblings -- same bug class documented in
+								     minimal-surfaces/+page.svelte's own .euler-flow. -->
+								<div class="field-step">
+									<StepText {step} onSelectPaper={(id) => (selectedId = id)} />
+									{#if step.papers?.length}
+										<PaperList
+											papers={step.papers}
+											onToggle={togglePaper}
+											onSelectPaper={(id) => (selectedId = id)}
+										/>
+									{/if}
+								</div>
 							</ScrollyStep>
 						{/if}
 					{/each}
@@ -400,6 +438,11 @@
 	}
 	.topic-group {
 		position: relative;
+	}
+	.field-step {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
 	}
 	.topic-header {
 		position: sticky;

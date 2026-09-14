@@ -688,38 +688,47 @@
 	export const CAPTIONS = [
 		{
 			start: 0,
-			end: ROTATE_END,
+			end: CURVES_END,
 			text: 'The curvature of a surface at a given point can be described by two curves crossing at that point. Starting at the equator of a sphere: one runs east–west, the other north–south.'
 		},
 		{
+			// The rotation itself (R fixed at R_OPEN, only the marked point
+			// turning to face the camera -- see p < ROTATE_END below) is what
+			// demonstrates this; the caption should span exactly that window,
+			// not bleed into the shrink that follows it.
+			start: CURVES_END,
+			end: ROTATE_END,
+			text: "On a sphere these two curves look the same wherever on it you stand."
+		},
+		{
+			// Covers the full round trip: R shrinks from R_OPEN to R_MIN over
+			// [ROTATE_END, SHRINK_END], then grows back out as kappa relaxes
+			// toward 0 over [SHRINK_END, PLANE_END] -- see the p < SHRINK_END
+			// branch and `flatten` below. Both halves illustrate the same
+			// claim, so one caption should hold across both.
 			start: ROTATE_END,
-			end: SHRINK_END,
-			text: "A sphere has constant curvature — these two curves look the same wherever on it you stand."
+			end: PLANE_END,
+			text: 'Steeper curves require a smaller sphere. While flatter curves imply bigger one.'
 		},
 		{
-			start: SHRINK_END,
-			end: 0.46,
-			text: 'The steeper the curves, the smaller the sphere. The flatter the curves, the bigger it is.'
-		},
-		{
-			start: 0.46,
+			start: PLANE_END,
 			end: RING_END,
 			text: 'With no curvature at all in either direction, you have a flat plane.'
 		},
 		{
 			start: RING_END,
 			end: PLANE_HOLD_END,
-			text: 'From here, keep only the small patch of surface around our point.'
+			text: 'From here, we\'ll keep only the small patch of surface around our point.'
 		},
 		{
 			start: PLANE_HOLD_END,
 			end: SADDLE_END,
-			text: "But the two directions don't have to curve together. Bend one curve one way, and the other the opposite way."
+			text: "But there is possibility -- that the one curve one way, and the other the opposite way."
 		},
 		{
 			start: SADDLE_END,
 			end: 0.89,
-			text: 'You might recognize it a saddle, or a potato chip, or the waist of an hourglass.'
+			text: 'You might recognize it a saddle, or a Pringles potato chip, or the waist of an hourglass.'
 		},
 		{
 			// The bridge back to the disc the reader has just left. Deliberately
@@ -729,7 +738,7 @@
 			// ordinary 3-space at all. The saddle is a local picture only.
 			start: 0.89,
 			end: 1,
-			text: 'Mathematically, this is negative curvature — and the Poincaré disk is a map of a world that curves this way at every point, without end.'
+			text: 'Mathematically, this is negative curvature. The Poincaré disk we saw before is a map of a world that curves this way at every point, without end.'
 		}
 	];
 	function captionOpacity(start, end, prog) {

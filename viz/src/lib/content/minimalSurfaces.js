@@ -121,13 +121,23 @@ export const slides = [
 		visualLabel: 'Gallery of minimal surfaces (Riemann’s family)'
 	},*/ 
 	{
+		id: 'gyroid-growth',
+		title: 'The catalogue kept growing.',
+		body: [
+			'A hundred years later, in 1970, Alan Schoen described a new collection of minimal surfaces whose patterns repeat endlessly in all three dimensions. Among them was one he called the gyroid.',
+			'At the time Schoen was working at NASA, outside the small community of geometers then actively studying minimal surfaces. He later recalled my father as one of the mathematicians who welcomed him into that community, and as someone he consulted as he settled on the name "gyroid."'
+		],
+		visualLabel: 'A gyroid cell growing in three dimensions'
+	},
+	{
 		id: 'two-centuries',
 		title: 'The Field Keeps Growing',
 		body: [
 			'Throughout the nineteenth and twentieth centuries, mathematicians discovered new minimal surfaces, developed general methods for constructing and classifying them, and explored when they exist and when they remain stable.',
-			'By 1969, enough of that work had accumulated for Robert Osserman to bring much of the subject together in a graduate-level textbook: *A Survey of Minimal Surfaces*.',
-			'Just one year later, NASA researcher Alan Schoen described a remarkable new family of **triply periodic minimal surfaces**, including the **gyroid**. Developed within an engineering research environment, these surfaces would later become some of the most influential geometries outside mathematics.',
-			"Using the citations of Osserman's textbook, the next section follows the journey of minimal surfaces -- from 200 years of theoretical math to applications in fields ranging from materials science and biology to computer graphics, computer vision and theoretical physics."
+			'By the time my father entered this small subfield of mathematicians, his advisors and colleagues were not just still at work identifying new surfaces, but were also continueing to investigate what minimal surfaces could exist, how they behaved, their behavior in multi-dimentional spaces, and what their geometry could reveal.'
+			//'By 1969, enough of that work had accumulated for Robert Osserman to bring much of the subject together in a graduate-level textbook: *A Survey of Minimal Surfaces*.',
+			//'Just one year later, NASA researcher Alan Schoen described a remarkable new family of **triply periodic minimal surfaces**, including the **gyroid**. Developed within an engineering research environment, these surfaces would later become some of the most influential geometries outside mathematics.',
+			//"Using the citations of Osserman's textbook, the next section follows the journey of minimal surfaces -- from 200 years of theoretical math to applications in fields ranging from materials science and biology to computer graphics, computer vision and theoretical physics."
 		]
 		// This is now the outro (see .cover-section in +page.svelte) — no
 		// visualLabel, it doesn't sit in the scene-panel flow the slides

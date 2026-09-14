@@ -448,7 +448,12 @@
 		style="width: 100%; height: 100%;"
 	></canvas>
 
-	<div class="graph-caption">
+	<!-- Held out until the reveal sweep finishes -- it names what every tile
+	     IS, so it shouldn't appear over a graph that's still visibly filling
+	     in, only once "these rectangles" actually mean the full set. Every
+	     other step has revealProgress === 1 already, so this is always
+	     visible immediately outside the intro's populate sweep. -->
+	<div class="graph-caption" class:visible={revealProgress >= 1}>
 		Scholarly works that have cited <em>A Survey of Minimal Surfaces</em>.
 		<span class="caption-row">
 			Each tile sized by citation data.
@@ -497,13 +502,21 @@
 		color: var(--text-secondary);
 		pointer-events: none;
 		line-height: 1.45;
+		opacity: 0;
+		transition: opacity 0.6s ease;
+	}
+	.graph-caption.visible {
+		opacity: 1;
 	}
 	.caption-row {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
 	}
-	.caption-tooltip-wrap {
+	/* Only clickable once the caption itself is actually visible -- opacity:0
+	   alone doesn't stop clicks/hover, and this icon opts back into pointer
+	   events against the caption's own pointer-events:none. */
+	.graph-caption.visible .caption-tooltip-wrap {
 		pointer-events: auto;
 	}
 	.graph-source {

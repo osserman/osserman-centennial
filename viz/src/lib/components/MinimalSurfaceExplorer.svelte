@@ -784,6 +784,11 @@
 
 		controls = new OrbitControls(camera, renderer.domElement);
 		controls.enableDamping = true;
+		// This scene sits in the normal page scroll (not scroll-scrubbed), so
+		// the mouse wheel has to keep scrolling the page — OrbitControls'
+		// default wheel-to-zoom fights that, and scrolling past this slide reads
+		// as the surface confusingly zooming in. Rotation (drag) stays on.
+		controls.enableZoom = false;
 		controls.target.copy(lastFitCenter); // matches the just-built mesh's own framing, not always the world origin (see rebuildMesh)
 		controls.autoRotate = false; // toggled from the "Rotate" button below
 		controls.autoRotateSpeed = 1.4; // gentle -- a slow, readable spin, not a spectacle

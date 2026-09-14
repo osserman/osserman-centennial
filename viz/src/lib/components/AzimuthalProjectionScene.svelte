@@ -102,7 +102,7 @@
 		{
 			start: ARCS_END,
 			end: POSTULATE_END,
-			text: 'One consequence of the parallel postulate: for any line, and a point off that line, there is only one line through that point that will never intersect it, however far both are extended.'
+			text: 'One consequence of the parallel postulate that we haven\'t discussed: take any line, and any point off that line; there is only one line through that point that will never intersect the line, however far both are extended.'
 		},
 		{
 			start: POSTULATE_END,
