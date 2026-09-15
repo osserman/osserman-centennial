@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
 	import StepText from '$lib/components/StepText.svelte';
@@ -278,7 +279,7 @@
 				</div>
 			{/each}
 		</Scrolly>
-		<StanzaNav current="III" next={{ title: 'Coda', disabled: true }} />
+		<StanzaNav current="III" next={{ href: `${base}/coda`, title: 'Coda' }} />
 	</div>
 
 	<div class="graph-panel">

@@ -34,7 +34,11 @@
 			title: 'Beyond Mathematics: The Expansion of Minimal Surfaces',
 			href: `${base}/beyond-mathematics`
 		},
-		{ kicker: 'Coda', title: 'Coda', href: null }
+		{
+			kicker: 'Coda',
+			title: 'A Chance to Pause',
+			href: `${base}/coda`
+		}
 	];
 </script>
 

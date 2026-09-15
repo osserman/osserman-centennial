@@ -11,5 +11,5 @@ export const NAV_ITEMS = [
 	{ key: 'I', label: 'Stanza I', path: '/non-euclidean-geometry' },
 	{ key: 'II', label: 'Stanza II', path: '/minimal-surfaces' },
 	{ key: 'III', label: 'Stanza III', path: '/beyond-mathematics' },
-	{ key: 'coda', label: 'Coda', path: null }
+	{ key: 'coda', label: 'Coda', path: '/coda' }
 ];
