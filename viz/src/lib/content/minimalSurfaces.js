@@ -134,7 +134,7 @@ export const slides = [
 		title: 'The Field Keeps Growing',
 		body: [
 			'Throughout the nineteenth and twentieth centuries, mathematicians discovered new minimal surfaces, developed general methods for constructing and classifying them, and explored when they exist and when they remain stable.',
-			'By the time my father entered this small subfield of mathematicians, his advisors and colleagues were not just still at work identifying new surfaces, but were also continuing to investigate what minimal surfaces could exist, how they behaved, their behavior in multi-dimentional spaces, and what their geometry could reveal.'
+			'By the time my father entered this small subfield of mathematics, his advisors and colleagues were not just still at work identifying new surfaces, but were also continuing to investigate what minimal surfaces could exist, how they behaved, their behavior in multi-dimentional spaces, and what their geometry could reveal.'
 			//'By 1969, enough of that work had accumulated for Robert Osserman to bring much of the subject together in a graduate-level textbook: *A Survey of Minimal Surfaces*.',
 			//'Just one year later, NASA researcher Alan Schoen described a remarkable new family of **triply periodic minimal surfaces**, including the **gyroid**. Developed within an engineering research environment, these surfaces would later become some of the most influential geometries outside mathematics.',
 			//"Using the citations of Osserman's textbook, the next section follows the journey of minimal surfaces -- from 200 years of theoretical math to applications in fields ranging from materials science and biology to computer graphics, computer vision and theoretical physics."

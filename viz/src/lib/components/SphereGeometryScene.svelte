@@ -312,7 +312,13 @@
 	// partway through) keeps the loop continuous with no seam. ---
 	const NORTH = new THREE.Vector3(0, 1, 0);
 	const PLON_A = 0.5; // a bit past the triangle's own vertices, so the two beats don't visually overlap
-	const PLON_B = 0.75; // ~14 deg from PLON_A -- close enough together to read as "parallel," not the triangle's 90 deg
+	// 30 deg from PLON_A (1/12 of the way around) -- matches the spacing of
+	// the azimuthal scene's own twelve meridian cuts later in the stanza
+	// (AzimuthalProjectionScene's seams sit every 30 deg too). Was ~14 deg;
+	// widened per direct request, may get walked back if it reads as too
+	// far from "parallel" once the triangle's 90 deg is the only other
+	// reference point on screen.
+	const PLON_B = PLON_A + Math.PI / 6;
 	const Q_A = new THREE.Vector3(Math.cos(PLON_A), 0, Math.sin(PLON_A));
 	const Q_B = new THREE.Vector3(Math.cos(PLON_B), 0, Math.sin(PLON_B));
 	const Q_MID = new THREE.Vector3().addVectors(Q_A, Q_B).multiplyScalar(0.5).normalize();

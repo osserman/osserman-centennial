@@ -522,6 +522,41 @@
 	let showCurvature = $state(false);
 	const lastFitCenter = new THREE.Vector3(); // tracks rebuildMesh's own framing target before `controls` exists yet (see onMount)
 
+	// "Rotate" button: a wander over azimuth AND elevation (different periods,
+	// same idea as GyroidScene's scripted tour), not OrbitControls' own
+	// autoRotate, which only spins about a single (vertical) axis -- a
+	// surface with real structure above and below its equator reads as much
+	// more three-dimensional seen from a few different heights than from a
+	// flat spin around one.
+	//
+	// Only the ANGLE is driven; radius (distance from controls.target) is
+	// read fresh from the camera each frame, so it always respects whatever
+	// rebuildMesh's auto-fit or the reader's own drag currently has it at,
+	// rather than fighting either.
+	const ROTATE_AZIMUTH_SPEED = 0.16; // rad/sec
+	const ROTATE_ELEV_AMPLITUDE = 0.4; // rad
+	const ROTATE_ELEV_SPEED = 0.065; // rad/sec, deliberately not a clean multiple of the azimuth speed
+	const ROTATE_ELEV_LIMIT = 1.3; // rad (~74 deg) -- stay short of the poles, where azimuth degenerates
+	let rotateAzimuth = 0;
+	let rotateElevBase = 0;
+	let rotateElevPhase = 0;
+	let rotateLastTime = null;
+	let userDragging = false;
+
+	// Camera's current azimuth/elevation around controls.target, so the tour
+	// can (re)start from wherever the view actually is -- the auto-fit
+	// framing, or wherever the reader last left it by hand -- instead of
+	// snapping to a fixed angle when the button is pressed.
+	function syncRotateBaseFromCamera() {
+		if (!camera || !controls) return;
+		const offset = camera.position.clone().sub(controls.target);
+		const radius = offset.length() || 1;
+		rotateAzimuth = Math.atan2(offset.x, offset.z);
+		rotateElevBase = Math.asin(Math.max(-1, Math.min(1, offset.y / radius)));
+		rotateElevPhase = 0;
+		rotateLastTime = null;
+	}
+
 	// distance = fitRadius * FIT_MULTIPLIER approximates "just fits the
 	// 45deg-FOV frame with a little margin" (1/sin(22.5deg) ~ 2.6, plus
 	// margin). FIT_MIN_DISTANCE keeps small shapes (e.g. Enneper at its
@@ -790,9 +825,18 @@
 		// as the surface confusingly zooming in. Rotation (drag) stays on.
 		controls.enableZoom = false;
 		controls.target.copy(lastFitCenter); // matches the just-built mesh's own framing, not always the world origin (see rebuildMesh)
-		controls.autoRotate = false; // toggled from the "Rotate" button below
-		controls.autoRotateSpeed = 1.4; // gentle -- a slow, readable spin, not a spectacle
 		camera.lookAt(lastFitCenter);
+		// The scripted tour (see ROTATE_AZIMUTH_SPEED etc. above) pauses the
+		// instant the reader actually grabs the view, and resumes -- from
+		// wherever they left it, never a jump -- the instant they let go,
+		// rather than fighting their drag while it's happening.
+		controls.addEventListener('start', () => {
+			userDragging = true;
+		});
+		controls.addEventListener('end', () => {
+			userDragging = false;
+			if (isRotating) syncRotateBaseFromCamera();
+		});
 
 		resizeObserver = new ResizeObserver((entries) => {
 			const { width, height } = entries[0].contentRect;
@@ -805,6 +849,27 @@
 		resizeObserver.observe(container);
 
 		function tick() {
+			if (isRotating && !userDragging) {
+				const now = performance.now();
+				if (rotateLastTime === null) rotateLastTime = now;
+				const dt = (now - rotateLastTime) / 1000;
+				rotateLastTime = now;
+				rotateAzimuth += ROTATE_AZIMUTH_SPEED * dt;
+				rotateElevPhase += ROTATE_ELEV_SPEED * dt;
+				const elevation = Math.max(
+					-ROTATE_ELEV_LIMIT,
+					Math.min(ROTATE_ELEV_LIMIT, rotateElevBase + ROTATE_ELEV_AMPLITUDE * Math.sin(rotateElevPhase * Math.PI * 2))
+				);
+				const radius = camera.position.distanceTo(controls.target);
+				const cosEl = Math.cos(elevation);
+				camera.position.set(
+					controls.target.x + radius * Math.sin(rotateAzimuth) * cosEl,
+					controls.target.y + radius * Math.sin(elevation),
+					controls.target.z + radius * Math.cos(rotateAzimuth) * cosEl
+				);
+			} else {
+				rotateLastTime = null;
+			}
 			controls.update();
 			renderer.render(scene, camera);
 			animFrame = requestAnimationFrame(tick);
@@ -907,7 +972,7 @@
 		class="rotate-toggle"
 		onclick={() => {
 			isRotating = !isRotating;
-			controls.autoRotate = isRotating;
+			if (isRotating) syncRotateBaseFromCamera();
 		}}
 	>
 		{isRotating ? '⏸ Pause rotation' : '▶ Rotate'}

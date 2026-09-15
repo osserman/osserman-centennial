@@ -167,6 +167,10 @@
 	// which is exactly what read as too zoomed-in to make sense of.
 	const CAMERA_MARGIN = 1.8;
 	const MIN_CAMERA_DISTANCE = 6.5;
+	// Per-frame ease toward targetDistance (see tick()) -- how quickly the
+	// camera catches up to each new shell's fit distance, not how fast the
+	// shells themselves reveal (that's GROWTH_HOLD_FRAC/CELL_FADE_SPAN).
+	const DISTANCE_EASE = 0.035;
 	function fitDistanceForShell(shellRadius) {
 		const halfWidth = (shellRadius + 0.5) * CELL_SIZE;
 		const fit = halfWidth / Math.tan((CAMERA_FOV_DEG / 2) * (Math.PI / 180));
@@ -204,14 +208,22 @@
 	// always mid-fade at once and the lattice grows as a soft front rather
 	// than a row of cells snapping on one at a time.
 	const CELL_FADE_SPAN = 3 / totalCells;
-	// Reveal points are spread over [0, 1 - CELL_FADE_SPAN] rather than
-	// [0, 1] so the OUTERMOST cell finishes fading exactly at progress 1
-	// instead of being caught half-faded at the end. Cell 0 starts at 0, so
-	// the very first cell fades up from nothing too -- the scene is never
-	// just suddenly there.
+	// Fraction of scroll spent alone with just the center cell, tour still
+	// running, before a second cell appears -- long enough to actually look
+	// at and rotate around the one unit before anything else starts
+	// competing for attention or the camera begins pulling back.
+	const GROWTH_HOLD_FRAC = 0.18;
+	// Reveal points for cells 1+ are spread over [GROWTH_HOLD_FRAC, 1 -
+	// CELL_FADE_SPAN] (remapped to growthP below) rather than starting at 0,
+	// so the OUTERMOST cell still finishes fading exactly at progress 1. Cell
+	// 0 is the one exception -- it fades in immediately (own span starting at
+	// literal 0) and holds through GROWTH_HOLD_FRAC on its own, rather than
+	// waiting its turn in that same remapped schedule.
 	function cellFadeAt(index, p) {
-		const start = (index / Math.max(1, totalCells - 1)) * (1 - CELL_FADE_SPAN);
-		return Math.max(0, Math.min(1, (p - start) / CELL_FADE_SPAN));
+		if (index === 0) return Math.max(0, Math.min(1, p / CELL_FADE_SPAN));
+		const growthP = Math.max(0, (p - GROWTH_HOLD_FRAC) / (1 - GROWTH_HOLD_FRAC));
+		const start = ((index - 1) / Math.max(1, totalCells - 2)) * (1 - CELL_FADE_SPAN);
+		return Math.max(0, Math.min(1, (growthP - start) / CELL_FADE_SPAN));
 	}
 
 	let container;
@@ -357,7 +369,10 @@
 			if (distance > 1e-4) {
 				offset.normalize();
 				if (!userHasRotated) offset.lerp(targetDirection, 0.12).normalize();
-				const nextDistance = distance + (targetDistance - distance) * 0.08;
+				// Was 0.08 -- read as a harsh snap toward each new shell's
+				// distance rather than a gradual pull-back; slowed down so the
+				// zoom trails the growth instead of leaping ahead of it.
+				const nextDistance = distance + (targetDistance - distance) * DISTANCE_EASE;
 				camera.position.copy(controls.target).addScaledVector(offset, nextDistance);
 			}
 			renderer.render(scene, camera);

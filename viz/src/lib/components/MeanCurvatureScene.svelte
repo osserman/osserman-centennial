@@ -83,6 +83,10 @@
 	// the waist, though, so it's nudged this far outward along the local
 	// radial (normal) direction to avoid z-fighting with the now-opaque mesh.
 	const SURFACE_OFFSET = 0.004;
+	// Reused each frame by the rotate/fold quaternions in updateScene, rather
+	// than allocating a fresh Vector3 per axis on every call.
+	const AXIS_X = new THREE.Vector3(1, 0, 0);
+	const AXIS_Y = new THREE.Vector3(0, 1, 0);
 
 	function remap(t, lo, hi) {
 		return Math.max(0, Math.min(1, (t - lo) / (hi - lo)));
@@ -159,17 +163,49 @@
 		meridianPlane.visible = arcInT > 0;
 		parallelPlaneMaterial.opacity = arcInT * 0.22;
 		parallelPlane.visible = arcInT > 0;
-		normalArrow.visible = arcInT > 0;
-		normalArrow.line.material.opacity = arcInT;
-		normalArrow.cone.material.opacity = arcInT;
-
-		// --- rotate the parallel arc into the meridian's plane ---
+		// The normal only means something while the parallel arc still stands
+		// for "the direction perpendicular to the surface here" — once it
+		// starts rotating (ROTATE_START), it's on its way to becoming a
+		// second curve pointing along a completely different line, and the
+		// arrow would just be pointing at nothing in particular. Fades out
+		// over the same span the rotation runs (rotT, computed below), rather
+		// than lingering meaninglessly through the rest of the sequence.
 		const rotT = remap(prog, ROTATE_START, ROTATE_END);
-		parallelPivot.rotation.x = (Math.PI / 2) * rotT;
+		const normalT = arcInT * (1 - rotT);
+		normalArrow.visible = normalT > 0;
+		normalArrow.line.material.opacity = normalT;
+		normalArrow.cone.material.opacity = normalT;
 
-		// --- fold: mirror it across the shared tangent line, onto the meridian ---
+		// --- rotate the parallel arc into the meridian's plane, then fold it
+		// onto the meridian by an actual 180 deg spin (not a scale mirror) ---
+		//
+		// Composed as two quaternions rather than raw Euler .rotation.x/.y --
+		// Euler components don't compose as "rotate about whatever axis is
+		// CURRENT after the previous rotation," which is exactly what the fold
+		// needs. qRotate (90 deg about the pivot's ORIGINAL local X) unfolds
+		// the arc's own X-Z plane into the meridian's X-Y plane, same as
+		// before. qFold (180 deg about the pivot's CURRENT Y-axis, i.e. after
+		// qRotate — which, worked out directly, is the pivot's ORIGINAL Z
+		// axis, i.e. world Z, since the parent group's own rotation.z=90 deg
+		// leaves Z fixed) then spins the now-aligned arc the rest of the way
+		// onto the meridian.
+		//
+		// This replaces the old scale.x: 1 -> -1 mirror, which squashed the
+		// arc through zero width and re-expanded it reversed — same end
+		// state (verified directly: applying qRotate then qFold to the
+		// parallel arc's own points lands them on the meridian arc's shape to
+		// within the same small-angle approximation error the old fold
+		// already had, not a new one), but now the reader sees the arc
+		// actually spin there rather than disappearing and reappearing
+		// flipped. And since the camera is already face-on (looking down
+		// world Z) by this point, a world-Z spin reads as a flat, in-picture
+		// turn — looking at the arc's own rotation axis dead-on — rather than
+		// a fold with nothing to watch. rotT itself is computed above, shared
+		// with the normal arrow's fade-out.
 		const foldT = remap(prog, FOLD_START, FOLD_END);
-		parallelPivot.scale.x = 1 - 2 * foldT;
+		const qRotate = new THREE.Quaternion().setFromAxisAngle(AXIS_X, (Math.PI / 2) * rotT);
+		const qFold = new THREE.Quaternion().setFromAxisAngle(AXIS_Y, Math.PI * foldT);
+		parallelPivot.quaternion.copy(qRotate).multiply(qFold);
 	}
 
 	$effect(() => {

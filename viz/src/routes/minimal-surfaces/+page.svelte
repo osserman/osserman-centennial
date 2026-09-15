@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { base } from '$app/paths';
 	import Scrolly from '$lib/components/Scrolly.svelte';
 	import ScrollyStep from '$lib/components/ScrollyStep.svelte';
@@ -118,6 +118,33 @@
 	const NUDGE_DURATION_MS = 700;
 	const NUDGE_GRACE_PX = 350; // ~half the cinch step's own ~650px dwell window
 
+	// Shared by every place that moves midR on the reader's behalf (the
+	// auto-nudge below, the curve-entry re-nudge, and the scroll-back-up
+	// undo) rather than snapping — one eased motion instead of three
+	// independent copies of the same tick loop.
+	//
+	// Strictly one tween at a time: a second call cancels the first rather
+	// than leaving two rAF loops writing midR on alternate frames. Callers
+	// must also not READ midR inside a $effect that can trigger this (see
+	// untrack() at the call sites) — doing so makes each frame's write
+	// re-run the effect, which starts yet another tween, which writes
+	// again... the loop that made this whole slide choppy and kept the
+	// un-cinch from ever visibly finishing. This cancel is the belt to
+	// untrack's braces.
+	let midRAnimFrame = null;
+	function animateMidR(target, duration = NUDGE_DURATION_MS) {
+		if (midRAnimFrame !== null) cancelAnimationFrame(midRAnimFrame);
+		const start = midR;
+		const startTime = performance.now();
+		function tick(now) {
+			const t = Math.min(1, (now - startTime) / duration);
+			const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+			midR = start + (target - start) * eased;
+			midRAnimFrame = t < 1 ? requestAnimationFrame(tick) : null;
+		}
+		midRAnimFrame = requestAnimationFrame(tick);
+	}
+
 	function maybeAutoNudge() {
 		if (autoNudged || stage !== 'cinch' || !sandboxVisible || settleScrollY === null) return;
 		if (midR !== DEFAULT_R) {
@@ -128,16 +155,7 @@
 		const scrollSinceSandbox = window.scrollY - settleScrollY - REVEAL_SPAN_PX();
 		if (scrollSinceSandbox < NUDGE_GRACE_PX) return;
 		autoNudged = true;
-		const start = midR;
-		const target = DEFAULT_R * NUDGE_TARGET_FRAC;
-		const startTime = performance.now();
-		function tick(now) {
-			const t = Math.min(1, (now - startTime) / NUDGE_DURATION_MS);
-			const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
-			midR = start + (target - start) * eased;
-			if (t < 1) requestAnimationFrame(tick);
-		}
-		requestAnimationFrame(tick);
+		animateMidR(DEFAULT_R * NUDGE_TARGET_FRAC);
 	}
 
 	let area = $state(0);
@@ -160,6 +178,30 @@
 	const STAGE_NAMES = ['cinch', 'curve', 'catenary'];
 	let stageIndex = $state(0);
 	let stage = $derived(STAGE_NAMES[stageIndex]);
+
+	// If the reader pulled the V back toward flat during 'cinch' (undoing
+	// their own cinch) before scrolling on, 'curve' would open with nothing
+	// visible to soften — the "smooth instead of sharp" prompt describing a
+	// transformation there's no V left to transform. Ease midR back down a
+	// little the moment 'curve' becomes active, same easing treatment as the
+	// cinch-stage auto-nudge above, so it still reads as something happening
+	// in response to scrolling rather than a jump cut. Only fires once per
+	// arrival at 'curve' (curveEntryNudged), and only if the V is genuinely
+	// at or near flat — a reader who left a real cinch in place keeps it.
+	let curveEntryNudged = false;
+	// Same untrack discipline as the scroll-back-up undo below: this should
+	// fire off `stage` changing, not off every frame of its own tween.
+	$effect(() => {
+		if (stage !== 'curve') {
+			curveEntryNudged = false;
+			return;
+		}
+		untrack(() => {
+			if (curveEntryNudged || midR < DEFAULT_R * NUDGE_TARGET_FRAC) return;
+			curveEntryNudged = true;
+			animateMidR(DEFAULT_R * NUDGE_TARGET_FRAC);
+		});
+	});
 
 	// Per-stage drag instructions live as stationary text next to the
 	// editor (not in the scrolling prompt) so they're always paired with
@@ -282,6 +324,27 @@
 	// finishes right around when the reader scrolls past it into
 	// .stage-steps' territory.
 	let sandboxVisible = $derived(revealProgress >= 1);
+	// Scrolling back up far enough to hide the editor undoes the cinch too —
+	// matching the bidirectional scrub every other piece of this slide's
+	// state already follows (revealProgress itself, stageIndex). Without
+	// this, a reader who cinches the V, scrolls away, then scrolls back down
+	// later would find it already cinched, as if they'd never left — the one
+	// piece of state on this slide that didn't reset with the rest.
+	// untracked: this effect must depend on sandboxVisible ALONE. Reading
+	// midR here made every frame of the undo tween re-run the effect, which
+	// started another tween from the new value on a fresh timeline — so the
+	// V crept toward flat asymptotically without ever arriving, while
+	// hundreds of overlapping rAF loops saturated the main thread and left
+	// the whole slide (the reveal sweep included) lurching between coalesced
+	// scroll events.
+	$effect(() => {
+		if (sandboxVisible) return;
+		untrack(() => {
+			if (midR !== DEFAULT_R) animateMidR(DEFAULT_R);
+			spread = INITIAL_SPREAD;
+			autoNudged = false;
+		});
+	});
 	let introTextEl = $state();
 	// .intro-sticky sticks flush at the very top (top:0, see its CSS) with
 	// its own padding-top providing the visual inset — not `top: 2rem` with

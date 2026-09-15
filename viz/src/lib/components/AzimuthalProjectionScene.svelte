@@ -1311,10 +1311,29 @@
 		canvas.releasePointerCapture(evt.pointerId);
 	}
 
-	// Scrubbing back out of the free-rotation window hands control back to
-	// the script rather than stranding the view wherever it was left.
+	// Scrubbing back out BEFORE the free-rotation window ever opened hands
+	// control back to the script rather than stranding the view wherever it
+	// was left. Scrolling FORWARD past DRAG_END is different: that's the
+	// restore-to-pole morph (stageParams' `restoreT`), which is deliberately
+	// built to start from freeView, so it has to survive canDrag going false
+	// at DRAG_END rather than being cleared right then.
+	//
+	// That created a second problem scrolling back OUT of the restore morph:
+	// crossing back below DRAG_END re-enters canDrag's true range, but
+	// freeView was still the OLD dragged orientation from before the morph
+	// ever started -- the view would snap to that stale position and then
+	// sit frozen on it (matching stageParams' `if (freeView)` override)
+	// however much further you scrolled within that range, since nothing
+	// was clearing it any more. So: track the previous progress to catch
+	// that one specific transition (was at/past DRAG_END, now below it,
+	// and not actively mid-drag) and clear freeView exactly there, on top
+	// of the two boundary cases above.
+	let prevAzimuthalProgress = progress;
 	$effect(() => {
-		if (!canDrag && freeView) freeView = null;
+		const p = progress;
+		const reenteredDragZone = prevAzimuthalProgress >= DRAG_END && p < DRAG_END && !dragging;
+		prevAzimuthalProgress = p;
+		if (freeView && (p < TOUR_END || p >= RETURN_END || reenteredDragZone)) freeView = null;
 	});
 
 	onMount(() => {
