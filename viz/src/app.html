@@ -4,6 +4,37 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			/* Deliberately ES5, and deliberately here in the shell rather than in
+			   the app. The bundle is built for vite's baseline-widely-available
+			   target -- Chrome/Edge 111, Firefox 114, Safari and iOS 16.4 -- and
+			   ships syntax an older engine can't even parse (private class
+			   fields, logical assignment, optional chaining). On those browsers
+			   the bundle is a SyntaxError, so NOTHING runs: no scenes, no
+			   scroll-scrubbing, and none of the in-app gates either, leaving the
+			   prerendered HTML to look merely broken rather than unsupported.
+			   Found on an iPad stuck at iOS 10.3 (Safari 10).
+
+			   This probe runs before any of that and flags the document, so CSS
+			   alone can say so (see .legacy-notice in +layout.svelte). The modern
+			   syntax sits inside a string, so parsing THIS script can never be
+			   the thing that fails -- it throws at new Function() instead, which
+			   is exactly what's being measured. */
+			try {
+				new Function('class A{#f=1;m(){let b=null;b&&=2;return this.#f?.toString()??b}}');
+			} catch (e) {
+				document.documentElement.className += ' legacy-browser';
+			}
+		</script>
+		<noscript>
+			<!-- Same end state with scripting turned off: nothing below runs
+			     either, so show the same notice rather than a dead page. -->
+			<style>
+				.legacy-notice {
+					display: flex !important;
+				}
+			</style>
+		</noscript>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

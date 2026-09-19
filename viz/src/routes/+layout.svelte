@@ -21,7 +21,12 @@
 	// mount at all on a phone -- no three.js contexts, no scroll listeners --
 	// and that any route added later is gated by default. Only the two
 	// prose-only routes, which read fine at any width, are exempt.
-	const EXEMPT_PATHS = ['/', '/coda'];
+	// Route ids (as in page.route.id), not hrefs: deliberately NOT built from
+	// `base`. With the static adapter's relative paths, `base` is "." while
+	// prerendering, so comparing `${base}${path}` against a pathname silently
+	// never matches -- which matters because the legacy notice below is
+	// decided at prerender time. Route ids carry no base at all.
+	const EXEMPT_ROUTE_IDS = ['/', '/coda'];
 	// Floors, not a device test. 900px is where the stanza pages' own
 	// `@media (max-width: 899px)` blocks would otherwise stack the two
 	// columns -- a half-finished responsive path whose scenes don't actually
@@ -48,14 +53,14 @@
 		measured = true;
 	});
 
-	function normalize(path) {
-		return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-	}
+	// Route-only half of the test, and the only half that survives without
+	// JavaScript -- see the legacy notice below, which is rendered into the
+	// prerendered HTML and shown by CSS alone.
+	const isExempt = $derived(EXEMPT_ROUTE_IDS.includes(page.route.id ?? ''));
 
 	const gated = $derived.by(() => {
 		if (!measured) return false;
-		const here = normalize(page.url.pathname);
-		if (EXEMPT_PATHS.some((p) => normalize(`${base}${p}`) === here)) return false;
+		if (isExempt) return false;
 		return innerWidth < MIN_WIDTH || innerHeight < MIN_HEIGHT;
 	});
 </script>
@@ -71,6 +76,30 @@
 {:else}
 	<GlobalNav />
 	{@render children()}
+{/if}
+
+<!-- MobileGate's counterpart for a browser too old to run the bundle at all.
+     It can't be a component rendered on a condition the way MobileGate is,
+     because on those browsers no component ever renders: this has to be in
+     the prerendered markup and shown by CSS alone. app.html's probe adds the
+     .legacy-browser class (and its <noscript> covers scripting being off).
+     `isExempt` is route-only, so it resolves during prerender too -- the
+     intro and the coda stay readable, since both are plain prose that
+     survives having no JavaScript. -->
+{#if !isExempt}
+	<div class="legacy-notice">
+		<div class="legacy-card">
+			<p class="legacy-kicker">Unsupported browser</p>
+			<h1>This stanza needs a newer browser</h1>
+			<p class="legacy-body">
+				It's built on web features this browser doesn't support, so its visuals can't run here.
+				You'll need Safari 16.4, Chrome 111, Edge 111, or Firefox 114 — or anything more recent.
+			</p>
+			<p class="legacy-body">The written pieces read fine here, though:</p>
+			<a class="legacy-link" href="{base}/">Read the introduction</a>
+			<a class="legacy-link" href="{base}/coda">Read the coda</a>
+		</div>
+	</div>
 {/if}
 
 <style>
@@ -128,6 +157,65 @@
 		--swatch-aqua: #199e70;
 		--swatch-yellow: #c98500;
 		--swatch-violet: #9085e9;
+	}
+	/* Hidden unless app.html's probe flagged the document (or its <noscript>
+	   overrode this with !important). Everything below sticks to CSS the
+	   browsers this is FOR can actually render: no flex `gap` (Safari 14.1),
+	   no `inset` (14.1), no `min()` (11.1) -- margins and explicit offsets
+	   instead. Custom properties are fine: Safari 9.1. */
+	.legacy-notice {
+		display: none;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 9999; /* over GlobalNav's 500, over everything */
+		align-items: center;
+		justify-content: center;
+		padding: 2rem 1.5rem;
+		box-sizing: border-box;
+		background: var(--surface-1);
+		overflow-y: auto;
+	}
+	:global(html.legacy-browser) .legacy-notice {
+		display: flex;
+	}
+	.legacy-card {
+		max-width: 30rem;
+	}
+	.legacy-kicker {
+		margin: 0 0 0.5rem;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.legacy-card h1 {
+		margin: 0 0 1rem;
+		font-size: 1.6rem;
+		font-weight: 700;
+		line-height: 1.2;
+		color: var(--text-primary);
+	}
+	.legacy-body {
+		margin: 0 0 1rem;
+		font-size: 1rem;
+		line-height: 1.6;
+		color: var(--text-secondary);
+	}
+	.legacy-link {
+		display: block;
+		margin-top: 0.6rem;
+		padding: 0.75rem 0.9rem;
+		border: 1px solid var(--surface-2);
+		border-radius: 8px;
+		background: var(--surface-2);
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--text-primary);
+		text-decoration: none;
 	}
 	:global(:root[data-theme='light']) {
 		color-scheme: light;
