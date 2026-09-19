@@ -194,14 +194,20 @@
 	}
 
 	// What ContinueButton calls, as opposed to what grabbing a handle calls.
-	// Same destination, but without skipParallelHold's one-shot guard: a
-	// button that silently does nothing on its second press is a dead control,
-	// and on touch -- where the canvas owns the drag gesture and the text
-	// column is the only scrollable strip -- this may be the reader's main way
-	// forward. Past the skip target, each press advances a screen instead.
+	// Deliberately NOT skipParallelHold's target: that one stops 60vh short of
+	// the end of the hold, which is right for someone who just grabbed a
+	// handle (don't rip the thing they're holding off screen) but wrong for
+	// someone asking to move on -- they'd land still inside the drag beat,
+	// with the hold's remainder and then the whole crossfade still to scroll,
+	// and have to press again. And again.
+	//
+	// This beat is the last of its scene, so "the next step" is the sphere:
+	// scroll until its heading hits its sticky position, which is exactly
+	// where updateSceneHandover puts the crossfade at 1 and sphereProgress
+	// starts running. One press, one section.
 	function continuePastParallelDrag() {
 		parallelHoldSkipped = true;
-		scrollForward(parallelHoldSkipTarget());
+		scrollForward(sphereTextEl ? window.scrollY + sphereTextEl.getBoundingClientRect().top : null);
 	}
 
 	// Second, independent instance of the same arrival/settle pattern above,
@@ -406,11 +412,22 @@
 		if (target > window.scrollY) window.scrollTo(0, target);
 	}
 
-	// ContinueButton's counterpart for this scene -- see
-	// continuePastParallelDrag above for why it doesn't reuse the one-shot.
+	// ContinueButton's counterpart for this scene. Unlike the triangle's drag
+	// beat, this one sits MID-scene -- the stereographic zoom-out and the rest
+	// still follow it -- so "the next step" here is the next caption, not the
+	// next section: land exactly where the pacing table reaches DRAG_END,
+	// without skipAzimuthalDragHold's 40vh buffer (see
+	// continuePastParallelDrag for why that buffer is wrong for a button).
+	// Landing on DRAG_END also takes the button's own `visible` condition
+	// false, so a press visibly resolves itself.
 	function continuePastAzimuthalDrag() {
 		azimuthalDragHoldSkipped = true;
-		scrollForward(azimuthalDragSkipTarget());
+		const dragEndStop = AZIMUTHAL_A_PACING.find((s) => s.progress === DRAG_END);
+		const target =
+			azimuthalSettleScrollY === null || !dragEndStop
+				? null
+				: azimuthalSettleScrollY + (dragEndStop.vh / 100) * window.innerHeight;
+		scrollForward(target);
 	}
 
 	function updateDiscProgress() {
