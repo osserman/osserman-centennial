@@ -1220,7 +1220,12 @@
 		font-size: 0.8rem;
 		color: var(--text-secondary);
 	}
-	@media (max-width: 900px) {
+	/* Unreachable as things stand: the root layout's MobileGate takes over
+	   below 900px (see +layout.svelte), because this stacked fallback was
+	   never finished -- the scenes don't render in it. Kept as the
+	   starting point for real small-screen support, and held at 899 so it
+	   and the gate never both claim the same width. */
+	@media (max-width: 899px) {
 		.layout {
 			flex-direction: column;
 		}

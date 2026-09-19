@@ -23,6 +23,7 @@
 		RECENTRE_END
 	} from '$lib/components/AzimuthalProjectionScene.svelte';
 	import StanzaNav from '$lib/components/StanzaNav.svelte';
+	import ContinueButton from '$lib/components/ContinueButton.svelte';
 	import Interstitial from '$lib/components/Interstitial.svelte';
 	import { slides, interstitials } from '$lib/content/nonEuclideanGeometry.js';
 
@@ -64,6 +65,18 @@
 	let activeIndex = $state(0);
 	const parallelIndex = scrollySlides.findIndex((s) => s.id === 'parallel-postulate');
 	const sphereIndex = scrollySlides.findIndex((s) => s.id === 'sphere');
+
+	// Shared by the ContinueButton handlers below. Smooth rather than an
+	// instant jump, so the scroll-scrubbed scene animates through the beats
+	// it passes instead of teleporting -- the scroll listeners scrub off
+	// window.scrollY either way. `target` may be null (nothing measured yet)
+	// or already behind the reader, and in both cases advancing one screen is
+	// the sane thing a button press should do.
+	function scrollForward(target) {
+		const fallback = window.scrollY + window.innerHeight * 0.9;
+		const top = target !== null && target > window.scrollY ? target : fallback;
+		window.scrollTo({ top, behavior: 'smooth' });
+	}
 
 	// Minimal inline-markdown support, same convention as minimal-surfaces'
 	// own renderInline — **bold** only, plus *italic* (used for book titles).
@@ -161,16 +174,34 @@
 	const PARALLEL_SKIP_BUFFER_VH = 60;
 	let parallelHoldSkipped = false;
 
-	function skipParallelHold() {
-		if (parallelHoldSkipped || parallelSettleScrollY === null) return;
-		parallelHoldSkipped = true;
-		const target =
+	function parallelHoldSkipTarget() {
+		if (parallelSettleScrollY === null) return null;
+		return (
 			parallelSettleScrollY +
 			PARALLEL_SPAN_PX() +
-			((DRAG_HOLD_VH - PARALLEL_SKIP_BUFFER_VH) / 100) * window.innerHeight;
+			((DRAG_HOLD_VH - PARALLEL_SKIP_BUFFER_VH) / 100) * window.innerHeight
+		);
+	}
+
+	function skipParallelHold() {
+		if (parallelHoldSkipped) return;
+		const target = parallelHoldSkipTarget();
+		if (target === null) return;
+		parallelHoldSkipped = true;
 		// Never scroll backward -- a reader who grabs the triangle after
 		// already scrolling partway through the hold shouldn't be yanked up.
 		if (target > window.scrollY) window.scrollTo(0, target);
+	}
+
+	// What ContinueButton calls, as opposed to what grabbing a handle calls.
+	// Same destination, but without skipParallelHold's one-shot guard: a
+	// button that silently does nothing on its second press is a dead control,
+	// and on touch -- where the canvas owns the drag gesture and the text
+	// column is the only scrollable strip -- this may be the reader's main way
+	// forward. Past the skip target, each press advances a screen instead.
+	function continuePastParallelDrag() {
+		parallelHoldSkipped = true;
+		scrollForward(parallelHoldSkipTarget());
 	}
 
 	// Second, independent instance of the same arrival/settle pattern above,
@@ -357,14 +388,29 @@
 	const AZIMUTHAL_DRAG_SKIP_BUFFER_VH = 40;
 	let azimuthalDragHoldSkipped = false;
 
-	function skipAzimuthalDragHold() {
-		if (azimuthalDragHoldSkipped || azimuthalSettleScrollY === null) return;
-		azimuthalDragHoldSkipped = true;
+	function azimuthalDragSkipTarget() {
+		if (azimuthalSettleScrollY === null) return null;
 		const dragEndStop = AZIMUTHAL_A_PACING.find((s) => s.progress === DRAG_END);
-		if (!dragEndStop) return;
-		const target =
-			azimuthalSettleScrollY + ((dragEndStop.vh - AZIMUTHAL_DRAG_SKIP_BUFFER_VH) / 100) * window.innerHeight;
+		if (!dragEndStop) return null;
+		return (
+			azimuthalSettleScrollY +
+			((dragEndStop.vh - AZIMUTHAL_DRAG_SKIP_BUFFER_VH) / 100) * window.innerHeight
+		);
+	}
+
+	function skipAzimuthalDragHold() {
+		if (azimuthalDragHoldSkipped) return;
+		const target = azimuthalDragSkipTarget();
+		if (target === null) return;
+		azimuthalDragHoldSkipped = true;
 		if (target > window.scrollY) window.scrollTo(0, target);
+	}
+
+	// ContinueButton's counterpart for this scene -- see
+	// continuePastParallelDrag above for why it doesn't reuse the one-shot.
+	function continuePastAzimuthalDrag() {
+		azimuthalDragHoldSkipped = true;
+		scrollForward(azimuthalDragSkipTarget());
 	}
 
 	function updateDiscProgress() {
@@ -488,6 +534,13 @@
 							<div class="intro-sticky" bind:this={parallelTextEl}>
 								<h2>{slide.title}</h2>
 								<p class="subtitle">{@html renderInline(slide.subtitle)}</p>
+								<!-- Same condition as the scene's own dragEnabled below:
+								     the button exists exactly while the canvas is holding
+								     onto the touch gesture. -->
+								<ContinueButton
+									visible={parallelProgress >= 1 && sceneHandover < 0.5}
+									onclick={continuePastParallelDrag}
+								/>
 							</div>
 							<div class="trailing-spacer" style="height: {spacerVh(PARALLEL_SPAN_VH * 100, DRAG_HOLD_VH)}vh"></div>
 						</div>
@@ -565,6 +618,11 @@
 			<div class="intro-sticky" bind:this={azimuthalTextEl}>
 				<h2>{azimuthalSlide.title}</h2>
 				<p class="subtitle">{@html renderInline(azimuthalSlide.subtitle)}</p>
+				<!-- Same condition as this scene's own dragEnabled below. -->
+				<ContinueButton
+					visible={azimuthalProgress >= TOUR_END && azimuthalProgress < DRAG_END}
+					onclick={continuePastAzimuthalDrag}
+				/>
 			</div>
 			<div class="trailing-spacer" style="height: {spacerVh(AZIMUTHAL_A_SPACER_VH)}vh"></div>
 		</div>
@@ -872,7 +930,12 @@
 		top: 0;
 		height: 100vh;
 	}
-	@media (max-width: 900px) {
+	/* Unreachable as things stand: the root layout's MobileGate takes over
+	   below 900px (see +layout.svelte), because this stacked fallback was
+	   never finished -- the scenes don't render in it. Kept as the
+	   starting point for real small-screen support, and held at 899 so it
+	   and the gate never both claim the same width. */
+	@media (max-width: 899px) {
 		.layout {
 			flex-direction: column;
 		}

@@ -1390,10 +1390,15 @@
 	}
 	.scene-container canvas {
 		display: block;
-		touch-action: none;
+		/* See ParallelPostulateScene's .scene for the full reasoning: an
+		   unconditional `none` made this canvas -- most of a tablet's screen
+		   -- a scroll dead zone for the whole scene, not just its drag beat.
+		   `grabbable` is already exactly "the reader can drag right now". */
+		touch-action: pan-y;
 	}
 	.scene-container canvas.grabbable {
 		cursor: grab;
+		touch-action: none;
 	}
 	.scene-container canvas.grabbable:active {
 		cursor: grabbing;

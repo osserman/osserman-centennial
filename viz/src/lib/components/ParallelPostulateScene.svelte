@@ -542,6 +542,7 @@
 <svg
 	bind:this={svgEl}
 	class="scene"
+	class:drag-enabled={dragEnabled}
 	viewBox="0 0 {VIEW_W} {VIEW_H}"
 	role="img"
 	aria-label="Parallel postulate construction"
@@ -698,6 +699,19 @@
 	.scene {
 		width: 100%;
 		height: 100%;
+		/* Only claim the touch gesture once there is something to drag. This
+		   used to be an unconditional `none`, which on a touch device made
+		   the whole scene panel -- most of a tablet's screen -- a scroll dead
+		   zone for the entire scene, drag beat or not, leaving the narrow
+		   text column as the only way to move the page. `pan-y` hands
+		   vertical swipes back to the browser everywhere else. */
+		touch-action: pan-y;
+	}
+	/* During the drag beat the handles need the gesture: a vertical drag of a
+	   corner would otherwise be stolen to scroll the page a few pixels in.
+	   ContinueButton (see the stanza page) is what gives a touch reader a way
+	   forward while this is in force. */
+	.scene.drag-enabled {
 		touch-action: none;
 	}
 	.caption-overlay {
