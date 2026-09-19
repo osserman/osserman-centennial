@@ -20,15 +20,10 @@
 // about) rather than a formal taxonomy. See git tag `pre-stanza3-revision`
 // for the version with the pathway steps still in place.
 const FIELD_PAPER_IDS = {
-	// Two more ids here than any 'biology' step's own `papers` array below (a
-	// virus-growth and a colloid–membrane paper) — kept highlighted on the
-	// graph for visual breadth, per the brief, but without their own
-	// <details> entry: neither has existing analysis to responsibly draw a
-	// paper-level explanation from.
 	biology: ['W2169776346', 'W2612605708', 'W2999050204', 'W2112838653'],
 	engineering: ['W2120559167', 'W2943941736'],
 	materials_science: ['W2044735577', 'W2002021482'],
-	computer_science: ['W2151783599', 'W3026088860'],
+	computer_science: ['W2044920528', 'W2151783599', 'W3026088860', 'W1878245702'],
 	physics: ['W2034409564', 'W2002168123']
 };
 
@@ -87,8 +82,8 @@ export const steps = [
 		heading: 'Citations Beyond Mathematics',
 		body: [
 			'But minimal surface mathematics has also been applied to a surprising range of other disciplines.',
-			"Many of these pathways are visible with the 300+ works from outside mathematics citing Osserman's textbook. [Caveat OpenAlex's unreliable field classification]" ,
-			'Here are a few examples...'
+			"Many of these pathways are visible with the hundreds of works from outside mathematics{{tooltip:This project relies on OpenAlex's automated field classifications to sort citing works by discipline. Those classifications are not human-verified and are not always consistently correct.}} citing my father's textbook.",
+			'Here are a few particularly influential examples...'
 		],
 		openQuestion: null,
 		view: NON_MATH_VIEW
@@ -105,11 +100,13 @@ export const steps = [
 	{
 		id: 'biology',
 		kicker: 'Biology',
-		heading: 'Does life itself organize around these geometries?',
+		heading: 'The shapes of life',
 		body: [
-			'Minimal-surface and closely related geometries have appeared in research on living systems at remarkably different scales — from the organization of muscle fibers in the heart to the microscopic necks formed when cell membranes bend, merge, and divide.',
-			'Here, mathematics can provide a language for **recognizing and modeling** forms already found in nature.',
-			'The next examples reverse that relationship. Rather than using mathematics to describe structures found in living systems, researchers use related geometries to **design** structures for biological purposes.'
+			"With soap films, surface tension alone pulls them toward forms that minimize area. **Living systems are far messier**, shaped by a wide range of competing mechanical, chemical and molecular forces.",
+			"Nonetheless, minimal surfaces and related shapes appear across a wide range of biological systems and scales, from muscle fibers in the heart to far smaller structures formed by cell membranes.",
+			//'Minimal-surface and closely related geometries have appeared in research on living systems at remarkably different scales — from the organization of muscle fibers in the heart to the microscopic necks formed when cell membranes bend, merge, and divide.',
+			'Here, mathematics can provide a language for **recognizing and modeling** forms found in nature.',
+			//'The next examples reverse that relationship. Rather than using mathematics to describe structures found in living systems, researchers use related geometries to **design** structures for biological purposes.'
 		],
 		papers: [
 			{
@@ -129,6 +126,23 @@ export const steps = [
 					'Cell membranes constantly bend, merge and divide as cells grow, communicate and transport materials.',
 					'This paper investigates how the geometry of the narrow membrane necks formed during these processes influences where proteins accumulate.'
 				]
+			},
+			{
+				paperId: 'W2999050204',
+				title: 'On virus growth and form',
+				year: 2020,
+				body: [
+					"In describing the many kinds of curvature relevant to virus growth, the authors cite Osserman's Survey to identify surfaces with zero mean curvature — only to note that minimal surfaces have not found a relevant role in virus systems. Here, the mathematics provides a language for analyzing biological form even when the answer is negative."
+				]
+			},
+			{
+				paperId: 'W2112838653',
+				title: 'Electrostatic colloid-membrane binding',
+				year: 2004,
+				body: [
+					'What happens when a charged particle encounters an oppositely charged flexible membrane? The authors model how competing electrostatic forces, bending energy and surface tension determine whether the membrane touches, partially surrounds or wraps the particle.',
+					'Under some conditions, the membrane takes on a catenoid-like shape — echoing the minimal surface formed by soap films between two rings.'
+				]
 			}
 		],
 		openQuestion: null,
@@ -138,12 +152,15 @@ export const steps = [
 	// --- Bioengineering & Engineering ---
 	{
 		id: 'engineering',
-		kicker: 'Bioengineering & Engineering',
-		heading: 'Building scaffolds the body can grow through',
+		kicker: 'Bioengineering',
+		heading: 'From describing to designing',
 		body: [
-			'Advances in computation and fabrication have made it possible to manufacture intricate structures based on triply periodic minimal-surface geometries. In bioengineering, researchers have investigated these forms as porous scaffolds intended to support the growth of bone and other tissue.',
-			"The geometry is no longer only something to recognize — here it becomes a starting point for **design**. The properties researchers actually care about (interconnected pores, surface area, mechanical strength) depend on the specific geometry chosen, not on mathematical minimality by itself.",
-			'Bioengineered scaffolds already sit near the boundary between engineering, biology, and materials science. Following the mathematics into materials makes that boundary blur further: some minimal-surface-like structures are deliberately designed, while others emerge through the behavior of the materials themselves.'
+			'Advances in computation and fabrication have made it possible to **manufacture intricate minimal-surface-inspired structures** for medical applications, including scaffolds that encourage bone-tissue growth and 3D-printed metallic implants.',
+			'Here, the geometry is not used only to recognize shapes found in nature, but as a starting point for **design** — leveraging properties such as interconnected pores, high surface area and mechanical strength.'
+			
+// 'Advances in computation and fabrication have made it possible to manufacture intricate structures based on triply periodic minimal-surface geometries. In bioengineering, researchers have investigated these forms as porous scaffolds intended to support the growth of bone and other tissue.',
+			//"The geometry is no longer only something to recognize — here it becomes a starting point for **design**. The properties researchers actually care about (interconnected pores, surface area, mechanical strength) depend on the specific geometry chosen, not on mathematical minimality by itself.",
+			//'Bioengineered scaffolds already sit near the boundary between engineering, biology, and materials science. Following the mathematics into materials makes that boundary blur further: some minimal-surface-like structures are deliberately designed, while others emerge through the behavior of the materials themselves.'
 		],
 		papers: [
 			{
@@ -173,11 +190,15 @@ export const steps = [
 	{
 		id: 'materials-science',
 		kicker: 'Materials Science',
-		heading: 'Shapes that emerge, and shapes that are designed',
+		heading: 'Molecular-scale geometries',
 		body: [
-			'At microscopic scales, some materials organize themselves into intricate networks resembling triply periodic minimal surfaces. Researchers studying self-assembling block copolymers have used minimal-surface geometry to help **recognize and describe** these structures. Other work explores related curved geometries in deliberately conceived materials, including forms of curved carbon.',
-			'Here the relationship runs in both directions: mathematics can help researchers understand structures that emerge through self-assembly, and imagine structures that might be made.',
-			'So far, much of this story has involved the **forms** studied by minimal-surface mathematics. But an idea can travel without its shape. Sometimes what crosses into another field is the mathematical machinery itself.'
+			'Shrink down much further, to the scale of molecules and atoms, and minimal surfaces appear again.',
+			'Under some conditions, materials spontaneously organize themselves into microscopic networks. Researchers discovered that some of these structures closely resemble minimal surfaces mathematicians had described.',
+			'In other cases, researchers have used known minimal surfaces as templates for imagining new materials, asking how carbon atoms might be arranged along their intricate geometries.'
+
+		//	'At microscopic scales, some materials organize themselves into intricate networks resembling triply periodic minimal surfaces. Researchers studying self-assembling block copolymers have used minimal-surface geometry to help **recognize and describe** these structures. Other work explores related curved geometries in deliberately conceived materials, including forms of curved carbon.',
+		//	'Here the relationship runs in both directions: mathematics can help researchers understand structures that emerge through self-assembly, and imagine structures that might be made.',
+		//	'So far, much of this story has involved the **forms** studied by minimal-surface mathematics. But an idea can travel without its shape. Sometimes what crosses into another field is the mathematical machinery itself.'
 		],
 		papers: [
 			{
@@ -209,14 +230,26 @@ export const steps = [
 	{
 		id: 'computer-science',
 		kicker: 'Computer Science',
-		heading: 'Where does an object begin and end?',
+		heading: 'Mathematics and Computation',
 		body: [
-			'Before a computer can recognize an object, it first needs to determine where that object begins and ends — a surprisingly difficult problem. Methods developed around minimal surfaces have been adapted as computational tools for exactly this kind of question, in work ranging from image segmentation to the reconstruction of complex three-dimensional motion.',
-			'Here, what travels is not necessarily a recognizable catenoid, helicoid, or gyroid. It can be a **method** for finding, separating, reconstructing, or analyzing surfaces.',
-			'One of these methods crosses disciplinary boundaries again: the same kind of minimal-surface algorithm used for image segmentation reappears in biological research, reconstructing the movement of the tongue from anatomical scans.',
-			'Elsewhere, the mathematics moves in a different direction again — not toward a structure that can be fabricated or observed directly, but into mathematical theories of the physical world.'
+			"As early as the 1980s computer graphics was aiding the mathematical study of minimal surfaces.",
+			"Soon after the exchange began running the other way. Researchers turned the mathematics of surfaces into computational methods for other problems: finding the boundaries of objects in three-dimensional images, a key task in computer vision; reconstructing the shape and movement of organs from a limited set of measured points; and generating forms for tensile structures, allowing architects and engineers to digitally design and analyze the kinds of curved structures once explored with physical soap-film models."
+
+			//'Before a computer can recognize an object, it first needs to determine where that object begins and ends — a surprisingly difficult problem. Methods developed around minimal surfaces have been adapted as computational tools for exactly this kind of question, in work ranging from image segmentation to the reconstruction of complex three-dimensional motion.',
+			//'Here, what travels is not necessarily a recognizable catenoid, helicoid, or gyroid. It can be a **method** for finding, separating, reconstructing, or analyzing surfaces.',
+			//'One of these methods crosses disciplinary boundaries again: the same kind of minimal-surface algorithm used for image segmentation reappears in biological research, reconstructing the movement of the tongue from anatomical scans.',
+			//'Elsewhere, the mathematics moves in a different direction again — not toward a structure that can be fabricated or observed directly, but into mathematical theories of the physical world.'
 		],
 		papers: [
+			{
+				paperId: 'W2044920528',
+				title: 'The computer-aided discovery of new embedded minimal surfaces',
+				year: 1987,
+				body: [
+					'In the 1980s, David Hoffman used computer-generated images to investigate newly discovered minimal surfaces too complicated to fully picture from equations alone.',
+					'These visuals helped reveal properties that could then be proved mathematically — computer graphics working here as a tool for mathematical discovery, before the exchange between the two fields ran the other way.'
+				]
+			},
 			{
 				paperId: 'W2151783599',
 				title: 'Minimal surfaces based object segmentation',
@@ -236,6 +269,15 @@ export const steps = [
 					'Although motivated by anatomy, this paper uses minimal-surface mathematics in a different way: researchers reconstructed smooth three-dimensional anatomical surfaces from sparse measurements using a minimal-surface algorithm.',
 					'Here the mathematics functions less as an explanation of biology than as a scientific tool.'
 				]
+			},
+			{
+				paperId: 'W1878245702',
+				title: 'Quasi-harmonic Bézier approximation of minimal surfaces for finding forms of structural membranes',
+				year: 2015,
+				body: [
+					'Long before computers, architects and engineers found the shapes of tensile fabric structures using physical soap-film models — a soap film naturally settles into a minimal surface.',
+					'This paper folds that same search into a computational design pipeline: it approximates minimal surfaces with Bézier patches so a candidate roof or canopy shape can be generated, analyzed for structural performance, and refined digitally, without ever building a physical model.'
+				]
 			}
 		],
 		openQuestion: null,
@@ -248,8 +290,11 @@ export const steps = [
 		kicker: 'Physics',
 		heading: 'Inside the equations of spacetime',
 		body: [
-			'One of the most surprising branches leads into theoretical physics. Minimal surfaces and mathematical ideas developed around them appear in areas far removed from soap films: in work involving fields and branes, and in geometry related to black holes and spacetime.',
-			'In these settings, the mathematics can become part of the framework scientists use to **reason about** physical systems that may be difficult or impossible to observe directly.'
+			'While <em>Poetry of the Universe</em> doesn\'t discuss minimal surfaces, this field of math has led directly back to the book\'s subject: our attempts to understand the universe itself.',
+			'Minimal surfaces and mathematical ideas developed around them now appear in theoretical physics, in work involving **fields and branes, black holes and the geometry of spacetime**.',
+			'Here, the mathematics becomes part of the **framework scientists use to reason about physical systems** that may be difficult or impossible to observe directly.'
+//			'One of the most surprising branches leads into theoretical physics. Minimal surfaces and mathematical ideas developed around them appear in areas far removed from soap films: in work involving fields and branes, and in geometry related to black holes and spacetime.',
+//			'In these settings, the mathematics can become part of the framework scientists use to **reason about** physical systems that may be difficult or impossible to observe directly.'
 		],
 		papers: [
 			{

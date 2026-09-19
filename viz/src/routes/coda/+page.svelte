@@ -31,11 +31,11 @@
 		</p>
 
 		<p>
-			While my father's textbook may have aided in this spread, his own contributions to minimal
-			surfaces research have mainly remained within the realm of theoretical math. In another 50 or
-			100 years, external applications may blossom from them. But I don't think he would mind if
-			they don't. <strong>He valued curiosity, delight in the elegance of a solution, and beauty of
-				the language of math for their own sake.</strong>
+			While my father's introductory textbook on minimal surfaces may have aided in this spread, 
+			the influence of his own mathematical research has primarily been within theoretical math. 
+			In another 50 or 100 years, external applications may yet blossom from that research. But 
+			I don't think he would mind if they don't. <strong>He valued curiosity, delight in the 
+			elegance of a solution, and beauty of the language of math for their own sake.</strong>
 		</p>
 
 		<p>
@@ -43,6 +43,27 @@
 			this project has offered: a chance to learn, to share, and to spend a bit more time in the
 			mathematical world my father loved.
 		</p>
+
+		<details class="ack">
+			<summary>Acknowledgments &amp; methodology</summary>
+			<div class="ack-body">
+				<p>
+					This project began with rereading my father's <em>Poetry of the Universe</em> earlier
+					this year. I learned from math educators on YouTube (links coming soon), and used LLMs
+					extensively as research and development tools: to explore applications of minimal
+					surfaces; write scripts to map citations and identify potentially influential papers
+					among the citing works for deeper investigation; interpret these technical and scientific
+					papers in plain terms, and prototype and build many of the visualizations. In spite of my
+					deep qualms about using AI, it has made it possible for me to pursue this project amidst
+					work and other responsibilities.
+				</p>
+				<p>
+					A still-growing group of colleagues, friends, family members, and subject-matter experts
+					have also offered invaluable feedback and suggestions throughout. With their permission,
+					I'll acknowledge them individually when the project is complete.
+				</p>
+			</div>
+		</details>
 
 		<StanzaNav current="coda" />
 	</article>
@@ -87,5 +108,49 @@
 	}
 	:global(.essay .stanza-nav) {
 		margin-top: 1.5rem;
+	}
+	/* A quiet disclosure, not another essay paragraph -- collapsed by default
+	   so the closing reflection above stays the last thing a reader sits
+	   with, per the same "footpath, not a competing card" logic PaperList
+	   uses for its own <details> (see stanza-iii-revision-brief.md). */
+	.ack {
+		margin-top: 1rem;
+		padding-top: 1.2rem;
+		border-top: 1px solid var(--surface-2);
+	}
+	.ack summary {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		color: var(--text-muted);
+		cursor: pointer;
+		list-style: none;
+	}
+	.ack summary::-webkit-details-marker {
+		display: none;
+	}
+	.ack summary::before {
+		content: '▸';
+		display: inline-block;
+		flex-shrink: 0;
+		transition: transform 0.15s ease;
+	}
+	.ack[open] > summary::before {
+		transform: rotate(90deg);
+	}
+	.ack-body {
+		margin-top: 0.9rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+	.ack-body p {
+		margin: 0;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: var(--text-secondary);
 	}
 </style>

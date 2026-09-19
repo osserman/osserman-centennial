@@ -45,8 +45,10 @@ CURATED_PAPERS = [
     {"id": "W2612605708", "section": "biology", "pathway": "hidden_structure"},
     {"id": "W2999050204", "section": "biology", "pathway": "hidden_structure"},
     {"id": "W2112838653", "section": "biology", "pathway": "hidden_structure"},
+    {"id": "W2044920528", "section": "computer_science", "pathway": "computational_tool"},
     {"id": "W2151783599", "section": "computer_science", "pathway": "computational_tool"},
     {"id": "W3026088860", "section": "computer_science", "pathway": "computational_tool"},
+    {"id": "W1878245702", "section": "computer_science", "pathway": "computational_tool"},
     {"id": "W2034409564", "section": "physics", "pathway": "physical_theory"},
     {"id": "W2002168123", "section": "physics", "pathway": "physical_theory"},
 ]

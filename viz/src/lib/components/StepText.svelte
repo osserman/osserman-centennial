@@ -8,6 +8,32 @@
 	function renderInline(text) {
 		return text.replace(/\*\*(.+?)\*\*/g, '<strong class="stat">$1</strong>');
 	}
+
+	// A body paragraph can embed {{tooltip:message}} right after the word or
+	// phrase it annotates, to drop in an inline InfoTooltip -- e.g. flagging
+	// that a claim depends on OpenAlex's field classification. {@html} can't
+	// render a Svelte component, so a tooltip-bearing paragraph is split into
+	// text/tooltip segments and rendered with an {#each} instead of one
+	// {@html} blob (see PaperDetail's fuller writeup of the classification
+	// caveat itself, which this reuses in spirit).
+	const TOOLTIP_RE = /\{\{tooltip:(.+?)\}\}/g;
+	function renderSegments(text) {
+		const segments = [];
+		let lastIndex = 0;
+		let match;
+		TOOLTIP_RE.lastIndex = 0;
+		while ((match = TOOLTIP_RE.exec(text))) {
+			if (match.index > lastIndex) {
+				segments.push({ type: 'text', html: renderInline(text.slice(lastIndex, match.index)) });
+			}
+			segments.push({ type: 'tooltip', message: match[1] });
+			lastIndex = match.index + match[0].length;
+		}
+		if (lastIndex < text.length) {
+			segments.push({ type: 'text', html: renderInline(text.slice(lastIndex)) });
+		}
+		return segments;
+	}
 </script>
 
 <div class="step-text">
@@ -28,7 +54,7 @@
 		<p class="subheading">{step.subheading}</p>
 	{/if}
 	{#each step.body as para}
-		<p>{@html renderInline(para)}</p>
+		<p>{#each renderSegments(para) as seg}{#if seg.type === 'tooltip'}<InfoTooltip label="About this classification" message={seg.message} />{:else}{@html seg.html}{/if}{/each}</p>
 	{/each}
 	{#if step.list?.length}
 		<ul>

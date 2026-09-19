@@ -283,26 +283,31 @@
 	function drawAxis(pal) {
 		const [minYear, maxYear] = timeDomain;
 		const first = Math.ceil(minYear / 10) * 10;
-		const y = height - 26;
+		// Raised from height-26 and given a bolder, larger label so the
+		// timeline reads as a real axis rather than a faint footnote under
+		// the graph -- the line stays subdued (it's just a baseline), but the
+		// year labels use textPrimary + a heavier weight for legibility.
+		const y = height - 38;
 		ctx.strokeStyle = pal.muted;
-		ctx.globalAlpha = 0.4;
-		ctx.lineWidth = 1;
+		ctx.globalAlpha = 0.5;
+		ctx.lineWidth = 1.25;
 		ctx.beginPath();
 		ctx.moveTo(0, y);
 		ctx.lineTo(width, y);
 		ctx.stroke();
-		ctx.globalAlpha = 0.75;
-		ctx.fillStyle = pal.muted;
-		ctx.font = '11px system-ui, sans-serif';
+		ctx.fillStyle = pal.textPrimary;
+		ctx.font = '600 13px system-ui, sans-serif';
 		ctx.textAlign = 'center';
 		for (let year = first; year <= maxYear; year += 10) {
 			const sx = yearToVirtualX(year) * transform.scale + transform.tx;
 			if (sx < -20 || sx > width + 20) continue;
+			ctx.globalAlpha = 0.6;
 			ctx.beginPath();
-			ctx.moveTo(sx, y - 4);
-			ctx.lineTo(sx, y + 4);
+			ctx.moveTo(sx, y - 5);
+			ctx.lineTo(sx, y + 6);
 			ctx.stroke();
-			ctx.fillText(String(year), sx, y + 18);
+			ctx.globalAlpha = 0.85;
+			ctx.fillText(String(year), sx, y + 22);
 		}
 		ctx.globalAlpha = 1;
 	}

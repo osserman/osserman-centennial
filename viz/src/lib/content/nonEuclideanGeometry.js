@@ -122,7 +122,7 @@ export const slides = [
 		// The subtitle poses the question the scene spends its whole run
 		// answering, and points back at the disc the reader has just left.
 		subtitle:
-			'To find out lets start with curvature on a sphere.',
+			"To find out, let's start with curvature on a sphere.",
 			//'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.',
 		// Optional side door, rendered under the subtitle. Not part of the
 		// narrative -- the stanza reads correctly without ever following it.
@@ -174,7 +174,7 @@ export const interstitials = [
 		// all, read while the just-finished flat map sits still alongside it.
 		body: [
 			'These geometries of the plane and the sphere, while not always intuitive, are based on surfaces that are familiar with us.',
-			'In the early nineteenth century, Nikolai Lobachevsky took a different approach. He developed what he called an "imaginary geometry" - in part because of its close relations to imaginary numbers. This geometry was inspired not from a familiar physical surface, but from mathematical abstration. It is a geometry in which most of Euclid\'s assumptions remain, but not the parallel postulate.',
+			'In the early nineteenth century, Nikolai Lobachevsky took a different approach. He developed what he called an "imaginary geometry" - in part because of its close relations to imaginary numbers. This geometry was inspired not from a familiar physical surface, but from mathematical abstraction. It is a geometry in which most of Euclid\'s assumptions remain, but not the parallel postulate.',
 			'After decades of mathematical controversy about this "imaginary geometry," in 1868 Eugenio Beltrami showed that it was in fact internally consistent. And a little over a decade later, Henri Poincaré developed a circular model that made this otherwise hard-to-picture geometry concrete enough to see and work with.'
 		]
 	},
@@ -189,7 +189,7 @@ export const interstitials = [
 		body: [
 			"The reason the Poincaré Disk is essentially an inverse of our last map is because the geometry Lobachevsky imagined is in some ways the inverse of a sphere. While a sphere has constant positive curvature, Lobachevsky's geometry maps to a surface with constant negative curvature.",
 			"But while Lobachevsky started with mathematical abstraction, that doesn't mean \"negative curvature\" itself is fuzzy. Or that it can't be visualized or measured.",
-			"When tasked with surveying the Kingdom of Hanover in the 1820's, Gauss developed a new way to define and measure curvature. And it applies equally well to negative curvature as it does positive curvature.",
+			"When tasked with surveying the Kingdom of Hanover in the 1820s, Gauss developed a new way to define and measure curvature. And it applies equally well to negative curvature as it does positive curvature.",
 			"But what is negative curvature?"
 		]
 	}

@@ -61,13 +61,13 @@
 		{ start: MERIDIANS_START, end: MERIDIANS_END, text: 'To make this map we start drawing lines from pole to pole — like scoring an orange before peeling it.' },
 		{ start: MERIDIANS_END, end: TISSOT_END, text: "As a visual aid - we'll add some equally sized circles on the surface that we'll track as we look at different versions of our map."},
 		{ start: TISSOT_END, end: SPLIT_START, text: "Now we unfold the sliced peels up towards the north pole, and press them flat." },
-		{ start: SPLIT_START, end: SPLIT_END, text: 'The North Pole is in the center...' },
+		{ start: SPLIT_START, end: SPLIT_END, text: 'The north pole is in the center...' },
 		{ start: SPLIT_END, end: FLATTEN_END, text: 'We can make a circular map of the world by stretching out each segment to meet each other. Look how increasingly distorted our reference circles are now.' },
 		{ start: FLATTEN_END, end: EQUATOR_END, text: 'The whole rim is the south pole. The equator (the blue circle) is spaced halfway from the center of our circular map to the edge.' },
 		{
 			start: EQUATOR_END,
 			end: ANGLES_END,
-			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the South Pole.'
+			text: 'The "parallel lines" from before - now in orange - appear as straight lines, intersecting at the north pole, and both reaching the edge as they "intersect" again at the south pole.'
 		},
 		{ start: ANGLES_END, end: TOUR_END, text: 'But the equator and lines - all "great circles" that wrap the earth - shift as we rotate the center of the map to some places Osserman spent time.' },
 		{ start: TOUR_END, end: DRAG_END, text: 'Now drag either visual to rotate your view.' },
@@ -80,7 +80,7 @@
 		{
 			start: STEREO_END,
 			end: ZOOM_END,
-			text: "But stretching until the circles are truly round makes our map no longer finite. The South Pole moves off the map to infinity."
+			text: "But stretching until the circles are truly round makes our map no longer finite. The south pole moves off the map to infinity."
 		},
 		// NOTE: there is deliberately no caption for ZOOM_END..DISC_END. That
 		// beat's text became the sidebar for the 'a-different-kind-of-map'

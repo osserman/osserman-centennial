@@ -43,7 +43,7 @@ export const slides = [
 		id: 'euler-question',
 		title: 'Connecting two rings',
 		body: [
-			"In the 1740's, Leonhard Euler worked on a deceptively simple question:",
+			"In the 1740s, Leonhard Euler worked on a deceptively simple question:",
 			'> What surface connects two rings using the least possible area?',
 			'A natural starting point would be rotating a straight line around the rings to make a cylinder.'
 		],
@@ -87,7 +87,7 @@ export const slides = [
 			{ prompt: 'Around the point on top of the catenoid, there are two curves that reveal how the surface bends -- one bends along the **catenary curve**, and the other around the **rotational curve**.' },
 			{ prompt: 'Isolated from the surface, we can see **two curves bend in opposite directions**. This means it has **negative Gaussian curvature** as described in the previous Stanza.' },
 			{ prompt: 'But these two curves have another special property.' },
-			{ prompt: 'They have the exact same amount of curvature, but in opposite directions. This feature, defined as a **mean curvature of zero** is true not just at this point, but at all points on the surface of the catenoid... And more strikingly **at all points of every smooth minimal surface**.' }
+			{ prompt: 'They have the exact same amount of curvature, but in opposite directions. This feature, defined as a **mean curvature of zero**, is true not just at this point, but at all points on the surface of the catenoid... And more strikingly **at all points of every smooth minimal surface**.' }
 		]
 		// Visual: MeanCurvatureScene, rendered directly by this page (see
 		// the scene-panel branch for curvatureIndex in +page.svelte).
@@ -134,7 +134,7 @@ export const slides = [
 		title: 'The Field Keeps Growing',
 		body: [
 			'Throughout the nineteenth and twentieth centuries, mathematicians discovered new minimal surfaces, developed general methods for constructing and classifying them, and explored when they exist and when they remain stable.',
-			'By the time my father entered this small subfield of mathematics, his advisors and colleagues were not just still at work identifying new surfaces, but were also continuing to investigate what minimal surfaces could exist, how they behaved, their behavior in multi-dimentional spaces, and what their geometry could reveal.'
+			'By the time my father entered this small subfield of mathematics, his advisors and colleagues were not just still at work identifying new surfaces, but were also continuing to investigate what minimal surfaces could exist, how they behaved, their behavior in multi-dimensional spaces, and what their geometry could reveal.'
 			//'By 1969, enough of that work had accumulated for Robert Osserman to bring much of the subject together in a graduate-level textbook: *A Survey of Minimal Surfaces*.',
 			//'Just one year later, NASA researcher Alan Schoen described a remarkable new family of **triply periodic minimal surfaces**, including the **gyroid**. Developed within an engineering research environment, these surfaces would later become some of the most influential geometries outside mathematics.',
 			//"Using the citations of Osserman's textbook, the next section follows the journey of minimal surfaces -- from 200 years of theoretical math to applications in fields ranging from materials science and biology to computer graphics, computer vision and theoretical physics."

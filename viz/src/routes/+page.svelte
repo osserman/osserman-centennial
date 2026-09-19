@@ -36,7 +36,7 @@
 		},
 		{
 			kicker: 'Coda',
-			title: 'A Chance to Pause',
+			title: 'Beauty and function',
 			href: `${base}/coda`
 		}
 	];
@@ -53,26 +53,25 @@
 		<p class="byline">Written for the centennial of Robert Osserman</p>
 
 		<p>
-			My father was a mathematician and a teacher. His most visible legacy is the book <em>Poetry of
+			My father was a mathematician, a teacher, and author of the book <em>Poetry of
 				the Universe, a Mathematical Exploration of the Cosmos</em>. 
-		</p>
-
-		<p>
-			<strong>On the surface</strong>, it helps readers build an intuition for the curvature of space.<InfoTooltip
+				On the surface, the book helps readers build an intuition for the curvature of space.<InfoTooltip
 				superscript
 				symbol="1"
 				label="Footnote 1"
 				message="While evidence has since mounted against the curvature of space, the book paints a concrete picture of what scientists mean by that when they try to determine the shape of the universe."
 			/>
-			<strong>Beneath the surface</strong>, it illuminates the interplay between imagination, creativity, observation,
+		</p>
+
+		<p>
+			Beneath the surface, it illuminates the interplay between imagination, creativity, observation,
 			and measurement in the centuries-long evolution of scientific knowledge.
-			<strong>Theoretical math connects</strong> here <strong>not just to applications</strong> it eventually
-			enables, <strong>but also to poetry</strong>, to the ability to imagine and reason about what lies beyond
+			<strong>Theoretical math connects</strong> <strong>not just to applications</strong> <strong>but also to poetry</strong>, to the ability to imagine and reason about what lies beyond
 			what we can observe.
 		</p>
 
 		<p>
-			The math field he researched - <strong><em>minimal surfaces</em></strong> - is not present his book. 
+			His own field of math - <strong><em>minimal surfaces</em></strong> - is not present in his book. 
 			But his delight in mathematical discovery is palpable throughout. <strong>He chose this field not because 
 			it was seen as useful or applicable</strong>, or even fashionable within math, but <strong>because he found 
 			it beautiful and elegant</strong>, and because it required creativity and allowed for playfulness.<InfoTooltip

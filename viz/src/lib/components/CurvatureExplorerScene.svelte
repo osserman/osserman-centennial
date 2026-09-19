@@ -708,7 +708,7 @@
 			// claim, so one caption should hold across both.
 			start: ROTATE_END,
 			end: PLANE_END,
-			text: 'Steeper curves require a smaller sphere. While flatter curves imply bigger one.'
+			text: 'Steeper curves require a smaller sphere. While flatter curves imply a bigger one.'
 		},
 		{
 			start: PLANE_END,
@@ -723,7 +723,7 @@
 		{
 			start: PLANE_HOLD_END,
 			end: SADDLE_END,
-			text: "But there is another possibility -- that the one curve one way, and the other the opposite way."
+			text: "But there is another possibility -- that one curve bends one way, and the other the opposite way."
 		},
 		{
 			start: SADDLE_END,

@@ -40,12 +40,22 @@
   "pathway": "hidden_structure"
  },
  {
+  "id": "W2044920528",
+  "section": "computer_science",
+  "pathway": "computational_tool"
+ },
+ {
   "id": "W2151783599",
   "section": "computer_science",
   "pathway": "computational_tool"
  },
  {
   "id": "W3026088860",
+  "section": "computer_science",
+  "pathway": "computational_tool"
+ },
+ {
+  "id": "W1878245702",
   "section": "computer_science",
   "pathway": "computational_tool"
  },

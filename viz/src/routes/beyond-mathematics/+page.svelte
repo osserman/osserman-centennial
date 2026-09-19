@@ -450,7 +450,11 @@
 		top: 0;
 		z-index: 5;
 		background: var(--surface-1);
-		padding: 0.85rem 0;
+		/* Top padding bumped from 0.85rem to clear GlobalNav's fixed corner icon
+		   (top:0.85rem, 2rem square) -- this header pins flush to the same y:0
+		   the icon sits near, and used to render right under it (see the same
+		   fix/comment in minimal-surfaces and non-euclidean-geometry). */
+		padding: 3.5rem 0 0.85rem;
 		font-size: 0.78rem;
 		font-weight: 700;
 		letter-spacing: 0.06em;
