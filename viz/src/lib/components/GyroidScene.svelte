@@ -28,6 +28,7 @@
 	import * as THREE from 'three';
 	import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+	import { letOneFingerScroll } from '$lib/touchScroll.js';
 	import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 	import { activePalette } from '$lib/palette.js';
 
@@ -334,6 +335,10 @@
 		// still driven, just by scroll progress (targetDistance above)
 		// instead of the reader's wheel.
 		controls.enableZoom = false;
+		// Same reasoning one step further, for touch: a single finger has to
+		// keep scrolling the page here too, or this canvas becomes a scroll
+		// dead zone on a tablet. Two fingers rotate. See letOneFingerScroll.
+		letOneFingerScroll(controls);
 		controls.target.set(0, 0, 0);
 		camera.lookAt(0, 0, 0);
 		// The scripted tour drives the view until the reader takes hold of it,

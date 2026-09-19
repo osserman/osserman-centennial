@@ -36,6 +36,7 @@
 	import * as THREE from 'three';
 	import { ParametricGeometry } from 'three/addons/geometries/ParametricGeometry.js';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+	import { letOneFingerScroll } from '$lib/touchScroll.js';
 	import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 	import { activePalette } from '$lib/palette.js';
 
@@ -824,6 +825,9 @@
 		// default wheel-to-zoom fights that, and scrolling past this slide reads
 		// as the surface confusingly zooming in. Rotation (drag) stays on.
 		controls.enableZoom = false;
+		// Same reasoning for touch: one finger keeps scrolling the page past
+		// this slide, two fingers rotate the surface. See letOneFingerScroll.
+		letOneFingerScroll(controls);
 		controls.target.copy(lastFitCenter); // matches the just-built mesh's own framing, not always the world origin (see rebuildMesh)
 		camera.lookAt(lastFitCenter);
 		// The scripted tour (see ROTATE_AZIMUTH_SPEED etc. above) pauses the

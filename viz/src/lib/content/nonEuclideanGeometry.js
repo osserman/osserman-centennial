@@ -124,12 +124,12 @@ export const slides = [
 		subtitle:
 			"To find out, let's start with curvature on a sphere.",
 			//'The Poincaré disk maps a world of **constant negative curvature**. But what does "negative curvature" actually mean? To find out, look again at our sphere.',
-		// Optional side door, rendered under the subtitle. Not part of the
-		// narrative -- the stanza reads correctly without ever following it.
-		aside: {
-			href: '/pseudosphere',
-			label: 'Aside: the surface that saddle sits on'
-		}
+		// An optional side door (an `aside: { href, label }`) renders under the
+		// subtitle -- see the {#if curvatureSlide.aside} branch in +page.svelte,
+		// kept in place for whenever one is pointed at again. This slide's own
+		// link to /pseudosphere is pulled for now: that aside isn't finished,
+		// and the plan is to gather the asides at the end of the Coda rather
+		// than hang them off individual slides.
 	},
 	{
 		id: 'hyperbolic-outro',

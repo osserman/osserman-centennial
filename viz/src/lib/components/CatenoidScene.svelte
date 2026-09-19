@@ -9,6 +9,7 @@
 	import { onMount, untrack } from 'svelte';
 	import * as THREE from 'three';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+	import { letOneFingerScroll } from '$lib/touchScroll.js';
 	import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 	import { activePalette } from '$lib/palette.js';
 	import { surfaceArea } from '$lib/catenoidProfile.js';
@@ -143,6 +144,9 @@
 			// scrolling and starts zooming" mid-scroll is a bad surprise.
 			controls.enableZoom = false;
 			controls.enableDamping = true;
+			// Same reasoning for touch: one finger keeps scrolling the page,
+			// two fingers rotate the catenoid. See letOneFingerScroll.
+			letOneFingerScroll(controls);
 			controls.target.set(0, 0, 0);
 			// Reports the camera's position whenever the reader actually
 			// rotates it — so if they leave this scene mid-rotation, whatever
